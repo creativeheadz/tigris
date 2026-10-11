@@ -1,0 +1,16 @@
+Id: con016e
+Severity: ERROR
+Category: tigris
+Check: config
+Fix: chmod go-w the file and chown it to root, or name one that is; then run again.
+References: tigris(8); tigerrc
+
+The configuration file named with -c failed the check every
+configuration file gets before it is read: it is writable by its group
+or by others, or it belongs to someone other than root, the user running
+Tigris or the owner of Tigris's own files (con003c, con015c, printed
+just before). A configuration file is run as shell code by whoever runs
+Tigris, root as a rule, so one that others can change is theirs to run.
+A file Tigris finds on its own is skipped for the next candidate; a file
+named with -c has no next candidate, and running every check instead is
+not what -c asked for, so the run stops.

@@ -213,12 +213,12 @@ MAILER=`findcmd sendmail`
 [ -z "$MAILER" ] && MAILER=`findcmd mail`
 LSOF=`findcmd lsof`
 MD5SUM=`findcmd md5sum`
-if [ -f "$BINDIR/realpath" ]; then
-	REALPATH=$BINDIR/realpath
-else 
-	# The system realpath has a different interface, so use the shell version
-	REALPATH=$BASEDIR/util/realpath
-fi
+# util/realpath, always: the C helper that used to go in $BINDIR took a
+# path or a symlink's target longer than its fixed buffers (any user can
+# make one) and overran the stack of a root process; the shell version
+# has the same interface and is what every test and fleet run exercised.
+# (The system realpath has a different interface.)
+REALPATH=$BASEDIR/util/realpath
 PWD=`findcmd pwd`
 # Package management tools
 DPKG=`findcmd dpkg`

@@ -14,6 +14,9 @@
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 export TIGER
+# the tree copies the tests make carry this checkout's modes: a tigerrc
+# or profile that group may write is (rightly) ignored, so make them 644
+umask 022
 fail=0
 # which awk: gawk and mawk say with --version or -W version; busybox's says
 # nothing, but awk is then a link to busybox

@@ -209,7 +209,7 @@ jobs:
         run: |
           make -C c install
           ls -l bin/
-          test -x bin/realpath && test -x bin/snefru
+          test -x bin/snefru && test ! -e bin/realpath
       - name: Findings reference built from meta/
         run: grep -c '<dt id=' doc/explanations.html
       - name: make install into a staging directory, man pages included

@@ -235,11 +235,11 @@ checkfile()
   _rcpath=${2:=$1}
   _status=1
   
-  if [ -d $_rcfile ]; then
+  if [ -d "$_rcfile" ]; then
     echo "--CONFIG-- [con001c] Ignoring config file $_rcpath, (directory)"
-  elif [ -f $_rcfile ]; then
+  elif [ -f "$_rcfile" ]; then
     _status=0
-    _permit=`$LS $LSLINK -l $_rcfile |
+    _permit=`$LS $LSLINK -l "$_rcfile" |
              $AWK '{printf("%s%s", substr($1,6,1), substr($1,9,1));}'`
     [ "$_permit" != "--" ] && {
       echo "--CONFIG-- [con003c] Ignoring config file $_rcpath, (world and/or group writable)"
@@ -311,7 +311,7 @@ checkfile()
      -l) LOGDIR=$2; shift;;
      -w) WORKDIR=$2; shift;;
      -b) BINDIR=$2; shift;;
-     -c) RCFILE=$2; shift;;
+     -c) RCFILE=$2; RCFILE_GIVEN=Y; shift;;
      --root)
         [ $# -ge 2 ] || { echo "--ERROR-- [con014e] --root needs the directory to audit."; exit 1; }
         TIGRIS_ROOT=$2; shift;;
@@ -488,6 +488,17 @@ checkfile()
   #
   # If RCFILE is not defined consider using some sane defaults  
   #
+  # The preset ($TigerConfigDir/tigerrc) and a file given with -c get the
+  # check every configuration file gets (not writable by group or others,
+  # owned by root, the user running Tigris or Tigris's owner): until
+  # October 2026 only the search below did, and the preset meant it never
+  # ran. A preset that fails is skipped for the search; a -c file that
+  # fails stops the run (below).
+  rcrejected=
+  [ -n "$RCFILE" ] && [ "$RCFILE_GIVEN" != Y ] && [ -e "$RCFILE" ] && ! checkfile "$RCFILE" "$RCFILE" && {
+    rcrejected=$RCFILE
+    RCFILE=
+  }
   [ ! -n "$RCFILE" ] && {
     for file in '/etc/tiger/tigerrc' '/usr/local/etc/tigerrc' './.tigerrc' './tigerrc' '$BASEDIR/tigerrc' '$HOME/.tigerrc' 
   # TODO: Check with ARSC if there is a preference on their behalf
@@ -495,11 +506,23 @@ checkfile()
   # for file in './.tigerrc' './tigerrc' '$HOME/.tigerrc' '$BASEDIR/tigerrc'
     do
       eval rc=$file
-      if checkfile $rc $file; then
+      # the rejected preset again, under another name: said once
+      [ -n "$rcrejected" ] && [ "$rc" -ef "$rcrejected" ] && continue
+      if checkfile "$rc" "$file"; then
 	RCFILE=$rc
 	break
       fi
     done
+  }
+
+  # A tigerrc named with -c is sourced as root like a found one, so it
+  # gets the same check (not writable by group or others, owned by root,
+  # the user running Tigris or Tigris's owner); unlike a found one there
+  # is nothing to fall back to, so a file that fails it stops the run
+  # (every check would run otherwise, which is not what -c asked for)
+  [ "$RCFILE_GIVEN" = Y ] && [ -e "$RCFILE" ] && ! checkfile "$RCFILE" "$RCFILE" && {
+    echo "--ERROR-- [con016e] The configuration file $RCFILE given with -c was not read (see above); nothing runs without it."
+    exit 1
   }
 
   [ -n "$RCFILE" ] && [ ! -r "$RCFILE" ] && {

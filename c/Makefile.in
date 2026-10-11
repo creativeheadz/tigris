@@ -20,7 +20,7 @@
 # For some reason snefru and md5 were received wrongly
 # and they could not be compiled at first (they have
 # been added later)
-BINLIST=getpermit snefru md5 testsuid realpath
+BINLIST=getpermit snefru md5 testsuid
 COPTS=-Wall
 INSTALL=@INSTALL@
 CC=@CC@

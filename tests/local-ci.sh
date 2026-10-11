@@ -21,6 +21,9 @@ cd "$TIGER" || exit 1
 
 # The run must leave the tree exactly as it found it; anything it builds
 # happens in copies and temp dirs, never here.
+# the tree copies the tests make carry this checkout's modes: a tigerrc
+# or profile that group may write is (rightly) ignored, so make them 644
+umask 022
 treestart=`git status --short 2>/dev/null`
 fail=0
 want="$*"
@@ -94,7 +97,7 @@ if run_section build; then
     say "== build: configure and make"
     ./configure && make || fail=1
     say "== build: the helpers install into bin/"
-    make -C c install && ls -l bin/ && test -x bin/realpath && test -x bin/snefru || fail=1
+    make -C c install && ls -l bin/ && test -x bin/snefru && test ! -e bin/realpath || fail=1
     say "== build: findings reference built from meta/"
     grep -c '<dt id=' doc/explanations.html || fail=1
     say "== build: make install into a staging directory, man pages included"
