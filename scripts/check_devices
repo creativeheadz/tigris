@@ -145,6 +145,9 @@ do
 # list the root's directory instead (same names the glob would match).
 DEVLIST="$dir/[a-z0-9]*"
 [ -n "$TIGRIS_ROOT" ] && DEVLIST="`rootls "$dir" | $GREP "^$dir/[a-z0-9]"`"
+# (live, DEVLIST is a pattern the shell expands; offline it is a list of
+# the root's names, which must not expand against this host's /dev)
+[ -n "$TIGRIS_ROOT" ] && set -f
 for file in $DEVLIST
 do
 
@@ -189,6 +192,7 @@ do
 	;;
 	esac
 done
+set +f
 done
 
 exit 0

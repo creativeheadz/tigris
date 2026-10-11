@@ -168,8 +168,10 @@ do
 		>$WORKDIR/s.$$
 		$CAT $WORKDIR/u.$$ |
 		while read user; do
-			$GREP "^$user:" "$PASSWD" >>$WORKDIR/p.$$
-			$GREP "^$user:" "$SHADOW" >>$WORKDIR/s.$$
+			# (the name compared, not read as a pattern: it is the audited
+			# system's, and a . or * in it matched other accounts)
+			u="$user" $AWK -F: '$1 == ENVIRON["u"]' "$PASSWD" >>$WORKDIR/p.$$
+			u="$user" $AWK -F: '$1 == ENVIRON["u"]' "$SHADOW" >>$WORKDIR/s.$$
 		done
 		$JOIN -t: -e " " -o 2.1 1.2 2.3 2.4 2.5 2.6 2.7 $WORKDIR/s.$$ $WORKDIR/p.$$ |
 		{

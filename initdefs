@@ -509,12 +509,12 @@ __getpermit()
     if [ -n "$1" ]; then
       for file
       do
-	$LS $LSLINK $LSGROUP -ld "$file" 2> /dev/null
+	$LS $LSLINK $LSGROUP -ld -- "$file" 2> /dev/null
       done
     else
       while read file
       do
-	$LS $LSLINK $LSGROUP -ld "$file" 2> /dev/null
+	$LS $LSLINK $LSGROUP -ld -- "$file" 2> /dev/null
       done
     fi
   ) |
@@ -566,7 +566,7 @@ __rootpermit()
     IFS='	' read -r __rx __rootgr
     while IFS='	' read -r __rp __rh
     do
-      [ -n "$__rh" ] && printf '%s\t%s\n' "$__rp" "`$LS -ldn \"$__rh\" 2>/dev/null`"
+      [ -n "$__rh" ] && printf '%s\t%s\n' "$__rp" "`$LS -ldn -- \"$__rh\" 2>/dev/null`"
     done |
     pw="$__rootpw" gr="$__rootgr" $AWK -F'\t' '
       BEGIN {
@@ -879,14 +879,14 @@ rootglob()
 lsline()
 {
   if [ -z "$TIGRIS_ROOT" ]; then
-    $LS $LSGROUP -ld "$1"
+    $LS $LSGROUP -ld -- "$1"
     return
   fi
   __h=`rootfile "$1"`
   [ -n "$__h" ] || return 0
   # (the paths reach awk through the environment: -v reads backslash
   # escapes, and a name holding \n put a line of its own in the report)
-  LC_ALL=C $LS -ldn "$__h" 2>/dev/null |
+  LC_ALL=C $LS -ldn -- "$__h" 2>/dev/null |
   pw="`rootfile /etc/passwd`" gr="`rootfile /etc/group`" hp="$__h" ip="$1" $AWK '
     BEGIN {
       while ((getline l < ENVIRON["pw"]) > 0) { split(l, x, ":"); if (!(x[3] in u)) u[x[3]] = x[1] }

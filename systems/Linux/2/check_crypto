@@ -118,6 +118,10 @@ for kd in /etc/ssl/private /etc/ssl/certs /etc/pki/tls/private /etc/pki/tls/cert
 do
   kh=`rootfile $kd`
   [ -d "$kh" ] || continue
+  # one name a line, no globbing: the names are the audited system's
+  # (a while loop would run in a subshell and lose keyfiles)
+  __ifs=$IFS; IFS='
+'; set -f
   # shellcheck disable=SC2046
   for kf in `$FIND "$kh" -type f 2>/dev/null`
   do
@@ -127,6 +131,7 @@ do
       *) keyfiles="$keyfiles $kf" ;;
     esac
   done
+  IFS=$__ifs; set +f
 done
 
 # No RNG configuration and no private keys, and no live view of the
