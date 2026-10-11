@@ -9,6 +9,7 @@
 # session scope that must be ignored. Needs no root and no systemd.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )

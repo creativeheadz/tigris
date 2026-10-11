@@ -7,6 +7,7 @@
 # them to root) or SELinux's enforce flag, fed through Tiger_Sysctl_Root.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )

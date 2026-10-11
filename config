@@ -59,6 +59,12 @@
 
 # Running on the dir defined by the tarball
 # Comment this if you want to use Tiger defaults
+# The PATH before anything runs: every command below and in the system's
+# config (id, whoami, command -v) is found through it, as root. It used
+# to be set last, after they had run through the one inherited.
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+export PATH
+
 TigerLogDir='log/'
 TigerWorkDir='run/'
 TigerConfigDir='.'
@@ -123,7 +129,7 @@ do_siggen()
 do_usage()
 {
 echo "Tigris, version $TIGERVERSION"
-echo "Usage: ./tigris [-vthqGSH] [-B dir] [-l dir|@host] [-w dir] [-b dir] [-e|-E] [-c config] [--since run] [-A arch] [-O os] [-R release]"
+echo "Usage: ./tigris [-vthqGSH] [-B dir] [-l dir] [-w dir] [-b dir] [-e|-E] [-c config] [--since run] [-A arch] [-O os] [-R release]"
 echo ""
 echo "       -v     Show the version, and who wrote TIGER and Tigris."
 echo ""
@@ -143,8 +149,6 @@ echo "              Specify the name of the directory where Tiger  will"
 echo "              write  the  security  report.  This defaults to    "
 echo "              '$LOGDIR'. The filename  of  the report will be of "
 echo "              the form 'security.report.host-name.date.time.'    "
-echo "              If the directory  begins  with a "@", the name will"
-echo "              be interpreted as a tiger logging server."
 echo ""
 echo "       -w name"
 echo "              Specify a directory to  use  for  creating  scratch"
@@ -308,7 +312,11 @@ checkfile()
      -v) doversion=1;;
      -h|--help) do_usage; exit 0;;
      -B) BASEDIR=$2; shift;;
-     -l) LOGDIR=$2; shift;;
+     -l) LOGDIR=$2; shift
+         case "$LOGDIR" in @*)
+           echo "--ERROR-- [con017e] -l @host, the telnet logger, is gone (it sent the report in clear, and its test was inverted so it never ran); -l takes a directory."
+           exit 1 ;;
+         esac ;;
      -w) WORKDIR=$2; shift;;
      -b) BINDIR=$2; shift;;
      -c) RCFILE=$2; RCFILE_GIVEN=Y; shift;;
@@ -392,17 +400,34 @@ checkfile()
           # From here on we should have a working WORKDIR
   fi
 
-  # Create the log directory too, unless reports go to a remote logger (host@)
-  case "$LOGDIR" in
-    *@*) ;;
-    *) if [ ! -d "$LOGDIR" ] ; then
-         [ "$QUIET" != "Y" ] && echo "Creating log directory $LOGDIR"
-         if ! ( umask 077; mkdir -p "$LOGDIR" ) >/dev/null 2>&1; then
-           echo "Configured log directory $LOGDIR cannot be created (should you use -l?)" >&2
-           exit 1
-         fi
-       fi ;;
-  esac
+  # Create the log directory too
+  if [ ! -d "$LOGDIR" ] ; then
+    [ "$QUIET" != "Y" ] && echo "Creating log directory $LOGDIR"
+    if ! ( umask 077; mkdir -p "$LOGDIR" ) >/dev/null 2>&1; then
+      echo "Configured log directory $LOGDIR cannot be created (should you use -l?)" >&2
+      exit 1
+    fi
+  fi
+
+  # Both must be the runner's alone: files are created in them under
+  # names others could guess, and a link planted there by someone else
+  # would be followed, as root. Owned by root, the runner or the user who
+  # invoked sudo (a checkout), and writable by nobody else.
+  for __dir in "$WORKDIR" "$LOGDIR"
+  do
+    __dls=`ls -ldn "$__dir" 2>/dev/null`
+    __downer=`echo "$__dls" | awk '{ print $3 }'`; __dmode=`echo "$__dls" | awk '{ print $1 }'`
+    case " 0 `id -u` ${SUDO_UID:-0} " in
+      *" ${__downer:-?} "*) ;;
+      *) echo "--ERROR-- [con018e] The directory $__dir is owned by uid ${__downer:-?}, not by root, the user running Tigris or the user who invoked sudo: Tigris does not write there."
+         exit 1 ;;
+    esac
+    case "$__dmode" in
+      ?????w*|????????w*)
+         echo "--ERROR-- [con018e] The directory $__dir is writable by its group or by others: Tigris does not write there (chmod 700 $__dir)."
+         exit 1 ;;
+    esac
+  done
 
 
   # Which configuration was picked is said in test mode (-t); a normal
@@ -593,6 +618,13 @@ checkfile()
     . $WORKDIR/sitefile.$$
     $RM -f $WORKDIR/sitefile.$$
   }
+
+  # The acceptance and ignore files decide what the report leaves out, so
+  # they get the check a tigerrc gets (not writable by group or others,
+  # owned by root, the runner or Tigris's owner); one that fails is not
+  # read, and checkfile has said so
+  [ -n "$ACCEPT_FILE" ] && [ -e "$ACCEPT_FILE" ] && ! checkfile "$ACCEPT_FILE" "$ACCEPT_FILE" && ACCEPT_FILE=
+  [ -n "$IGNORE_FILE" ] && [ -e "$IGNORE_FILE" ] && ! checkfile "$IGNORE_FILE" "$IGNORE_FILE" && IGNORE_FILE=
 
   HOSTNAMESLIST=${HOSTNAMESLIST:=$HOSTNAME}
 

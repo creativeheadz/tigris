@@ -1,0 +1,12 @@
+Id: con017e
+Severity: ERROR
+Category: tigris
+Check: config
+Fix: Give -l a directory; ship the report another way (tigercron mails it, or copy the file).
+References: tigris(8)
+
+The -l option was given @host, which once meant sending the report to
+a "logger" on that host over telnet. That feature is gone: it sent the
+report, which names the machine's weaknesses, in clear across the
+network, and its own test was inverted, so it had never worked. -l
+takes a directory the report is written to.

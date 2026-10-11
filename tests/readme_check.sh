@@ -9,6 +9,7 @@
 # run sh util/mkreadme and commit what it changes.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 out=`sh "$TIGER/util/mkreadme" -c "$TIGER" 2>&1`; st=$?
 if [ $st -eq 0 ]; then
   echo "ok   README.md and ROADMAP.md give the tree's numbers"

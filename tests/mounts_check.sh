@@ -15,6 +15,7 @@
 # Exit 0 when every assertion holds, 1 otherwise.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 
 TIMEOUT=`command -v timeout`
 [ -n "$TIMEOUT" ] || { echo "skip: no timeout command, so no probe"; exit 0; }

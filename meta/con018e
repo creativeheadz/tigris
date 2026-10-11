@@ -1,0 +1,13 @@
+Id: con018e
+Severity: ERROR
+Category: tigris
+Check: config
+Fix: chown the directory to root (or your own user, running with sudo) and chmod 700 it; or name another with -w or -l.
+References: tigris(8)
+
+The working directory (-w) or the log directory (-l) belongs to someone
+other than root, the user running Tigris or the user who invoked sudo,
+or its group or others may write it. Tigris creates its files there
+under names a bystander could guess and follows a symbolic link it finds
+in their place, as root, so a directory someone else can write into is
+not used.

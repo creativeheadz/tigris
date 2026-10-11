@@ -225,7 +225,6 @@ Tiger_Passwd_Constraints="PASS_MIN_DAYS PASS_MAX_DAYS PASS_WARN_AGE PASS_MIN_LEN
 #
 # Acceptable password hashes.
 # List of password hashes separated by '|'... no whitespaces
-Tiger_Passwd_Hashes='crypt3|md5|sha256|sha512|yescrypt|gost-yescrypt|bcrypt|scrypt'
 #
 # Number of days of non-modified files in the home directory for a user
 # to be considered dormant (setting = 0 disables this check)
@@ -343,12 +342,12 @@ Tiger_Files_of_Note="..[!.]*/.* */.*	*/.[!.]/.log/.FSP*"
 #
 # File system scan - things to look for
 #
-Tiger_FSScan_Setuid=N		# Setuid executables
-Tiger_FSScan_Setgid=N		# Setgid executables
+Tiger_FSScan_Setuid=Y		# Setuid executables
+Tiger_FSScan_Setgid=Y		# Setgid executables
 Tiger_FSScan_Devs=Y		# device files
 Tiger_FSScan_SymLinks=Y		# strange symbolic links
 Tiger_FSScan_ofNote=Y		# weird filenames
-Tiger_FSScan_WDIR=N		# world writable directories
+Tiger_FSScan_WDIR=Y		# world writable directories
 Tiger_FSScan_Unowned=Y		# files with undefined owners/groups
 #  The following variables change the way the GET_MOUNTS (gen_mounts) script works:
 Tiger_FSScan_WarnUnknown=Y	# Warn about unknown filesystems used
@@ -390,6 +389,10 @@ Tiger_Sysctl_Root=''
 # the PATH checks ask first (df -P under a kill timeout) and report what
 # they skipped (con011c, acc025w, path010w). Needs a 'timeout' command
 # (coreutils or busybox); without one there is no limit, as before.
+# Every Tiger_*_Cmd below names a program Tigris runs as root in place of
+# the real one, so these are as trusted as this file: that is why Tigris
+# reads a tigerrc only when root, the user running it or the owner of its
+# own files owns it and nobody else may write it (con003c, con015c).
 # Tiger_Mount_Probe_Cmd replaces df; the tests point it at a script.
 # Tiger_Csrutil_Cmd replaces `csrutil status' and Tiger_Fdesetup_Cmd
 # replaces `fdesetup status' (both macOS only); the tests point them
@@ -437,7 +440,7 @@ Tiger_Accounts_Trust=999
 # for the SSH Daemon.
 # Multiple options are seperated by '|', and directive variable can
 # be left blank to ignore the check.
-Tiger_SSH_Protocol='1|2'
+Tiger_SSH_Protocol='2'
 Tiger_SSH_RhostsAuthentication='no'
 Tiger_SSH_PasswordAuthentication='no'
 #

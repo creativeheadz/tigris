@@ -16,6 +16,7 @@
 # here.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 command -v apt-get >/dev/null 2>&1 || { echo "ok   (no apt-get here: nothing to test)"; echo PASS; exit 0; }
 
 W=`mktemp -d`

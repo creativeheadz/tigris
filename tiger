@@ -30,7 +30,7 @@
 # 08/19/2003 jfs check_cron is now check_crontabs
 # 08/15/2003 jfs Integrated ARSC log to syslog mechanism but modified
 #                the check for it (better to use the same mechanism as
-#                used by the sendtologger function in order to avoid
+#                (once used by a telnet logger, gone since October 2026)
 #                some issues and prepended it to the use of -E since
 #                otherwise a wrong LOGDIR would be used (with \@) for
 #                the logfile and expfile)
@@ -82,34 +82,28 @@ done
 # terminal had, for the spinner frames
 Tiger_Orig_Locale="${LC_ALL:-${LANG:-}}"
 
+# config and initdefs are run from $basedir as whoever runs Tigris, root
+# as a rule, before any other check: so $basedir must be root's, the
+# runner's or (sudo from a checkout) the invoking user's, and nobody
+# else may write it. The PATH first, so that ls and id are the system's.
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+export PATH
+__bls=`ls -ldn "$basedir" 2>/dev/null`
+__bowner=`echo "$__bls" | awk '{ print $3 }'`; __bmode=`echo "$__bls" | awk '{ print $1 }'`
+__bowner=${__bowner:-?}
+case " 0 `id -u` ${SUDO_UID:-0} " in
+  *" $__bowner "*) ;;
+  *) echo "--ERROR-- [init013e] \`$basedir' is owned by uid $__bowner, not by root, the user running Tigris or the user who invoked sudo: nothing is run from it."
+     exit 1 ;;
+esac
+case "$__bmode" in
+  ?????w*|????????w*)
+     echo "--ERROR-- [init013e] \`$basedir' is writable by its group or by others: nothing is run from it."
+     exit 1 ;;
+esac
 . $basedir/config
 
 . $BASEDIR/initdefs
-
-sendtologger()
-{
-  file=$1
-  if [ -r "$file" ]; then
-  	echo "Cannot read report in $file to send to syslog"
-	exit 1
-  fi
-  logger_port="5353"
-  logger_name=`echo $LOGDIR | $AWK -F\@ '{print $2}'`
-  safe_temp $WORKDIR/logger.$$
-  TigerCleanup="$TigerCleanup $WORKDIR/logger.$$"
-  echo "sleep 5; cat $logfile; sleep 5" >$WORKDIR/logger.$$
-  sh $WORKDIR/logger.$$ | telnet $logger_name $logger_port
-  if [ "$?" -ne 0 ]; then
-   echo "TIGER logger server [$logger_name] is not available"
-   delete $WORKDIR/logger.$$
-   exit 1
-  fi
-  delete $WORKDIR/logger.$$
-  # Do not proceed since the LOGDIR value would be useless for us
-  # TODO: Consider use a -s switch to define logging to syslog
-  # so that logs are always kept locally too
-  exit 0
-}
 
 tigercleanup()
 {
@@ -715,10 +709,6 @@ noroot=`$GREP -c '^# Skipped [^:]*: it needs root' $logtmp 2>/dev/null`
     summary_extra=`sh $BASEDIR/util/summary -j "$Tiger_JSON_File" 2>/dev/null`
     echo "{\"type\":\"summary\",\"id\":\"$Tiger_Run_Id\",\"end\":\"`$DATE -u +%Y-%m-%dT%H:%M:%SZ`\",\"counts\":{$counts}$summary_extra,\"skipped\":${skipped:-0}}" >> $Tiger_JSON_File
   }
-
-  if [ -n "`echo $LOGDIR | $AWK -F\@ '{print $2}'`" ]; then
-    sendtologger $logtmp
-  fi
 
   if [ "$EXPLAINREPORT" = "Y" ]; then
     $BASEDIR/tigexp -f $logtmp > $expreport

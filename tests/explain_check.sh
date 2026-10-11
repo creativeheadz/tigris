@@ -35,6 +35,7 @@
 # - audit/: standalone scripts for other systems, not part of a run.
 #
 TIGER=${TIGER:-`cd "\`dirname \"$0\"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 # Bytes, not characters: some scripts are Latin-1, and sort and comm
 # must agree on one order
 LC_ALL=C; export LC_ALL

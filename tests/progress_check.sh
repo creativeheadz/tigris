@@ -9,6 +9,7 @@
 # as the same lines; -q prints none of them.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0

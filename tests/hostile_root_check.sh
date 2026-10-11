@@ -17,6 +17,7 @@
 # root. CI runs this as a user and as root.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
@@ -110,10 +111,13 @@ chmod 644 "$W/profiles/hostile"
 ( cd "$W" && sh ./tigris -q --profile hostile --root "$R" ) > "$W/out" 2>&1
 json=`ls "$W"/log/*.jsonl 2>/dev/null | head -1`
 text=`ls "$W"/log/security.report.* 2>/dev/null | grep -v '\.jsonl$' | head -1`
-# the odd names with a backslash-n: reported, and never as a line of their own
-grep -q '"id":"fsys005a"' "$json" && ok "the odd names in /etc are reported: fsys005a" || bad "no fsys005a for the odd names"
-[ "`grep -c '^--ALERT-- \[fsys005a\] FORGED' "$text"`" = 0 ] &&
-  ok "a backslash-n in a name forges no finding line in the text report" || { bad "a forged finding line"; grep -n 'FORGED' "$text"; }
+# the odd names with a backslash-n: reported, and never as a line of their
+# own (the offline scan needs GNU find; without it there is nothing to see)
+if find / -maxdepth 0 -printf '' >/dev/null 2>&1; then
+  grep -q '"id":"fsys005a"' "$json" && ok "the odd names in /etc are reported: fsys005a" || bad "no fsys005a for the odd names"
+  [ "`grep -c '^--ALERT-- \[fsys005a\] FORGED' "$text"`" = 0 ] &&
+    ok "a backslash-n in a name forges no finding line in the text report" || { bad "a forged finding line"; grep -n 'FORGED' "$text"; }
+fi
 [ -n "$json" ] || { echo "FAIL no report:"; cat "$W/out"; exit 1; }
 has() { grep -q -- "$1" "$json"; }
 

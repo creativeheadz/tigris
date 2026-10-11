@@ -20,6 +20,7 @@
 # is what a host without nft (Ubuntu) gives.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 FX="$TIGER/tests/fixtures/firewall"
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0

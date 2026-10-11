@@ -16,6 +16,7 @@
 # is one finding, ::1 is loopback, and ss's owner uids become names.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )

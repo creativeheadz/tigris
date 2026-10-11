@@ -11,6 +11,7 @@
 # Needs python3 for the parsing; skips with exit 2 without it.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 command -v python3 >/dev/null || { echo "SKIP: python3 needed to parse JSON"; exit 2; }
 
 W=`mktemp -d`

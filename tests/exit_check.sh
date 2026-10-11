@@ -8,6 +8,7 @@
 # takes a fraction of a second, needs no root, and its findings are known.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0

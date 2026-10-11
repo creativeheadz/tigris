@@ -308,6 +308,11 @@ install: installdirs installbinaries installhelpers installconfig installmanpage
 	  cp -p $$file $(DESTDIR)$(TIGERHOME)/$$file; \
 	  fi; \
 	done
+	@echo "Fixing ownership and modes..."
+	@chmod -R go-w $(DESTDIR)$(TIGERHOME) $(DESTDIR)$(TIGERCONFIG)
+	@if [ "`id -u`" = 0 ]; then \
+	  chown -R 0:0 $(DESTDIR)$(TIGERHOME) $(DESTDIR)$(TIGERCONFIG) $(DESTDIR)$(TIGERWORK) $(DESTDIR)$(TIGERLOGS); \
+	fi
 
 distribution:
 # TODO: it should  create the proper tiger-$VERSION.tgz file

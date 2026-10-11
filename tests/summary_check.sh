@@ -11,6 +11,7 @@
 #    carries the new fields; with the JSON report off there is no summary.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 S=$TIGER/util/summary

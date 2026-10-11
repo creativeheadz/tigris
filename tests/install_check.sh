@@ -13,6 +13,7 @@
 # Needs a C compiler and make; exits 2 (skip) without them.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 
 command -v cc >/dev/null 2>&1 || command -v gcc >/dev/null 2>&1 || { echo "SKIP: a C compiler is needed"; exit 2; }
 command -v make >/dev/null 2>&1 || { echo "SKIP: make is needed"; exit 2; }
@@ -46,6 +47,10 @@ SBIN="$W/pfx/sbin"
 STAGEHOME=`grep '^TIGERHOME=' "$W/src/Makefile" | sed 's/.*=//'`
 expect "[ -x $SBIN/tigris ]" "sbin/tigris is installed and executable"
 expect "[ -x $STAGEHOME/tigexp ]" "tigexp is where BASEDIR expects it"
+# what was copied from the checkout keeps nobody's write bit (the checkout's
+# modes are the cloner's umask); as root, all of it is root's
+expect "[ -z \"`find $STAGEHOME ! -type l -perm /go+w 2>/dev/null | head -1`\" ]" "nothing installed is writable by group or others"
+[ "`id -u`" = 0 ] && expect "[ -z \"`find $STAGEHOME ! -user root 2>/dev/null | head -1`\" ]" "installed as root: everything is root's"
 expect "[ -x $STAGEHOME/tigris-diff ]" "tigris-diff is where BASEDIR expects it"
 
 $SBIN/tigris explain lin002i >"$W/explain.out" 2>&1
@@ -73,7 +78,10 @@ expect "! grep -qi 'not found' $W/run1.out" "no helper is missing from the run"
 # documented status for this run (as a user, checks are skipped for want
 # of root, and nothing new was found).
 $SBIN/tigris --since last --root "$W/root" >"$W/run2.out" 2>&1; st=$?
-expect "[ $st -eq 2 ]" "the installed tree finishes a run with --since"
+# (as root nothing is skipped, so the status is whatever the root's findings
+# say, 0 to 5; as a user it is 2)
+if [ "`id -u`" = 0 ]; then expect "[ $st -ge 0 ] && [ $st -le 5 ]" "the installed tree finishes a run with --since (as root: exit $st)"
+else expect "[ $st -eq 2 ]" "the installed tree finishes a run with --since"; fi
 expect "grep -q 'Tigris diff:' $W/run2.out" "the --since run compared with the earlier one"
 
 [ "$fail" -eq 0 ] && echo PASS

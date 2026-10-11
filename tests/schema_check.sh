@@ -15,6 +15,7 @@
 # PYTHON overrides the interpreter.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 PYTHON=${PYTHON:-python3}
 "$PYTHON" -c 'import jsonschema' 2>/dev/null || { echo "SKIP: $PYTHON with the jsonschema package is needed"; exit 2; }
 

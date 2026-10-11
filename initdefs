@@ -745,11 +745,13 @@ safe_temp()
 {
   for __tmpfile
   do
-    if [ -f "$__tmpfile" ] ; then
+    # a symbolic link counts as there: [ -f ] said no to a dangling one,
+    # and the redirection then created whatever it pointed at
+    if [ -e "$__tmpfile" ] || [ -L "$__tmpfile" ] ; then
         echo  "--ERROR-- [init009e] Tempfile \`$__tmpfile' exists."
         exit 1
     else
-        >$__tmpfile
+        ( umask 077; : > "$__tmpfile" )
     fi
   done
 }

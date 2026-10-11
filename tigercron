@@ -98,6 +98,18 @@ TEMPLATEDIR="$TigerConfigDir/templates"
 }
 
 #------------------------------------------------------------------------
+# The control file first: what it names runs as root
+[ ! -n "$ctrlfile" ] && ctrlfile=$TigerConfigDir/cronrc
+[ ! -r "$ctrlfile" ]  &&  {
+	    message ERROR tig001e "" "Cannot read \`$ctrlfile', tigercron cannot proceed."
+	    exit 1
+}
+# it names what runs as root: the check every configuration file gets
+checkfile "$ctrlfile" "$ctrlfile" || {
+	    message ERROR tig001e "" "\`$ctrlfile' is writable by others or not root's (see above), tigercron cannot proceed."
+	    exit 1
+}
+
 haveallcmds DATE SED EXPR DIFF MAILER GREP BASENAME || exit 1
 haveallfiles BASEDIR SCRIPTDIR WORKDIR LOGDIR || exit 1
 
@@ -107,11 +119,6 @@ umask 077
   Tiger_Output_Width="$Tiger_CRON_Output_Width"
 }
 
-[ ! -n "$ctrlfile" ] && ctrlfile=$TigerConfigDir/cronrc
-[ ! -r "$ctrlfile" ]  &&  {
-	    message ERROR tig001e "" "Cannot read \`$ctrlfile', tigercron cannot proceed."
-	    exit 1
-}
 
 set X `$DATE`
 dow=$2
@@ -272,6 +279,10 @@ fi
   [ -z "`grep WARN $WORKDIR/tigcron.diff.$$`" ] && { 
   	send="N"
   }
+  # (sendmail would end the mail at a line holding a lone dot, which a
+  # file name in a finding can be; -oi tells it not to)
+  mailopts=
+  case "$MAILER" in *sendmail) mailopts=-oi ;; esac
   haveallcmds MAILER && [ "$send" = "Y" ] &&  {
 	# Mail header (so it does not just say it's root
 	echo "From: \"Tiger automatic auditor at $(hostname)\" <$Tiger_Mail_FROM>"
@@ -279,7 +290,7 @@ fi
 	echo "Subject: Tiger Auditing Report for $(hostname)"
 	echo 
 	cat  $WORKDIR/tigcron.diff.$$ 
-    } | $MAILER $Tiger_Mail_RCPT 
+    } | $MAILER $mailopts $Tiger_Mail_RCPT 
     # Note1: This could also be 
     # } | $MAILER -s "TIGER Output" $Tiger_Mail_RCPT < $WORKDIR/tigcron.diff.$$
     # Alas, it's not completely portable (no -s option on some mailers)

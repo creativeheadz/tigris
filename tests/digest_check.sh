@@ -12,6 +12,7 @@
 # without one.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 CC=${CC:-cc}
 command -v "$CC" >/dev/null 2>&1 || { echo "ok   (no C compiler here: nothing to test)"; echo PASS; exit 0; }
 W=`mktemp -d`
