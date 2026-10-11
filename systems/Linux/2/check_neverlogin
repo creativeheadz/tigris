@@ -141,7 +141,7 @@ lastlog_sane()
 # believable times wins, ties going to the modern size.
 lastlog_recsize()
 {
-	NOWPLUS=$(($(`$DATE +%s`) + 86400))
+	NOWPLUS=$((`$DATE +%s` + 86400))
 	__uids=`$CAT $WORKDIR/pass.list.$$ | while read __set; do $AWK -F: '{print $3}' "$__set"; done`
 	__c292=0; __c296=0
 	for __uid in $__uids; do
@@ -220,14 +220,14 @@ for user in $userlist; do
   result=0
   $CAT $WORKDIR/pass.list.$$  |
   while read passwd_set ; do
-	# Substitute '/' in user definitions in case we encounter a
-	# username of the form DOMAIN\user (might happen if the system
-	#  is configured to use winbindd for AD connectivity)
-	user=`echo $user | $SED -e 's|\\\|\\\\\\\|g'`
-  	SHELL=`$GREP "^$user:" $passwd_set | $AWK -F: '{print$7}'`
+	# The name reaches awk through the environment and is compared, never
+	# parsed: it is the audited system's (an image's under --root), and
+	# it was built into the awk program until October 2026. ENVIRON
+	# keeps a winbind DOMAIN\user name as it is.
+  	SHELL=`u=$user $AWK -F: '$1 == ENVIRON["u"] { print $7; exit }' $passwd_set`
 	$TEST -z "$SHELL" && SHELL="/bin/sh"
-	$GREP -q "^$SHELL" "$ETCSHELLSHERE" && export result=1
-	$TEST "$result" = 1 && result=`$AWK -F:  "/^$user:/ "'{ if (length($2) > 12) printf("2\n"); if ($2 == "" || $2 == " ") printf("3\n"); }' $passwd_set` 
+	$GREP -qxF -e "$SHELL" "$ETCSHELLSHERE" && export result=1
+	$TEST "$result" = 1 && result=`u=$user $AWK -F: '$1 == ENVIRON["u"] { if (length($2) > 12) printf("2\n"); if ($2 == "" || $2 == " ") printf("3\n"); }' $passwd_set` 
 	# Note: if length is less than 2 then the account is locked (system
 	# account)
 

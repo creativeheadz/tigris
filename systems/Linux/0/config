@@ -165,6 +165,5 @@ GETCLIENTDIRS gendlclients
 GEN_INETD_SETS gen_inetd
 GETDISKS getdisks
 EMBEDDEDLIST embedlist
-GETUSERHOME getuserhome
 EOL
 `

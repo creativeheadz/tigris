@@ -80,7 +80,7 @@ done
 
 #------------------------------------------------------------------------
 
-haveallcmds AWK SED || exit 1
+haveallcmds AWK GREP SED || exit 1
 
 so_cmd=${Tiger_Deb_StatOverride_Cmd:-}
 if [ -z "$so_cmd" ]; then
@@ -88,8 +88,16 @@ if [ -z "$so_cmd" ]; then
   so=${DPKG%/*}/dpkg-statoverride
   [ -n "$DPKG" ] && [ -x "$so" ] || exit 0
   so_cmd="$so --list"
-  [ -n "$TIGRIS_ROOT" ] && so_cmd="$so --admindir `rootfile /var/lib/dpkg` --list"
 fi
+# An offline root's overrides: its statoverride file, which holds what
+# --list prints, found inside the root and read as text (the root's path
+# went into the command line unquoted, so a link's target could add
+# options, and dpkg-statoverride followed the root's links onto this host)
+sofile=
+[ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Deb_StatOverride_Cmd" ] && {
+  sofile=`rootfile /var/lib/dpkg/statoverride`
+  [ -f "$sofile" ] || exit 0
+}
 stat=
 for d in /usr/bin /bin
 do
@@ -111,7 +119,7 @@ idname()
 
 # Each entry is "user group mode path"; a user or group written "#N" is a
 # number. The path is the rest of the line.
-$so_cmd 2>/dev/null |
+if [ -n "$sofile" ]; then $GREP -v '^[[:space:]]*$' "$sofile"; else $so_cmd; fi 2>/dev/null |
 while read user group mode path
 do
   [ -n "$path" ] || continue

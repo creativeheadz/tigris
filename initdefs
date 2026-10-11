@@ -621,26 +621,34 @@ lgetpermit()
     __decomp="`$realpath \"$_file\"`"
   fi
 
+  # One path a line; its components split at / alone, never globbed, and
+  # never read as options to set (a path is the audited system's: a
+  # component may be * or start with -)
+  (
+  set -f
+  IFS='
+'
   for __acomp in $__decomp
   do
     if [ "$__acomp" != '/' ]; then
       IFS=/
-      set $__acomp
+      set -- $__acomp
       IFS=$_saveifs
       _path=
     else
       _path=/
-      set ""
+      set -- ""
     fi
 
     for _comp
     do
       [ -n "$_comp" ] && {
 	_path="$_path/$_comp"
-	echo "$_path"
+	printf '%s\n' "$_path"
       }
     done
-  done |
+  done
+  ) |
   getpermit
 }
 #
@@ -786,6 +794,45 @@ rootls()
   do
     [ -e "$__rent" ] || [ -L "$__rent" ] && printf '%s\n' "${1%/}/${__rent##*/}"
   done
+}
+# rootcat: one after the other, the audited system's files named on
+# standard input (as /etc/modprobe.d/x.conf), each read where rootpaths
+# finds it; what is not a file is skipped. Never `cat $(... | rootpaths)`:
+# a path with a blank in it is two words then, one of them a file wherever
+# Tigris runs.
+rootcat()
+{
+  rootpaths | while IFS= read -r __rc
+  do
+    [ -n "$__rc" ] && [ -f "$__rc" ] && $CAT "$__rc"
+  done
+}
+# rootnolinks DIR...: true unless, auditing an offline root, one of its
+# DIRs or a link anywhere below one leads out of the root when this host
+# follows it. A host tool pointed at the root writes there (rpm its
+# database's lock, dnf and zypper their caches and logs), and such a link
+# would take what it creates or appends onto this host, as root. Links
+# that stay inside the root (Fedora's /var/lib/rpm) are fine, and so is a
+# DIR that is not there: it is created inside the root. Without a
+# realpath -m to follow them, any link at all counts.
+rootnolinks()
+{
+  [ -n "$TIGRIS_ROOT" ] || return 0
+  for __rn
+  do
+    if realpath -m -- / >/dev/null 2>&1; then
+      __rk=`realpath -m -- "$TIGRIS_ROOT$__rn" 2>/dev/null`
+      case "$__rk" in "$TIGRIS_ROOT"|"$TIGRIS_ROOT"/*) ;; *) return 1 ;; esac
+      [ -d "$__rk" ] || continue
+      $FIND "$__rk" -type l -exec realpath -m -- {} + 2>/dev/null |
+        $AWK -v r="$TIGRIS_ROOT" '$0 != r && index($0, r "/") != 1 { out = 1 } END { exit out }' || return 1
+    else
+      [ "`rootfile "$__rn"`" = "$TIGRIS_ROOT$__rn" ] && [ ! -L "$TIGRIS_ROOT$__rn" ] || return 1
+      [ -d "$TIGRIS_ROOT$__rn" ] || continue
+      [ -z "`$FIND "$TIGRIS_ROOT$__rn" -type l 2>/dev/null | $SED 1q`" ] || return 1
+    fi
+  done
+  return 0
 }
 # rootglob PATTERN: the audited system's paths matching PATTERN, an
 # absolute pattern such as /etc/init.d/*, as the shell's glob gives them

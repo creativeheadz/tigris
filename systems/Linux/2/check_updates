@@ -164,25 +164,86 @@ fi
 #
 # Security updates waiting, from what the package manager has cached
 #
-pending= unknown= age= aptconf= aptopts= tooldir= errf=
-trap '[ -n "$aptconf" ] && delete $aptconf; [ -n "$errf" ] && delete $errf; [ -n "$tooldir" ] && rm -rf "$tooldir"; exit 1' 1 2 3 15
+pending= unknown= age= aptconf= tooldir= errf=
+trap '[ -n "$errf" ] && delete $errf; [ -n "$tooldir" ] && rm -rf "$tooldir"; exit 1' 1 2 3 15
+
+# rootlink PATH LINK: LINK, a link to the root's PATH where it is inside
+# the root, when that is a file. rootlinks DIR TODIR: the same for each
+# file in the root's DIR, under its own name.
+rootlink()
+{
+  __rl=`rootfile "$1"`
+  [ -n "$__rl" ] && [ -f "$__rl" ] && ln -s "$__rl" "$2"
+}
+rootlinks()
+{
+  rootls "$1" 2>/dev/null > "$tooldir/names"
+  rootpaths < "$tooldir/names" > "$tooldir/here"
+  while IFS= read -r __rn && IFS= read -r __rh <&3
+  do
+    [ -n "$__rh" ] && [ -f "$__rh" ] && ln -s "$__rh" "$2/${__rn##*/}"
+  done < "$tooldir/names" 3< "$tooldir/here"
+  rm -f "$tooldir/names" "$tooldir/here"
+}
 case "$mgr" in
   apt)
     lists=`rootfile /var/lib/apt/lists`
     cmd=${Tiger_Apt_Simulate_Cmd:-}
     [ -z "$cmd" ] && a=`findtool apt-get` && cmd="$a -s -o Debug::NoLocking=1 dist-upgrade"
     if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Apt_Simulate_Cmd" ]; then
-      # Everything apt reads under the root, its architecture (its dpkg's)
-      # rather than this host's, the cache built in memory, no planner log
-      status=`rootfile /var/lib/dpkg/status`
-      arch=`$AWK '/^Package: / { p = $2 } p == "dpkg" && /^Architecture: / { print $2; exit }' "$status" 2>/dev/null`
-      aptconf=$WORKDIR/aptconf.$$
-      safe_temp $aptconf
-      echo "Dir \"$TIGRIS_ROOT/\";" > $aptconf
+      # apt reads none of the root's configuration: an apt.conf.d can name
+      # programs apt runs (a compressor for its lists, a hook), and they
+      # ran on this host, as root, until October 2026. Nor this host's.
+      # What it reads of the root (dpkg's status and architectures, the
+      # sources, the pins, the package lists) is linked into a directory
+      # of Tigris's own under fixed names, each found inside the root, so
+      # that a link in the root cannot have apt read this host's files,
+      # and the configuration names that directory only, never a path
+      # from the root. The root's architecture (its dpkg's) rather than
+      # this host's, the cache built in memory, no planner log.
+      # (absolute: apt reads the paths in its configuration against Dir,
+      # and WORKDIR is relative in a source tree)
+      tooldir=`cd "$WORKDIR" && pwd`/updtool.$$
+      mkdir -m 700 "$tooldir" &&
+        mkdir "$tooldir/dpkg" "$tooldir/lists" "$tooldir/sources.list.d" "$tooldir/preferences.d" "$tooldir/apt.conf.d"
+      rootlink /var/lib/dpkg/status "$tooldir/dpkg/status"
+      rootlink /var/lib/dpkg/arch "$tooldir/dpkg/arch"
+      rootlink /etc/apt/sources.list "$tooldir/sources.list"
+      rootlink /etc/apt/preferences "$tooldir/preferences"
+      rootlinks /etc/apt/sources.list.d "$tooldir/sources.list.d"
+      rootlinks /etc/apt/preferences.d "$tooldir/preferences.d"
+      rootlinks /var/lib/apt/lists "$tooldir/lists"
+      lists=$tooldir/lists
+      arch=`$AWK '/^Package: / { p = $2 } p == "dpkg" && /^Architecture: / { print $2; exit }' "$tooldir/dpkg/status" 2>/dev/null`
+      case "$arch" in *[!a-z0-9-]*) arch= ;; esac
+      aptconf=$tooldir/apt.conf
+      cat > "$aptconf" <<APTCONF
+Dir "$tooldir/";
+Dir::Etc "$tooldir/";
+Dir::Etc::main "$tooldir/none.conf";
+Dir::Etc::parts "$tooldir/apt.conf.d/";
+Dir::Etc::sourcelist "$tooldir/sources.list";
+Dir::Etc::sourceparts "$tooldir/sources.list.d/";
+Dir::Etc::preferences "$tooldir/preferences";
+Dir::Etc::preferencesparts "$tooldir/preferences.d/";
+Dir::State "$tooldir/";
+Dir::State::status "$tooldir/dpkg/status";
+Dir::State::lists "$tooldir/lists/";
+Dir::State::extended_states "$tooldir/extended_states";
+Dir::Cache "$tooldir/";
+Dir::Cache::pkgcache "";
+Dir::Cache::srcpkgcache "";
+Dir::Log "$tooldir/";
+Dir::Log::Planner "";
+Dir::Log::Solver "";
+Dir::Bin::dpkg "${DPKG:-/usr/bin/dpkg}";
+APT::Solver "internal";
+APT::Planner "internal";
+Debug::NoLocking "1";
+APTCONF
       APT_CONFIG=$aptconf
       export APT_CONFIG
-      aptopts="-o Dir=$TIGRIS_ROOT/ -o Dir::Bin::dpkg=${DPKG:-/usr/bin/dpkg} -o APT::Solver=internal -o APT::Planner=internal -o Dir::Cache::pkgcache= -o Dir::Cache::srcpkgcache= -o Dir::Log::Planner= -o Dir::Log::Solver= -o Debug::NoLocking=1${arch:+ -o APT::Architecture=$arch}"
-      cmd="$a -s $aptopts dist-upgrade"
+      cmd="$a -s${arch:+ -o APT::Architecture=$arch} dist-upgrade"
     fi
     if [ -z "`$LS "$lists" 2>/dev/null | $GREP '_Packages'`" ]; then
       unknown="apt has no package lists (apt update has not run, or they were cleaned)"
@@ -190,33 +251,40 @@ case "$mgr" in
       pending=`$cmd 2>/dev/null | $AWK '/^Inst / && /-security|Debian-Security/ { print $2 }' | $SORT -u`
       # how old the newest list is, in days
       now=`$DATE +%s`
-      age=`for f in "$lists"/*Release; do stat -c %Y "$f" 2>/dev/null; done |
+      age=`for f in "$lists"/*Release; do stat -L -c %Y "$f" 2>/dev/null; done |
         $SORT -n | $AWK -v now="$now" 'END { if (NR) print int((now - $0) / 86400) }'`
     fi
     ;;
   dnf)
-    cmd=${Tiger_Dnf_Security_Cmd:-}
-    [ -z "$cmd" ] && d=`findtool dnf` && cmd="$d -C -q${TIGRIS_ROOT:+ --installroot=$TIGRIS_ROOT} updateinfo list --security"
-    # dnf5 writes its log where it is told, outside the root; dnf 4 would
-    # put that directory inside the root, so it keeps its own (and cannot
-    # answer when the root is mounted read-only)
-    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Dnf_Security_Cmd" ] && $d --version 2>/dev/null | $GREP -q '^dnf5'; then
-      tooldir=$WORKDIR/updtool.$$
-      mkdir -m 700 "$tooldir" && cmd="$cmd --setopt=logdir=$tooldir"
-    fi
-    errf=$WORKDIR/upd.err.$$
-    safe_temp $errf
-    if out=`$cmd 2>$errf`; then
-      # dnf 4 and 5 lay it out differently; the package is the field
-      # shaped name-version-release.arch
-      pending=`echo "$out" | $AWK '{ for (i = 1; i <= NF; i++) if ($i ~ /^[^ ]+-[^-]+-[^-]+\.[a-z0-9_]+$/) print $i }' | $SORT -u`
+    # what dnf writes in an offline root (rpm's lock; dnf 4's logs and
+    # cache lock) must stay in it
+    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Dnf_Security_Cmd" ] &&
+       ! rootnolinks /var/lib/rpm /usr/lib/sysimage/rpm /var/cache/dnf /var/cache/libdnf5 /var/log; then
+      unknown="dnf was not asked: it writes in the root, and a symbolic link where it writes could take that onto this host"
     else
-      # dnf's own last word: no cache (makecache has not run), or a
-      # read-only root dnf 4 cannot write its log in
-      why=`$SED -n '/[^[:space:]]/p' $errf | $SED -n '$p'`
-      unknown="dnf could not answer from its cache${why:+ ($why)}"
+      cmd=${Tiger_Dnf_Security_Cmd:-}
+      [ -z "$cmd" ] && d=`findtool dnf` && cmd="$d -C -q${TIGRIS_ROOT:+ --installroot=$TIGRIS_ROOT} updateinfo list --security"
+      # dnf5 writes its log where it is told, outside the root; dnf 4 would
+      # put that directory inside the root, so it keeps its own (and cannot
+      # answer when the root is mounted read-only)
+      if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Dnf_Security_Cmd" ] && $d --version 2>/dev/null | $GREP -q '^dnf5'; then
+        tooldir=$WORKDIR/updtool.$$
+        mkdir -m 700 "$tooldir" && cmd="$cmd --setopt=logdir=$tooldir"
+      fi
+      errf=$WORKDIR/upd.err.$$
+      safe_temp $errf
+      if out=`$cmd 2>$errf`; then
+        # dnf 4 and 5 lay it out differently; the package is the field
+        # shaped name-version-release.arch
+        pending=`echo "$out" | $AWK '{ for (i = 1; i <= NF; i++) if ($i ~ /^[^ ]+-[^-]+-[^-]+\.[a-z0-9_]+$/) print $i }' | $SORT -u`
+      else
+        # dnf's own last word: no cache (makecache has not run), or a
+        # read-only root dnf 4 cannot write its log in
+        why=`$SED -n '/[^[:space:]]/p' $errf | $SED -n '$p'`
+        unknown="dnf could not answer from its cache${why:+ ($why)}"
+      fi
+      delete $errf
     fi
-    delete $errf
     # Repositories that install unsigned packages: gpgcheck off in a
     # repo file or [main]. Only an explicit off counts; what the
     # distributor leaves unset stays their default. An unsigned
@@ -247,23 +315,30 @@ case "$mgr" in
     done
     ;;
   zypper)
-    cmd=${Tiger_Zypper_Security_Cmd:-}
-    [ -z "$cmd" ] && z=`findtool zypper` && cmd="$z --non-interactive --no-refresh${TIGRIS_ROOT:+ --root $TIGRIS_ROOT} --xmlout list-patches --category security"
-    # libzypp's lock and log, which it would write in the root, kept out
-    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Zypper_Security_Cmd" ]; then
-      tooldir=$WORKDIR/updtool.$$
-      mkdir -m 700 "$tooldir" && {
-        ZYPP_LOCKFILE_ROOT=$tooldir ZYPP_LOGFILE=$tooldir/zypper.log
-        export ZYPP_LOCKFILE_ROOT ZYPP_LOGFILE
-      }
-    fi
-    if out=`$cmd 2>/dev/null`; then
-      pending=`echo "$out" | $GREP '<update ' | $GREP 'category="security"' | $GREP 'status="needed"' |
-        $SED -n 's/.* name="\([^"]*\)".*/\1/p' | $SORT -u`
+    # what libzypp writes in an offline root (its caches, rpm's lock) must
+    # stay in it; its own lock and log are kept out below
+    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Zypper_Security_Cmd" ] &&
+       ! rootnolinks /var/lib/rpm /usr/lib/sysimage/rpm /var/cache/zypp /var/lib/zypp; then
+      unknown="zypper was not asked: it writes in the root, and a symbolic link where it writes could take that onto this host"
     else
-      # its first error (on a read-only root: the cache it could not build)
-      why=`echo "$out" | $SED -n 's/.*<message type="error">\([^<]*\).*/\1/p' | $SED -n '1s/[[:space:]:]*$//p'`
-      unknown="zypper could not read its repositories without refreshing them${why:+ ($why)}"
+      cmd=${Tiger_Zypper_Security_Cmd:-}
+      [ -z "$cmd" ] && z=`findtool zypper` && cmd="$z --non-interactive --no-refresh${TIGRIS_ROOT:+ --root $TIGRIS_ROOT} --xmlout list-patches --category security"
+      # libzypp's lock and log, which it would write in the root, kept out
+      if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Zypper_Security_Cmd" ]; then
+        tooldir=$WORKDIR/updtool.$$
+        mkdir -m 700 "$tooldir" && {
+          ZYPP_LOCKFILE_ROOT=$tooldir ZYPP_LOGFILE=$tooldir/zypper.log
+          export ZYPP_LOCKFILE_ROOT ZYPP_LOGFILE
+        }
+      fi
+      if out=`$cmd 2>/dev/null`; then
+        pending=`echo "$out" | $GREP '<update ' | $GREP 'category="security"' | $GREP 'status="needed"' |
+          $SED -n 's/.* name="\([^"]*\)".*/\1/p' | $SORT -u`
+      else
+        # its first error (on a read-only root: the cache it could not build)
+        why=`echo "$out" | $SED -n 's/.*<message type="error">\([^<]*\).*/\1/p' | $SED -n '1s/[[:space:]:]*$//p'`
+        unknown="zypper could not read its repositories without refreshing them${why:+ ($why)}"
+      fi
     fi
     ;;
 esac
@@ -296,9 +371,16 @@ case "$mgr" in
     if [ -f "`rootfile /usr/bin/unattended-upgrade`" ] && timer_on apt-daily-upgrade; then
       cmd=${Tiger_AptConfig_Cmd:-}
       [ -z "$cmd" ] && c=`findtool apt-config` && cmd="$c dump"
-      # with APT_CONFIG above, the root's apt.conf.d
-      [ -n "$aptopts" ] && [ -z "$Tiger_AptConfig_Cmd" ] && cmd="$c $aptopts dump"
-      v=`$cmd 2>/dev/null | $SED -n 's/^APT::Periodic::Unattended-Upgrade "\(.*\)";$/\1/p' | $SED -n '$p'`
+      if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_AptConfig_Cmd" ]; then
+        # the root's apt.conf.d, read as text, in apt's order (its own
+        # apt-config would parse it here, #include and all)
+        v=`{ rootls /etc/apt/apt.conf.d 2>/dev/null | $AWK -F/ '$NF ~ /^[A-Za-z0-9_.-]+$/ && $NF !~ /\.(dpkg-[a-z]+|ucf-[a-z]+|disabled|bak|orig|save)$/' | $SORT
+              echo /etc/apt/apt.conf; } | rootpaths |
+          while IFS= read -r f; do [ -n "$f" ] && [ -f "$f" ] && $CAT "$f"; done 2>/dev/null |
+          $SED -n 's/^[[:space:]]*APT::Periodic::Unattended-Upgrade[[:space:]]*"\([^"]*\)";.*$/\1/p' | $SED -n '$p'`
+      else
+        v=`$cmd 2>/dev/null | $SED -n 's/^APT::Periodic::Unattended-Upgrade "\(.*\)";$/\1/p' | $SED -n '$p'`
+      fi
       case "$v" in ''|0) ;; *) auto=Y ;; esac
     fi
     # Linux Mint's Update Manager has its own
@@ -309,8 +391,7 @@ case "$mgr" in
     auto=N
     timer_on dnf-automatic-install && auto=Y
     if timer_on dnf-automatic || timer_on dnf5-automatic; then
-      # shellcheck disable=SC2046
-      apply=`$CAT $(printf '%s\n' /etc/dnf/automatic.conf /etc/dnf/dnf5-plugins/automatic.conf | rootpaths) 2>/dev/null |
+      apply=`printf '%s\n' /etc/dnf/automatic.conf /etc/dnf/dnf5-plugins/automatic.conf | rootcat 2>/dev/null |
         $SED -n 's/^[[:space:]]*apply_updates[[:space:]]*=[[:space:]]*\([A-Za-z0-9]*\).*/\1/p' | $SED -n '$p'`
       case "$apply" in yes|true|1|on|True|Yes) auto=Y ;; esac
     fi
@@ -319,6 +400,5 @@ case "$mgr" in
 esac
 [ "$auto" = N ] && message WARN upd002w "$fix" "Security updates are not installed automatically: each waits until someone installs it."
 
-[ -n "$aptconf" ] && delete $aptconf
 [ -n "$tooldir" ] && rm -rf "$tooldir"
 exit 0

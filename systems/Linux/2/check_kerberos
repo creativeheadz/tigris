@@ -122,17 +122,23 @@ world_readable()
   return 1
 }
 
+# The files and keytabs, one per line, split on newlines alone with no
+# globbing: a path is the audited system's, and may hold a blank or a *
+nl='
+'
+saveifs=$IFS
 main=`rootfile /etc/krb5.conf`
 confs=
 [ -f "$main" ] && confs="$main"
-# shellcheck disable=SC2046
 # the files an includedir reads (krb5.conf(5)): names of letters, digits,
 # - and _ only (RHEL's crypto-policies link has no suffix), and since
 # MIT 1.15 names ending in .conf, never a name starting with a dot
-[ -n "`rootls /etc/krb5.conf.d 2>/dev/null`" ] && confs="$confs `rootls /etc/krb5.conf.d 2>/dev/null | $AWK -F/ '$NF !~ /^[.]/ && ($NF ~ /^[A-Za-z0-9_-]+$/ || $NF ~ /[.]conf$/)' | rootpaths`"
+[ -n "`rootls /etc/krb5.conf.d 2>/dev/null`" ] && confs="$confs$nl`rootls /etc/krb5.conf.d 2>/dev/null | $AWK -F/ '$NF !~ /^[.]/ && ($NF ~ /^[A-Za-z0-9_-]+$/ || $NF ~ /[.]conf$/)' | rootpaths`"
+confs=`printf '%s\n' "$confs" | $GREP -v '^$'`
 
 keytabs='/etc/krb5.keytab'
 weak= rc4=
+set -f; IFS=$nl
 for c in $confs
 do
   for fact in `libdefaults_facts "$c"`
@@ -140,18 +146,21 @@ do
     case "$fact" in
       weak) weak=1;;
       rc4) rc4=1;;
-      keytab=*) keytabs="$keytabs ${fact#keytab=}";;
+      keytab=*) keytabs="$keytabs$nl${fact#keytab=}";;
     esac
   done
 done
+IFS=$saveifs; set +f
 
 # No krb5.conf and no keytab: Kerberos is not in use here
 [ -z "$confs" ] && {
   have_keytab=
+  set -f; IFS=$nl
   for k in $keytabs
   do
-    [ -e "`rootfile $k`" ] && { have_keytab=1; break; }
+    [ -e "`rootfile "$k"`" ] && { have_keytab=1; break; }
   done
+  IFS=$saveifs; set +f
   [ -z "$have_keytab" ] && exit 0
 }
 
@@ -162,15 +171,18 @@ echo "# Checking the Kerberos client configuration..."
 [ -n "$rc4" ] && message INFO krb002i "" "rc4-hmac is among the permitted enctypes: keep it only while old Active Directory servers need it. Its keys are only as strong as the password behind them, so move what you can to AES."
 
 seenkt=
+set -f; IFS=$nl
 for k in $keytabs
 do
-  case " $seenkt " in
-    *" $k "*) continue;;
+  IFS=$saveifs
+  case "$nl$seenkt$nl" in
+    *"$nl$k$nl"*) continue;;
   esac
-  seenkt="$seenkt $k"
-  kh=`rootfile $k`
+  seenkt="$seenkt$nl$k"
+  kh=`rootfile "$k"`
   [ -e "$kh" ] || continue
   world_readable "$kh" && message WARN krb003w "Make \`$k' readable by root alone ('chown root:root \`$k'; chmod 600 \`$k'." "The keytab \`$k' is readable by anyone: it holds the service's long-term keys, so whoever copies it becomes the service."
 done
+IFS=$saveifs; set +f
 
 exit 0

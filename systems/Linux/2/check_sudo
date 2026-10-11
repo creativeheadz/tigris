@@ -132,19 +132,28 @@ expand_sudoers()
   [ -f "$__h" ] && [ "$__d" -le 16 ] || exit 0
   while IFS= read -r __l || [ -n "$__l" ]
   do
-    case "$__l" in
+    # The keyword may follow blanks. Each include is expanded here, inside
+    # the root, and no include line reaches cvtsudoers, which would read
+    # the file it names on this host (one with a blank before it did,
+    # until October 2026). The path: blanks and quotes off, never globbed.
+    __t=${__l#"${__l%%[! 	]*}"}
+    case "$__t" in
       [@#]include[\ \	]*|[@#]includedir[\ \	]*)
-        __kw=${__l%%[ 	]*}; __p=${__l#"$__kw"}; __p=`echo $__p`
+        __kw=${__t%%[ 	]*}; __p=${__t#"$__kw"}
+        __p=${__p#"${__p%%[! 	]*}"}; __p=${__p%"${__p##*[! 	]}"}
+        case "$__p" in \"*\") __p=${__p#\"}; __p=${__p%\"} ;; esac
         case "$__p" in /*) ;; *) __p=${__f%/*}/$__p ;; esac
         case "$__kw" in
           *includedir)
-            for __n in `rootls "$__p" | $SED 's,.*/,,' | $SORT`
+            rootls "$__p" | $SED 's,.*/,,' | $SORT |
+            while IFS= read -r __n
             do
               case "$__n" in *~|*.*) continue ;; esac
               expand_sudoers "$__p/$__n" `expr $__d + 1`
             done ;;
           *) expand_sudoers "$__p" `expr $__d + 1` ;;
         esac ;;
+      [@#]include*) ;;
       *) printf '%s\n' "$__l" ;;
     esac
   done < "$__h"

@@ -382,6 +382,19 @@ fi
   read findpruneopt
   while read disklist
   do
+    # The starting points are data: whoever mounted a filesystem named its
+    # mount point (any user can, with FUSE), so they reach find as "$@",
+    # never as text for eval to parse (which ran a mount point holding a
+    # command substitution as root, until October 2026). The options are
+    # Tigris's own and still go through eval.
+    set -f
+    if [ -n "$TIGRIS_ROOT" ]; then
+      set -- "$TIGRIS_ROOT"
+    else
+      set -- $disklist
+    fi
+    set +f
+    [ $# -gt 0 ] || continue
     {
       output="$BASEDIR/util/flogit"
       # Do not change the order of these words
@@ -399,15 +412,15 @@ fi
         # starts, so one find per mount point would keep only the last
         fastopt=`fastopts "$outfile" "$counter"`
         [ -n "$fastopt" ] &&
-          eval nice -5 $FIND $disklist $findpruneopt $pruneopt $fastopt 2>/dev/null
+          eval nice -5 '$FIND "$@"' $findpruneopt $pruneopt $fastopt 2>/dev/null
       else
 #     echo "$FIND x $findpruneopt $pruneopt $findopt -print" 1>&2
-      for mountpt in $disklist
+      for mountpt
       do
         # Not sure why we're cd'ing to /, but it breaks all relative paths
 	#     being used in the find options.  Commented out --mlk
         #     cd /
-	eval nice -5 $FIND "$mountpt" $findpruneopt $pruneopt $findopt -print 2>/dev/null
+	eval nice -5 '$FIND "$mountpt"' $findpruneopt $pruneopt $findopt -print 2>/dev/null
       done | nice -6 $output 2>&1 |
         sed -e '/No such file/s/^.*:[[:space:]]\(.*\):[[:space:]].*$/\1/' |
         while  read symlink ; do

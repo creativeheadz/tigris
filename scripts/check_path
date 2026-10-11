@@ -192,18 +192,80 @@ parse_path()
 # Parse Bourne SHell style file (sh, ksh, bash)
 #
 # This creates a file which all contains variable assignments in
-# it.  We try to strip out command substitions or anything else
-# that might execute a command, but...
+# it, which path_value reads (nothing in it is run).
 #
-# safe_assignments: of the lines on standard input, the plain assignments
-# that are safe to source: XXX_NAME=value, the value without whitespace,
-# redirections, pipes, &, ;, parentheses or backquotes. What is kept is
-# sourced, as root, and the files it comes from are users' own (or, on an
-# offline root, an image's): "PATH=x>/etc/passwd" in a .profile used to be
-# kept, and sourcing it truncated /etc/passwd.
+# safe_assignments: of the lines on standard input, the plain assignments:
+# XXX_NAME=value, the value without whitespace, redirections, pipes, &, ;,
+# parentheses or backquotes. The files they come from are users' own (or,
+# on an offline root, an image's). What is kept used to be sourced, as
+# root ("PATH=x>/etc/passwd" in a .profile truncated /etc/passwd); since
+# October 2026 path_value reads it instead.
 safe_assignments()
 {
   $GREP '^XXX_[a-zA-Z_][a-zA-Z0-9_]*=[^<>|&;()`[:space:]]*$'
+}
+
+#
+# path_value USER HOME: the PATH that the assignments on standard input
+# (XXX_NAME=value, from safe_assignments) leave, worked out in awk. They
+# were sourced until October 2026, and no filter makes that safe: where
+# /bin/sh is bash, ${X@P} and arithmetic subscripts run commands built
+# from characters the filter let through. Here a value is only read:
+# quotes, backslashes, $NAME, ${NAME}, ${NAME:-word}, ${NAME-word} and a
+# leading ~ are understood; anything else stays text. A name the file
+# did not assign has the value it has here (PATH: the one Tigris runs
+# with), as it would have been inherited, not an empty one.
+#
+path_value()
+{
+  __pvu=$1 __pvh=$2 $AWK '
+  function get(name) {
+    sub(/^XXX_/, "", name)
+    if (("XXX_" name) in val) return val["XXX_" name]
+    return ENVIRON[name]
+  }
+  function expand(v,   out, c, i, n, q, j, name, op, word) {
+    out = ""; n = length(v); q = 0
+    for (i = 1; i <= n; i++) {
+      c = substr(v, i, 1)
+      if (c == "\"") { q = !q; continue }
+      if (c == "\047" && !q) {
+        j = index(substr(v, i + 1), "\047")
+        if (!j) { out = out substr(v, i + 1); break }
+        out = out substr(v, i + 1, j - 1); i += j; continue
+      }
+      if (c == "\\" && i < n) { i++; out = out substr(v, i, 1); continue }
+      if (c == "~" && !q && (i == 1 || substr(v, i - 1, 1) == ":") &&
+          (i == n || substr(v, i + 1, 1) == "/" || substr(v, i + 1, 1) == ":")) {
+        out = out val["XXX_HOME"]; continue
+      }
+      if (c == "$" && substr(v, i + 1, 1) == "{") {
+        j = index(substr(v, i + 2), "}")
+        if (!j) { out = out substr(v, i); break }
+        name = substr(v, i + 2, j - 1); i += j + 1
+        if (!match(name, /^[A-Za-z_][A-Za-z0-9_]*/)) continue
+        op = substr(name, RLENGTH + 1); name = substr(name, 1, RLENGTH)
+        if (op ~ /^:?-/) {
+          word = op; sub(/^:?-/, "", word)
+          if (get(name) == "" && (op ~ /^:/ || !(("XXX_" name) in val) && !(name in ENVIRON))) {
+            out = out expand(word); continue
+          }
+        }
+        out = out get(name); continue
+      }
+      if (c == "$" && match(substr(v, i + 1), /^[A-Za-z_][A-Za-z0-9_]*/)) {
+        name = substr(v, i + 1, RLENGTH); i += RLENGTH
+        out = out get(name); continue
+      }
+      out = out c
+    }
+    return out
+  }
+  BEGIN { val["XXX_USER"] = val["XXX_LOGNAME"] = ENVIRON["__pvu"]; val["XXX_HOME"] = ENVIRON["__pvh"] }
+  # (the value first: awk may make the element before it works out the
+  # right-hand side, and $PATH would then be an empty assignment)
+  { k = index($0, "="); v = expand(substr($0, k + 1)); val[substr($0, 1, k - 1)] = v }
+  END { print val["XXX_PATH"] }'
 }
 
 parse_bsh()
@@ -243,29 +305,19 @@ parse_bsh()
   $GREP -v '^.*=[^ 	]*[ 	]' |
   $GREP -v 'DISPLAY' |
   safe_assignments > $WORKDIR/pth.$$
-  #
-  # Now, source the file to get variable values.
-  # Use a subshell so we don't contaminate.  Everything
-  # should start with XXX_, but take no chances if IFS.
-  #
+  # The PATH they leave, read, never run (a subshell, as parse_path
+  # sets variables of its own)
   (
-    XXX_USER="$user"
-    XXX_LOGNAME="$user"
-    XXX_HOME="$dir"
-    saveifs=$IFS
-    . $WORKDIR/pth.$$
-    IFS=$saveifs
-    delete $WORKDIR/pth.$$
-    parse_path $user $file "$XXX_PATH"
+    parse_path $user $file "`path_value "$user" "$dir" < $WORKDIR/pth.$$`"
   )
+  delete $WORKDIR/pth.$$
 }
 
 #
 # Parse C SHell style file (csh, tcsh)
 #
 # This creates a file which contains all variable assignments (sh style)
-# in it.  We try to strip out command substitions or anything else
-# that might execute a command, but...
+# in it, which path_value reads (nothing in it is run).
 #
 parse_csh()
 {
@@ -304,21 +356,12 @@ parse_csh()
   $GREP -v 'DISPLAY' |
   $GREP -v '^.*=[^ 	]*[ 	]' |
   safe_assignments > $WORKDIR/pth.$$
-  #
-  # Now, source the file to collect variable values.  Use
-  # a subshell so we don't contaminate.  Everything should
-  # start with XXX_, but take no chances with IFS.
-  #
+  # The PATH they leave, read, never run (a subshell, as parse_path
+  # sets variables of its own)
   (
-    XXX_USER="$user"
-    XXX_LOGNAME="$user"
-    XXX_HOME="$dir"
-    saveifs=$IFS
-    . $WORKDIR/pth.$$
-    IFS=$saveifs
-    delete $WORKDIR/pth.$$
-    parse_path $user $file "$XXX_PATH"
+    parse_path $user $file "`path_value "$user" "$dir" < $WORKDIR/pth.$$`"
   )
+  delete $WORKDIR/pth.$$
 }
 
 check_user()

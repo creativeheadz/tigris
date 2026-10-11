@@ -141,6 +141,10 @@ expand "$conf" | sort -u | {
   done
 } | while IFS='	' read -r logpath f mode
 do
+  # An offline root's /dev is what a running system mounts there: a log
+  # pointed into it is a sink, as a device is (its own /dev is not this
+  # host's, nor read through a link to it)
+  [ -n "$TIGRIS_ROOT" ] && case "$f" in "$TIGRIS_ROOT"/dev/*) continue ;; esac
   if [ ! -e "$f" ] && [ ! -L "$f" ]; then
     message FAIL logf001f "" "Managed log \`$logpath' does not exist: the trail has a gap where it should write."
     continue

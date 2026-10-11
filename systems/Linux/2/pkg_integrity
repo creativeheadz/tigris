@@ -155,6 +155,15 @@ done
 # declares but the system creates fresh at every boot
 skip='^(/usr/share/(doc|help|man|icons|pixmaps|fonts|i18n|locale|mime|games)|/run|/var/run|/var/lock|/tmp|/var/tmp)(/|$)'
 
+# rpm opens its database's lock (and sqlite's -shm and -wal files) in the
+# root, creating them: not when a link there would make that a file on
+# this host
+if [ -n "$R" ] && [ "$LXPKGMGR" = rpm ] && ! rootnolinks /var/lib/rpm /usr/lib/sysimage/rpm; then
+  echo "# Not compared: rpm would write its database's lock in $R, and /var/lib/rpm or /usr/lib/sysimage/rpm there holds a symbolic link, which could take that onto this host."
+  delete $raw $events $owned $found
+  exit 0
+fi
+
 case "$LXPKGMGR" in
   rpm)
     # S size, M mode, 5 digest, D device, L link, U user, G group, T mtime.

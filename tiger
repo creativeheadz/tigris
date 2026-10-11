@@ -294,11 +294,15 @@ export TigerCheckEmbedded
 
 # Auditing an offline root: its symbolic links, listed once for every
 # check's rootfile and rootpaths (util/rootpath), before any check runs
+# (the system's config lists them first when it finds its release files
+# with them; otherwise here)
 [ -n "$TIGRIS_ROOT" ] && {
-  TIGRIS_LINKS=$WORKDIR/rootlinks.$$
+  TIGRIS_LINKS=${TIGRIS_LINKS:-$WORKDIR/rootlinks.$$}
   TigerCleanup="$TigerCleanup $TIGRIS_LINKS"
-  safe_temp $TIGRIS_LINKS
-  sh $BASEDIR/util/rootpath "$TIGRIS_ROOT" "$TIGRIS_LINKS" < /dev/null
+  [ -s "$TIGRIS_LINKS" ] || {
+    safe_temp $TIGRIS_LINKS
+    sh $BASEDIR/util/rootpath "$TIGRIS_ROOT" "$TIGRIS_LINKS" < /dev/null
+  }
   export TIGRIS_LINKS
 }
 

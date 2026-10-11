@@ -8,7 +8,9 @@
 # network filesystems out, says so, and does not wait for it. Then runs
 # check_accounts and check_path (every user, Tiger_Check_PATHALL=Y) over a
 # passwd file with one home on the hanging mount and checks that only that
-# account is skipped, with a message. Needs no root and touches nothing outside a temporary directory.
+# account is skipped, with a message. Then runs the file system scan over
+# mount points whose names eval would misread. Needs no root and touches
+# nothing outside a temporary directory.
 #
 # Exit 0 when every assertion holds, 1 otherwise.
 #
@@ -89,6 +91,41 @@ do
   grep -q "$code.*bob"   "$W/$check.out" && bad "$check: $code for bob too" || ok "$check: bob was checked"
   [ "$took" -lt 15 ] && ok "$check took ${took}s" || bad "$check took ${took}s"
 done
+
+# 3. The file system scan takes the mount points as data: whoever mounted
+# a filesystem named its mount point (any user can, with FUSE). Two whose
+# names eval would misread, each holding a directory named "...": a quote
+# (a syntax error, so that mount went unscanned) and $HOME (expanded to
+# another path). Both are scanned as named (fsys005a for each "...").
+# (GNU find only: busybox's has no -fprintf, and its slower path does
+# not report these names at all, a separate gap)
+if find / -maxdepth 0 -printf '' >/dev/null 2>&1; then
+mkdir -p "$W/fx/it's/..." "$W/fx/cost\$HOME/..."
+{
+  echo '#!/bin/sh'
+  echo "cat <<'TABLE'"
+  printf '/dev/sdy1 on %s type ext4 (rw,relatime)\n' "$W/fx/it's" "$W/fx/cost\$HOME"
+  echo TABLE
+} > "$W/fx/mount2"
+chmod +x "$W/fx/mount2"
+cp "$W/tigerrc" "$W/tigerrc.scan"
+cat >> "$W/tigerrc" <<FX
+Tiger_Mounts_Cmd='$W/fx/mount2'
+Tiger_FSScan_ofNote=Y
+Tiger_FSScan_DetailDirs='*'
+Tiger_FSScan_PruneDirs=''
+FX
+# (_TIGER_RUN as tiger sets it: else each sub/ check's cleanup deletes the
+# others' messages)
+( cd "$W" && _TIGER_RUN=Y TIGERHOMEDIR=$W sh scripts/find_files ) > "$W/scan.out" 2>&1
+grep -qF "$W/fx/it's/..." "$W/scan.out" &&
+  ok "a mount point with a quote in its name is scanned" || { bad "the quoted mount point was not scanned"; sed 's/^/     /' "$W/scan.out"; }
+grep -qF "$W/fx/cost\$HOME/..." "$W/scan.out" &&
+  ok "a mount point with \$HOME in its name is scanned as named" || { bad "the \$HOME mount point was not scanned"; sed 's/^/     /' "$W/scan.out"; }
+cp "$W/tigerrc.scan" "$W/tigerrc"
+else
+  echo "ok   (no GNU find here: the scan of odd mount point names is not tested)"
+fi
 
 [ $fail -eq 0 ] && echo "mounts_check: all assertions hold" || echo "mounts_check: FAILED"
 exit $fail

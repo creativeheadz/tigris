@@ -177,7 +177,7 @@ $UNIQ -d -f 1 | $AWK '{ print $2 }' > ${TMPFILE}-2
 if [ -s "${TMPFILE}-2" ] ; then
 	message WARN pass002w "" "File $PW has duplicate user ids:"
         while read uid; do
-                $GREP -w $uid ${TMPFILE}-1
+                u=$uid $AWK '$2 == ENVIRON["u"]' ${TMPFILE}-1
         done < ${TMPFILE}-2 | $COLUMN
 fi
 }

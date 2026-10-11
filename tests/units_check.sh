@@ -144,12 +144,12 @@ fi
 [ "`count \"which contains \\\`/tmp'\"`" = 0 ] && ok "/tmp, sticky, is not reported as a writable directory above" || { bad "sticky /tmp"; cat "$W/out"; }
 [ "`count 'good.service runs'`" = 0 ] && ok "a unit whose program and directories are in order: nothing" || { bad "good"; cat "$W/out"; }
 
-# An offline root (TIGRIS_ROOT, as tigris --root sets it): its units read
-# with this host's systemd-analyze --root cat-config, the enabled one an
-# absolute link inside the root, a drop-in in /etc, the program it runs
-# writable by anyone, and an instance read as its template. Where this
-# host has no systemd-analyze, there is nothing to test.
-if command -v systemd-analyze >/dev/null 2>&1; then
+# An offline root (TIGRIS_ROOT, as tigris --root sets it): its units, the
+# enabled one an absolute link inside the root, a drop-in in /etc, the
+# program it runs writable by anyone, an instance read as its template,
+# and bar.service, a link to a unit this host has and the root does not
+# (systemd-analyze --root read that one from this host).
+if :; then
   R=$W/img
   mkdir -p "$R/etc/systemd/system/multi-user.target.wants" "$R/etc/systemd/system/getty.target.wants" \
     "$R/etc/systemd/system/foo.service.d" "$R/usr/lib/systemd/system" "$R/opt/foo"
@@ -161,6 +161,9 @@ if command -v systemd-analyze >/dev/null 2>&1; then
   ln -s /usr/lib/systemd/system/tty@.service "$R/etc/systemd/system/getty.target.wants/tty@tty1.service"
   printf '#!/bin/sh\n' > "$R/opt/foo/run"; printf '#!/bin/sh\n' > "$R/opt/foo/tty"
   chmod 777 "$R/opt/foo/run"; chmod 775 "$R/opt/foo/tty"; chmod 755 "$R/opt/foo" "$R/opt"
+  mkdir -p "$W/hostunit"; printf '[Service]\nExecStart=/opt/foo/run --host\n' > "$W/hostunit/bar.service"
+  ln -s "$W/hostunit/bar.service" "$R/etc/systemd/system/bar.service"
+  ln -s /etc/systemd/system/bar.service "$R/etc/systemd/system/multi-user.target.wants/bar.service"
   cp "$W/tigerrc.base" "$W/tigerrc"; echo "Tiger_Show_INFO_Msgs=Y" >> "$W/tigerrc"
   ( cd "$W" && TIGRIS_ROOT=$R TIGERHOMEDIR=$W sh ./systems/Linux/2/check_units ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
@@ -168,12 +171,12 @@ if command -v systemd-analyze >/dev/null 2>&1; then
   has "[sysd005f] The systemd unit foo.service runs \`/opt/foo/run' which is" &&
     ok "offline root: the program a unit runs, writable by anyone, by the root's path: sysd005f" || { bad "offline sysd005f"; cat "$W/out"; }
   has "foo.service (drop-in /etc/systemd/system/foo.service.d/override.conf)" &&
-    ok "offline root: a drop-in in /etc, read with systemd-analyze --root cat-config: sysd008i" || { bad "offline sysd008i"; cat "$W/out"; }
+    ok "offline root: a drop-in in /etc: sysd008i" || { bad "offline sysd008i"; cat "$W/out"; }
+  [ "`count 'bar.service'`" = 0 ] &&
+    ok "offline root: a unit linked out of the root reads nothing of this host" || { bad "offline: this host's unit read"; cat "$W/out"; }
   has "The systemd unit tty@tty1.service runs \`/opt/foo/tty' which is group" &&
     ok "offline root: an instance read as its template" || { bad "offline instance"; cat "$W/out"; }
   grep -q "$R" "$W/out" && bad "offline root: a finding names where the root is on this host" || ok "offline root: findings name the root's own paths"
-else
-  echo "ok   (no systemd-analyze here: the offline root is not tested)"
 fi
 
 [ $fail -eq 0 ] && echo "PASS"

@@ -43,24 +43,38 @@ AWK=${AWK:-awk}
 
 # The links under ROOT, "/path<TAB>target", listed once when TABLE is named.
 # /proc, /sys, /dev and /run of a root are what a running system mounts
-# there, not what it holds. busybox find has no -printf.
+# there, not what it holds: not entered, but listed when they are links
+# themselves (pruned as paths, an image's /run -> /somewhere was missing
+# from the table, and the kernel followed it onto this host). A link whose
+# name or target holds a tab or a newline is left out, as it would break
+# the table's lines. What is not in the table is caught below.
+# busybox find has no -printf.
+tab='	'
+nl='
+'
 links()
 {
   if find / -maxdepth 0 -printf '' 2>/dev/null; then
-    find "$root" \( -path "$root/proc" -o -path "$root/sys" -o -path "$root/dev" -o -path "$root/run" \) -prune \
-      -o -type l -printf '/%P\t%l\n' 2>/dev/null
+    find "$root" \( -path "$root/proc" -o -path "$root/sys" -o -path "$root/dev" -o -path "$root/run" \) -type d -prune \
+      -o -type l ! -path "*$nl*" ! -path "*$tab*" ! -lname "*$nl*" ! -lname "*$tab*" -printf '/%P\t%l\n' 2>/dev/null
   else
-    find "$root" \( -path "$root/proc" -o -path "$root/sys" -o -path "$root/dev" -o -path "$root/run" \) -prune \
+    find "$root" \( -path "$root/proc" -o -path "$root/sys" -o -path "$root/dev" -o -path "$root/run" \) -type d -prune \
       -o -type l -print 2>/dev/null |
     while IFS= read -r l
     do
-      printf '%s\t%s\n' "${l#"$root"}" "`readlink "$l"`"
+      [ -h "$l" ] || continue
+      t=`readlink "$l"`
+      case "$l$t" in *"$tab"*|*"$nl"*|"$l") continue ;; esac
+      printf '%s\t%s\n' "${l#"$root"}" "$t"
     done
   fi
 }
 if [ -n "$table" ] && [ ! -s "$table" ]; then
   { echo "#links"; links; } > "$table" || exit 2
 fi
+
+resolved=`mktemp "${TMPDIR:-/tmp}/tigris-rootpath.XXXXXX"` || exit 2
+trap 'rm -f "$resolved" "$resolved.real"' 0 1 2 3 15
 
 {
   if [ -n "$table" ]; then cat "$table"; else links; fi
@@ -91,4 +105,34 @@ fi
   !paths && $0 == "#links" { next }
   !paths && $0 == "#paths" { paths = 1; next }
   !paths { link[$1] = $2; next }
-  { print resolve($0) }'
+  { print resolve($0) }' > "$resolved"
+
+# Whatever the table missed (a link under /run, a name it left out), the
+# kernel would follow when the path is read. So each answer is resolved
+# once more by this host's realpath, and one that ends up outside ROOT is
+# an empty line, as a loop is: never a path on this host. -z, as a link's
+# target can hold a newline; a newline in an answer becomes \001, so that
+# each answer stays one line. An empty answer is asked as /, outside ROOT.
+if realpath -m -z -- / >/dev/null 2>&1; then
+  $AWK '{ print ($0 == "" ? "/" : $0) }' "$resolved" | tr '\n' '\0' |
+    xargs -0 -r realpath -m -z -- 2>/dev/null | tr '\n\0' '\001\n' > "$resolved.real"
+else
+  while IFS= read -r p
+  do
+    if [ -z "$p" ]; then echo /
+    else
+      # no -m: a path with a missing directory prints nothing, and is not
+      # there to be read wherever its links lead
+      c=`readlink -f -- "$p" 2>/dev/null`
+      case "$c" in *"$nl"*) c=/ ;; esac
+      printf '%s\n' "${c:-$p}"
+    fi
+  done < "$resolved" > "$resolved.real"
+fi
+# (answers and checks pair up by line; if they do not, every answer is
+# empty rather than one paired with another's check)
+$AWK -v root="$root" '
+  FILENAME == ARGV[1] { real[FNR] = $0; n = FNR; next }
+  { r = real[FNR]
+    print (n == nres && (r == root || index(r, root "/") == 1) ? $0 : "") }
+' "$resolved.real" nres=`wc -l < "$resolved"` "$resolved"

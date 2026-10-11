@@ -120,8 +120,7 @@ else
     *pam_passwdqc*) ;;
     *)
       minlen=`echo "$quality" | $SED -n 's/.* minlen=\([0-9]*\).*/\1/p'`
-      # shellcheck disable=SC2046
-      [ -z "$minlen" ] && minlen=`$CAT $({ echo /etc/security/pwquality.conf; rootls /etc/security/pwquality.conf.d | $GREP '\.conf$'; } | rootpaths) 2>/dev/null |
+      [ -z "$minlen" ] && minlen=`{ echo /etc/security/pwquality.conf; rootls /etc/security/pwquality.conf.d | $GREP '\.conf$'; } | rootcat 2>/dev/null |
         $SED -n 's/^[[:space:]]*minlen[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' | $SED -n '$p'`
       case "$quality" in *pam_cracklib*) minlen=${minlen:-9} ;; *) minlen=${minlen:-8} ;; esac
       [ "$minlen" -lt 8 ] && message WARN pam002w "Set minlen = 14 in /etc/security/pwquality.conf (the CIS benchmarks' figure; NIST SP 800-63B asks for at least 8)." "New passwords may be as short as $minlen characters."

@@ -98,6 +98,16 @@ tar -C / --exclude=./proc --exclude=./sys --exclude=./dev --exclude=.$IMG --excl
 mkdir -p "$IMG/proc" "$IMG/sys" "$IMG/dev"
 ( cd "$W" && TIGRIS_ROOT=$IMG TIGERHOMEDIR=$W sh systems/Linux/2/pkg_integrity 2>&1 ) > "$W/offline.raw"
 TIGRIS_ROOT=$IMG run > "$W/offline"
+# rpm writes its database's lock in the root: with a link where it writes,
+# it is not run on the root at all
+if [ "$mgr" = rpm ]; then
+  for d in var/lib/rpm usr/lib/sysimage/rpm; do [ -d "$IMG/$d" ] && [ ! -L "$IMG/$d" ] && ln -s /tigris-not-here "$IMG/$d/zz-link"; done
+  # (a link that stays inside the root, as Fedora's /var/lib/rpm is, is fine: the run above)
+  ( cd "$W" && TIGRIS_ROOT=$IMG TIGERHOMEDIR=$W sh systems/Linux/2/pkg_integrity 2>&1 ) > "$W/linked.raw"
+  grep -q '^# Not compared: rpm would write' "$W/linked.raw" && ! grep -q 'lin00[156]' "$W/linked.raw" &&
+    echo "ok   offline: a link in rpm's database directory, and rpm is not run on the root" ||
+    { echo "FAIL offline: rpm run with a link where it writes"; head -5 "$W/linked.raw"; fail=1; }
+fi
 rm -rf "$IMG"
 grep -q "^# Checking installed files in $IMG against its $mgr database" "$W/offline.raw" &&
   echo "ok   offline: the root's database is the one read" || { echo "FAIL offline heading"; head -3 "$W/offline.raw"; fail=1; }

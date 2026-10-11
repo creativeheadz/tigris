@@ -137,7 +137,9 @@ haveallcmds MD5SUM CAT CUT SED GREP EGREP BASENAME AWK SORT || exit 1
 # dpkg's database, this system's or the offline root's
 admindir=`rootfile /var/lib/dpkg`
 info=$admindir/info
-DIVERSIONS=$admindir/diversions
+# (the files dpkg keeps, each found inside the root: one a link out of it
+# would have this host's read as the root's)
+DIVERSIONS=`rootfile /var/lib/dpkg/diversions`
 
 if [ -d "$info" ]
 then
@@ -160,17 +162,21 @@ trap 'delete $sums $where $results ; exit 1' 1 2 3 15
 # files per directory by using the following:
 # { ls -d /usr/share/* |while read dir; do [ -d "$dir" ] && { echo -n "$dir:" ; find "$dir" -type f  | wc -l  ; } ; done ; } | awk -F : '{print $2" "$1;}' | sort -n |less
 #
-# Every package's sums, "package<TAB>md5<TAB>/path"
+# Every package's sums, "package<TAB>md5<TAB>/path". awk opens each file
+# itself: xargs stopped at a quote in a file name, and every package after
+# it went unchecked.
 for md5file in "$info"/*.md5sums
 do
 	[ -f "$md5file" ] && [ ! -L "$md5file" ] && echo "$md5file"
 done |
-xargs $AWK '
-	{ pkg = FILENAME; sub(/.*\//, "", pkg); sub(/\.md5sums$/, "", pkg)
-	  i = index($0, "  "); if (!i) next
-	  p = "/" substr($0, i + 2)
-	  if (p ~ /^\/usr\/share\/(doc|help|man|icons|pixmaps|fonts|i18n|locale|mime|games)\// || p ~ /^\/(dev|lib\/udev\/devices)\//) next
-	  print pkg "\t" substr($0, 1, i - 1) "\t" p }' > $sums 2>/dev/null
+$AWK '
+	{ f = $0; pkg = f; sub(/.*\//, "", pkg); sub(/\.md5sums$/, "", pkg)
+	  while ((getline line < f) > 0) {
+	    i = index(line, "  "); if (!i) continue
+	    p = "/" substr(line, i + 2)
+	    if (p ~ /^\/usr\/share\/(doc|help|man|icons|pixmaps|fonts|i18n|locale|mime|games)\// || p ~ /^\/(dev|lib\/udev\/devices)\//) continue
+	    print pkg "\t" substr(line, 1, i - 1) "\t" p }
+	  close(f) }' > $sums 2>/dev/null
 
 # Where each file is: the path itself, or inside the offline root (empty
 # when its links loop)
@@ -200,17 +206,17 @@ do
 	case $err in
 	DIFF)
 		# don't check diverted now
-		[ -z "`$GREP -sxF \"$file\" $DIVERSIONS`" ] &&
+		[ -z "`$GREP -sxF -e \"$file\" $DIVERSIONS`" ] &&
 		# and conffiles should not be checked either
-		[ -z "`$GREP -sxF \"$file\" $info/$package.conffiles`" ] &&
-		[ -n "`$GREP -sxF \"$file\" $info/$package.list`" ] &&
+		[ -z "`$GREP -sxF -e \"$file\" \"$info/$package.conffiles\"`" ] &&
+		[ -n "`$GREP -sxF -e \"$file\" \"$info/$package.list\"`" ] &&
 			message FAIL lin005f "" "Installed file \`$file' checksum differs from installed package '$package'."
 # TODO: Consider including the MD5sum to this message
 # notice that some integrity checkers might do this already too.
 		;;
 	ERR)
 # Check if this package 
-		if [ ! -e "$here" ] && $GREP -sqxF "$file" $info/$package.list ; then
+		if [ ! -e "$here" ] && $GREP -sqxF -e "$file" "$info/$package.list" ; then
 
 			message FAIL lin006f "" "Cannot check file \"$file\" provided by \"$package\" since it does not exist"
 		fi
@@ -220,15 +226,16 @@ done
 delete $sums $where $results
 
 # check diversions
-if [ -x /usr/bin/dpkg-divert ]; then
+if [ -f "$DIVERSIONS" ]; then
 divlist=$WORKDIR/divert.list.$$
 divpat=$WORKDIR/divert.pat.$$
 divowners=$WORKDIR/divert.owners.$$
 safe_temp $divlist $divpat $divowners
-/usr/bin/dpkg-divert --admindir "$admindir" --list |
-# extract the file diverted, the backup file and the diverter package
-$SED -e 's/diversion of \(\/.*\) to \(\/.*\) by \(.*\)$/\1;\2;\3/' \
-     -e 's/local diversion of \(\/.*\) to \(\/.*\)$/\1;\2;LOCAL/' > $divlist
+# The file diverted, the backup file and the diverter package, from dpkg's
+# diversions file: three lines each, the package ":" for a local one (what
+# dpkg-divert --list prints, read here, where nothing follows a link out)
+$AWK 'NR % 3 == 1 { f = $0 } NR % 3 == 2 { t = $0 }
+  NR % 3 == 0 { print f ";" t ";" ($0 == ":" ? "LOCAL" : $0) }' "$DIVERSIONS" > $divlist
 # Which packages ship each diverted file: one pass over the .list files.
 # dpkg -S loads the whole package database (130 MB, a quarter of a second)
 # and this used to run it once per diversion. On a merged-/usr system the
@@ -236,7 +243,10 @@ $SED -e 's/diversion of \(\/.*\) to \(\/.*\) by \(.*\)$/\1;\2;\3/' \
 $CUT -d';' -f1 $divlist |
 $SED -e 'p' -e 's,^/usr/,/,; t' -e 's,^/,/usr/,' | $SORT -u > $divpat
 $GREP -xF -f $divpat "$info"/*.list 2>/dev/null |
-$SED "s|^$info/\(.*\)\.list:| \1 |" > $divowners
+i=$info $AWK '{ p = ENVIRON["i"] "/"
+	if (index($0, p) != 1) next
+	r = substr($0, length(p) + 1); k = index(r, ".list:")
+	if (k) print " " substr(r, 1, k - 1) " " substr(r, k + 6) }' > $divowners
 {
   saveIFS=$IFS
   IFS=";"
@@ -258,7 +268,7 @@ $SED "s|^$info/\(.*\)\.list:| \1 |" > $divowners
         currentfile=$tofile
       fi
       [ -f "$info/$2.md5sums" ] && {
-        md5pck=`$GREP "$(echo "$file\$"|$CUT -c2-)" "$info/$2.md5sums" | $CUT -f 1 -d " "`
+        md5pck=`f=${file#/} $AWK '{ k = index($0, "  ") } k && substr($0, k + 2) == ENVIRON["f"] { print $1; exit }' "$info/$2.md5sums"`
         [ -n "$md5pck" ] && {
           here=`rootfile "$currentfile"`
           if [ -f "$here" ]

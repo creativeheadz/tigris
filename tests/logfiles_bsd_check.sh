@@ -56,8 +56,8 @@ EOF
 chmod 644 "$T/etc/newsyslog.conf"
 touch "$T/var/log/messages"
 chmod 644 "$T/var/log/messages"
-# a log pointed at null, through the root's own dev
-ln -s /dev "$T/dev"
+# a log pointed at null: the root has no /dev of its own (a running system
+# mounts one), and this host's is never read in its place
 ln -s /dev/null "$T/var/log/none"
 run "$T" "$W/out"
 empty "$W/out" &&

@@ -341,7 +341,8 @@ localfs()
   # Check filesystems that are known to the current kernel
   # First check /proc/filesystems which should list the filesystems known to the current kernel
   if [ "$LOCAL" -eq 2 ] && [ -r /proc/filesystems ] ; then
-    if  cat /proc/filesystems  | awk '{if ($2 == "") print $1; else print $2}' | grep -q "$1" ; then
+    # the whole name: a FUSE subtype is the mounting user's to choose
+    if  cat /proc/filesystems  | awk '{if ($2 == "") print $1; else print $2}' | grep -qxF -e "$1" ; then
         LOCAL=0
     fi
   fi
@@ -366,6 +367,8 @@ localfs()
 
 # If run directly do this, just in case:
 [ -z "$GETFS" ] && GETFS=`command -v mount`
+# The tests' stand-in for mount
+[ -n "$Tiger_Mounts_Cmd" ] && GETFS=$Tiger_Mounts_Cmd
 [ -z "$SED" ] && SED=`command -v sed`
 [ -z "$BASENAME" ] && BASENAME=`command -v basename`
 [ -z "$EGREP" ] && EGREP="`command -v grep` -E"

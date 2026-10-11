@@ -104,19 +104,37 @@ findcmd()
 # First of all, determine our distribution (might affect tests
 # below)
 # Auditing an offline root (--root), it is that system's distribution.
+# Its release files are found inside the root: one of them a link out of
+# it would have this host's distribution taken for the root's. The root's
+# links are listed for that here, once, for every check (tiger keeps the
+# table, TIGRIS_LINKS).
+__relfiles='/etc/redhat-release
+/etc/debian_version
+/etc/SuSE-release
+/etc/immunix-release
+/etc/mandrake-release
+/etc/turbolinux-release
+/etc/os-release
+/usr/lib/os-release'
+if [ -n "$TIGRIS_ROOT" ]; then
+  TIGRIS_LINKS=${TIGRIS_LINKS:-$WORKDIR/rootlinks.$$}
+  export TIGRIS_LINKS
+  __relfiles=`printf '%s\n' "$__relfiles" | sh "$BASEDIR/util/rootpath" "$TIGRIS_ROOT" "$TIGRIS_LINKS"`
+fi
+__relfile() { printf '%s\n' "$__relfiles" | sed -n "$1p"; }
 LXDISTRIBUTION="unknown"
-[ -f "$TIGRIS_ROOT/etc/redhat-release" ] && LXDISTRIBUTION="redhat"
-[ -f "$TIGRIS_ROOT/etc/debian_version" ] && LXDISTRIBUTION="debian"
-[ -f "$TIGRIS_ROOT/etc/SuSE-release" ] && LXDISTRIBUTION="redhat"
-[ -f "$TIGRIS_ROOT/etc/immunix-release" ] && LXDISTRIBUTION="inmunix"
-[ -f "$TIGRIS_ROOT/etc/mandrake-release" ] && LXDISTRIBUTION="mandrake"
-[ -f "$TIGRIS_ROOT/etc/turbolinux-release" ] && LXDISTRIBUTION="turbolinux"
+[ -f "`__relfile 1`" ] && LXDISTRIBUTION="redhat"
+[ -f "`__relfile 2`" ] && LXDISTRIBUTION="debian"
+[ -f "`__relfile 3`" ] && LXDISTRIBUTION="redhat"
+[ -f "`__relfile 4`" ] && LXDISTRIBUTION="inmunix"
+[ -f "`__relfile 5`" ] && LXDISTRIBUTION="mandrake"
+[ -f "`__relfile 6`" ] && LXDISTRIBUTION="turbolinux"
 # /etc/os-release names the distribution (ID) and the ones it descends from
 # (ID_LIKE), which is how Ubuntu, Mint and Pop!_OS are Debian and Rocky,
 # Alma and Fedora are Red Hat. It is read as text, never sourced: this runs
 # as root. Tiger_Os_Release lets the tests point at a file of their own.
-__osrel=${Tiger_Os_Release:-$TIGRIS_ROOT/etc/os-release}
-[ -r "$__osrel" ] || [ -n "$Tiger_Os_Release" ] || __osrel=$TIGRIS_ROOT/usr/lib/os-release
+__osrel=${Tiger_Os_Release:-`__relfile 7`}
+[ -r "$__osrel" ] || [ -n "$Tiger_Os_Release" ] || __osrel=`__relfile 8`
 TESTEXEC=-x     # findcmd tests with it, and it is only set again further down
 __sed=`findcmd sed`; __tr=`findcmd tr`      # SED and TR are defined further down
 if [ -r "$__osrel" ] && [ -n "$__sed" ] && [ -n "$__tr" ]; then
@@ -412,6 +430,5 @@ GEN_INETD_SETS gen_inetd
 GETDISKS getdisks
 EMBEDDEDLIST embedlist
 EOL_LIST eol_list
-GETUSERHOME getuserhome
 EOL
 `

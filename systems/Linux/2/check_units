@@ -39,6 +39,11 @@
 #                 an instance (getty@tty1) is read as its template. Paths,
 #                 owners and programs are the root's, through rootfile and
 #                 getpermit.
+# 10/11/2026 atrimbitas - systemd-analyze --root followed a unit's absolute
+#                 link out of the root, so this host's unit was reported as
+#                 the root's: the unit file and its drop-ins are found here
+#                 now, each inside the root (unitread), and systemd-analyze
+#                 is not needed.
 #
 # References:
 #   man 5 systemd.unit, man 5 systemd.service, man 5 systemd.exec
@@ -96,15 +101,11 @@ haveallcmds AWK LS SED SORT || exit 1
 
 root=${Tiger_Sysctl_Root:-}
 sc=${Tiger_Systemctl_Cmd:-}
-sa=
+offline=
 if [ -n "$TIGRIS_ROOT" ] && [ -z "$sc" ]; then
-  # an offline root with systemd's units, read by this host's systemd-analyze
+  # an offline root with systemd's units, read here (unitread)
   [ -d "`rootfile /etc/systemd/system`" ] || [ -d "`rootfile /usr/lib/systemd/system`" ] || exit 0
-  for d in /usr/bin /bin
-  do
-    [ -x "$d/systemd-analyze" ] && { sa="$d/systemd-analyze"; break; }
-  done
-  [ -n "$sa" ] || exit 0
+  offline=Y
 elif [ -z "$sc" ]; then
   [ -d /run/systemd/system ] || exit 0
   for d in /usr/bin /bin
@@ -116,22 +117,57 @@ fi
 
 # unitcat UNIT: the unit file and its drop-ins, each after a "# /path" line
 # naming it by the audited system's path
+unitdirs="/etc/systemd/system /run/systemd/system /usr/local/lib/systemd/system /usr/lib/systemd/system /lib/systemd/system"
 unitcat()
 {
-  if [ -n "$sa" ]; then
-    __u=$1
-    __o=`$sa --root="$TIGRIS_ROOT" cat-config "systemd/system/$__u" 2>/dev/null`
-    case "$__o" in
-      ''|'# Main configuration file'*)
-        # an instance, foo@bar.service, is its template, foo@.service
-        case "$__u" in *@?*.*) __u="${__u%%@*}@.${__u##*.}"
-          __o=`$sa --root="$TIGRIS_ROOT" cat-config "systemd/system/$__u" 2>/dev/null` ;; esac ;;
-    esac
-    case "$__o" in ''|'# Main configuration file'*) return 1 ;; esac
-    printf '%s\n' "$__o" | $AWK -v r="$TIGRIS_ROOT/" '/^# \// && index($0, "# " r) == 1 { $0 = "# /" substr($0, length(r) + 3) } { print }'
+  if [ -n "$offline" ]; then
+    unitread "$1" && return 0
+    # an instance, foo@bar.service, is its template, foo@.service
+    case "$1" in *@?*.*) unitread "${1%%@*}@.${1##*.}" ;; *) return 1 ;; esac
   else
     $sc cat --no-pager "$1" 2>/dev/null
   fi
+}
+
+# unitread UNIT: on an offline root, what systemd-analyze cat-config
+# prints for systemd/system/UNIT, read here: the first unit file in the
+# unit directories, then the .conf drop-ins of every UNIT.d, the first
+# directory's of a name winning, by name. Each is found inside the root:
+# systemd-analyze --root followed a unit's absolute link onto this host,
+# whose unit was then reported as the root's, until October 2026. A unit
+# linked to /dev/null, or empty, is masked: nothing.
+unitread()
+{
+  __m=`for __d in $unitdirs; do printf '%s\n' "$__d/$1"; done | rootpaths |
+    while IFS= read -r __h
+    do
+      [ "$__h" = "$TIGRIS_ROOT/dev/null" ] && break
+      [ -n "$__h" ] && [ -f "$__h" ] && { printf '%s\n' "$__h"; break; }
+    done`
+  [ -n "$__m" ] && [ -s "$__m" ] || return 1
+  # (awk, as a file without its last newline would hide the next header)
+  printf '# %s\n' "${__m#"$TIGRIS_ROOT"}"
+  $AWK '{ print }' "$__m"
+  # the drop-in directories, then their .conf files, as the root's paths
+  for __d in $unitdirs; do printf '%s\n' "$__d/$1.d"; done > $units.d
+  rootpaths < $units.d | $AWK 'NR == FNR { p[FNR] = $0; next } { print p[FNR] "\t" $0 }' $units.d - |
+    while IFS='	' read -r __p __h
+    do
+      [ -n "$__h" ] && [ -d "$__h" ] || continue
+      for __c in "$__h"/*.conf
+      do
+        [ -e "$__c" ] || [ -L "$__c" ] && printf '%s\t%s\n' "${__c##*/}" "$__p/${__c##*/}"
+      done
+    done | $AWK -F'\t' '!seen[$1]++' | LC_ALL=C $SORT | $AWK -F'\t' '{ print $2 }' > $units.f
+  [ -s $units.f ] && rootpaths < $units.f | $AWK 'NR == FNR { p[FNR] = $0; next } { print p[FNR] "\t" $0 }' $units.f - |
+    while IFS='	' read -r __p __h
+    do
+      [ -n "$__h" ] && [ -f "$__h" ] || continue
+      printf '\n# %s\n' "$__p"
+      $AWK '{ print }' "$__h"
+    done
+  rm -f $units.d $units.f
+  return 0
 }
 
 echo

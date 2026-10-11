@@ -255,9 +255,10 @@ trap 'delete $WORKDIR/login.str.$$ $WORKDIR/pass.list.$$ ; exit 1' 1 2 3 15
 	  # and just provide the raw count.
 	  filecount="`echo "$alertfiles" | $WC -l`"
 	  if [ $filecount -lt 100 ]; then
-	    echo "$alertfiles" | while read file; do
-	  	  $LS -ld "$heredir/$file"
-	    done
+	    # the paths find walked, never one put back together from the
+	    # list above, where a name holding "~./" splits and the pieces
+	    # could pass through an image's link onto this host
+	    $FIND "$heredir" -mindepth 1 \( -name '#[0-9]*' -o -name '[0-9]*_[0-9]*' \) -prune -o -exec $LS -ld {} + 2>/dev/null
 	  else
 	    echo "($filecount files)"
 	  fi

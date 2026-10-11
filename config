@@ -245,6 +245,18 @@ checkfile()
       echo "--CONFIG-- [con003c] Ignoring config file $_rcpath, (world and/or group writable)"
       _status=1
     }
+    # A config file is run as shell code by whoever runs Tigris, root as a
+    # rule, so it must be theirs, root's, or that of whoever owns Tigris
+    # itself (whose code runs anyway). A ./site or ./tigerrc that another
+    # user left in the directory Tigris was started from is not.
+    [ $_status -eq 0 ] && {
+      _owner=`$LS $LSLINK -nd "$_rcfile" | $AWK '{print $3}'`
+      case " 0 `id -u` `$LS -nd "$BASEDIR" | $AWK '{print $3}'` " in
+        *" $_owner "*) ;;
+        *) echo "--CONFIG-- [con015c] Ignoring config file $_rcpath, (owned by uid $_owner, not by root, the user running Tigris or Tigris's owner)"
+           _status=1 ;;
+      esac
+    }
   fi
 
   return $_status

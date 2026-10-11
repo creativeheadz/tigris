@@ -161,10 +161,10 @@ then
         # We are not using -maxdepth here, but we could...
         while read file
         do
-                pack=`$DPKG --admindir="$admindir" -S $file 2>/dev/null`
+                pack=`$DPKG --admindir="$admindir" -S "$file" 2>/dev/null`
                 # On merged-/usr systems dpkg may record the file under /bin, /sbin or /lib
                 [ "$pack" = "" ] && [ "${file#/usr/}" != "$file" ] &&
-                pack=`$DPKG --admindir="$admindir" -S ${file#/usr} 2>/dev/null`
+                pack=`$DPKG --admindir="$admindir" -S "${file#/usr}" 2>/dev/null`
                 [ "$pack" = "" ] && {
                 message WARN lin001w "" "File \`$file' does not belong to any package." 
                 }
@@ -178,9 +178,9 @@ else
 	for dir in bin sbin lib ; do
 		[ -L "$R/$dir" ] && usrmerge="$usrmerge -e s,^/$dir/,/usr/$dir/,"
 	done
-	$FIND "$admindir/info" -name "*.list" -exec cat {} \; |
+	$FIND "$admindir/info" -name "*.list" -type f -exec cat {} + |
         $SED -n $usrmerge -e "/^\($seddirlist\)/p" > $WORKDIR/dpkg-packages.list
-	$SED -e '' $usrmerge "$admindir/diversions" > $WORKDIR/dpkg-diversions.list
+	$SED -e '' $usrmerge "`rootfile /var/lib/dpkg/diversions`" > $WORKDIR/dpkg-diversions.list
         binfiles |
         # We are not using -maxdepth here, but we could...
         $GREP -x -F -v -f $WORKDIR/dpkg-packages.list |

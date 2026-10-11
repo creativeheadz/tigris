@@ -104,6 +104,10 @@ root ALL=(ALL:ALL) ALL
 #include /etc/sudoers.extra
 @include sudoers.rel
 EOF
+# an include after a blank, naming a file this host has and the root does
+# not: read inside the root (nothing), never handed to cvtsudoers
+printf '  @include %s/hostrule\n' "$W" >> "$R/etc/sudoers"
+echo 'mallory ALL=(ALL) NOPASSWD: ALL' > "$W/hostrule"
 echo 'alice ALL=(ALL) NOPASSWD: ALL' > "$R/etc/sudoers.d/alice"
 echo 'bob ALL=(ALL) NOPASSWD: ALL' > "$R/etc/sudoers.d/bob.disabled"
 echo 'carol ALL=(root) /usr/bin/journalctl -u *' > "$R/etc/sudoers.extra"
@@ -121,7 +125,8 @@ offline() {
 offline_ok() {
   has '[sudo001w] alice may run any command' && has '[sudo001w] dave may run any command' && [ "`count 'bob may'`" = 0 ] &&
     has 'carol may run "/usr/bin/journalctl -u *"' && has 'sudo asks nobody for a password: "Defaults:erin !authenticate"' &&
-    ok "offline root, $1: @includedir, #include, a relative @include and a linked drop-in read inside the root; bob.disabled left out" ||
+    [ "`count mallory`" = 0 ] &&
+    ok "offline root, $1: @includedir, #include, a relative @include and a linked drop-in read inside the root; bob.disabled and this host's file left out" ||
     { bad "offline root, $1"; cat "$W/out"; }
 }
 offline cat

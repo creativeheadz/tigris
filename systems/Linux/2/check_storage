@@ -110,9 +110,7 @@ root=${Tiger_Sysctl_Root:-}
 # loading it run something else
 usb_blocked()
 {
-  # shellcheck disable=SC2046
-  # (/dev/null first: with no files, cat would read standard input)
-  $CAT /dev/null $({ rootls /etc/modprobe.d; rootls /usr/lib/modprobe.d; rootls /lib/modprobe.d; } | $GREP '\.conf$' | rootpaths) 2>/dev/null |
+  { rootls /etc/modprobe.d; rootls /usr/lib/modprobe.d; rootls /lib/modprobe.d; } | $GREP '\.conf$' | rootcat 2>/dev/null |
     $AWK '!/^[ \t]*#/ && (($1 == "blacklist" || $1 == "install") && ($2 == "usb-storage" || $2 == "usb_storage")) { y = 1 } END { exit !y }'
 }
 
@@ -120,8 +118,7 @@ usb_blocked()
 # device on the bus direct memory access
 firewire_blocked()
 {
-  # shellcheck disable=SC2046
-  $CAT /dev/null $({ rootls /etc/modprobe.d; rootls /usr/lib/modprobe.d; rootls /lib/modprobe.d; } | $GREP '\.conf$' | rootpaths) 2>/dev/null |
+  { rootls /etc/modprobe.d; rootls /usr/lib/modprobe.d; rootls /lib/modprobe.d; } | $GREP '\.conf$' | rootcat 2>/dev/null |
     $AWK '!/^[ \t]*#/ && (($1 == "blacklist" || $1 == "install") && ($2 == "firewire-core" || $2 == "firewire_core" || $2 == "firewire-ohci" || $2 == "firewire_ohci" || $2 == "ohci1394" || $2 == "ieee1394" || $2 == "sbp2" || $2 == "eth1394")) { y = 1 } END { exit !y }'
 }
 
@@ -219,8 +216,7 @@ storage_second()
 # limit of 0 on core files for everyone
 core_limited()
 {
-  # shellcheck disable=SC2046
-  $CAT /dev/null $({ echo /etc/security/limits.conf; rootls /etc/security/limits.d | $GREP '\.conf$'; } | rootpaths) 2>/dev/null |
+  { echo /etc/security/limits.conf; rootls /etc/security/limits.d | $GREP '\.conf$'; } | rootcat 2>/dev/null |
     $AWK '!/^[ \t]*#/ && $1 == "*" && $2 == "hard" && $3 == "core" && $4 == "0" { y = 1 } END { exit !y }'
 }
 
@@ -279,7 +275,7 @@ if [ -n "$TIGRIS_ROOT" ]; then
       echo "$entries" | $AWK '$3 == "swap" { print $1 }' | while read sw
       do
         case "$sw" in
-          /dev/mapper/*) echo "$crypted" | $GREP -qx "${sw#/dev/mapper/}" && continue ;;
+          /dev/mapper/*) echo "$crypted" | $GREP -qxF -e "${sw#/dev/mapper/}" && continue ;;
           /dev/zram*|UUID=*|LABEL=*|PARTUUID=*|PARTLABEL=*|/dev/disk/by-uuid/*) continue ;;
           /dev/*) ;;
           *) continue ;;

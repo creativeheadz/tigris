@@ -309,7 +309,6 @@ REL_FILE_EXCP rel_file_exp_list
 GEN_CRON_FILES gen_cron
 GETCLIENTDIRS gendlclients
 GEN_INETD_SETS gen_inetd
-GETUSERHOME getuserhome
 GETDISKS getdisks
 EMBEDDEDLIST embedlist
 EOL
