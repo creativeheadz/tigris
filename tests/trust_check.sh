@@ -39,9 +39,15 @@ grep -q "^Tiger_SSH_Protocol='2'" "$W/tigerrc" && ok "only SSH protocol 2 is acc
 # a sane tree runs
 st=`run`; [ "$st" = 0 ] && ok "a tree of the runner's, modes 755/644: runs" || { bad "a sane tree: exit $st"; cat "$W/out"; }
 
-# the working directory writable by group
+# the working directory writable by group: refused on a host; inside a
+# container (CI runs these suites in one) it is the host user's bind
+# mount, said with con019c and allowed
 chmod 775 "$W/run"; st=`run`
-[ "$st" != 0 ] && grep -q 'con018e' "$W/out" && ok "a group-writable working directory: con018e, no run" || { bad "group-writable run/: exit $st"; cat "$W/out"; }
+if [ -f /.dockerenv ] || [ -f /run/.containerenv ] || [ -f /run/systemd/container ]; then
+  [ "$st" = 0 ] && ( cd "$W" && sh ./tigris -c rc.t 2>&1 | grep -q 'con019c' ) && ok "a group-writable working directory, in a container: con019c, and a run" || { bad "group-writable run/ in a container: exit $st"; cat "$W/out"; }
+else
+  [ "$st" != 0 ] && grep -q 'con018e' "$W/out" && ok "a group-writable working directory: con018e, no run" || { bad "group-writable run/: exit $st"; cat "$W/out"; }
+fi
 chmod 755 "$W/run"
 
 # the tree itself writable by group
