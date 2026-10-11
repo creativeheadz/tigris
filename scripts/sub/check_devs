@@ -71,7 +71,7 @@ $AWK -v dirs="$DEVDIRSYS $FS_DEVDIRS $dldevdirs" '
 [ -s $WORKDIR/dev.list.$$ ] && {
   message ALERT fsys006a "" "Unexpected device files found:"
   $SORT $WORKDIR/dev.list.$$ |
-  while read file
+  while read -r file
   do
     lsline "$file"
   done

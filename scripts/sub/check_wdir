@@ -54,7 +54,7 @@ dltmpdirs=
 [ -n "$HOSTNAMESLIST" ] &&
 haveallcmds GETCLIENTDIRS AWK && {
   dltmpdirs=`$GETCLIENTDIRS |
-             while read client rootdir
+             while read -r client rootdir
              do
                for dir in $FS_WDIRSYS
                do

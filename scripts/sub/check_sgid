@@ -49,7 +49,7 @@ echo "# Checking setgid executables..."
 haveallfiles BASEDIR WORKDIR || exit 1
 
 #[ -n "$TigerCheckEmbedded" -a "x$Tiger_Embed_Check_SGID" = 'xY' ] && {
-#  while read file
+#  while read -r file
 #  do
 #    $LS -lLd "$file" 2>/dev/null | {
 #      read p l owner rest
@@ -59,7 +59,7 @@ haveallfiles BASEDIR WORKDIR || exit 1
 #}
 
 haveallcmds FILECMD LS SGREP STRINGS && {
-  while read file
+  while read -r file
   do
     # where it is: itself, or inside an offline root
     here=`__here "$file"`
@@ -100,7 +100,7 @@ haveallcmds SORT COMM CAT && {
 haveallcmds LS AWK && {
   [ -s $WORKDIR/sgid.list.$$ ] && {
     message ALERT fsys011a "$source" 'The following setgid programs are non-standard:'
-    while read file
+    while read -r file
     do
       lsline "$file"
     done < $WORKDIR/sgid.list.$$ |
@@ -121,7 +121,7 @@ haveallfiles SIGNATURE_FILE && {
   $AWK '{print $3}' $SIGNATURE_FILE |
   $SORT |
   $COMM -13 - $WORKDIR/sgid.$$ |
-  while read file
+  while read -r file
   do
     loc_signature=
     fh=`__here "$file"`
@@ -140,7 +140,7 @@ haveallfiles SIGNATURE_FILE && {
     esac
     [ -n "$loc_signature" ] && {
       $GREP "$loc_signature" $SIGNATURE_FILE | {
-	read flag msgid rfile p1 p2 p3 p4 p5 p6 p7 p8 comment
+	read -r flag msgid rfile p1 p2 p3 p4 p5 p6 p7 p8 comment
 	[ -n "$rfile" -a "$file" != "$rfile" ] && {
 	  message ALERT sgid001a "" "\`$file' is a setgid copy of $rfile [$comment]."
 	  lsline "$file"

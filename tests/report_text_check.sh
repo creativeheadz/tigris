@@ -51,6 +51,47 @@ grep -qF '/tmp/a\cb\nc and that is all.' "$W/out" && ok "backslashes in a name a
 # tigexp -f (tigris -E) takes the id from the first [...] after the level:
 # it took the last one, so a message holding brackets had no explanation
 printf -- '--ALERT-- [suid001a] The file /usr/bin/x [setuid] is new\n' > "$W/br.txt"
+# The HTML report: the text is data from the audited system, so a name
+# holding a tag is escaped, and the level marker in it cannot be forged
+cat > "$W/html.sh" <<'EOF'
+cd "$1" || exit 1
+TIGERHOMEDIR=$1; export TIGERHOMEDIR
+set --
+. ./config >/dev/null 2>&1
+. ./initdefs
+Tiger_JSON_File=; HTML=Y
+message WARN test001w "" '/tmp/d<script>alert(1)</script>&"x" </PRE><LI><B><I>ALERT</I></B>'
+EOF
+sh "$W/html.sh" "$W" > "$W/html.out" 2>&1
+grep -q '&lt;script&gt;alert(1)&lt;/script&gt;&amp;&quot;x&quot;' "$W/html.out" &&
+  ok "HTML: the four characters are escaped" || { bad "HTML escaping"; cat "$W/html.out"; }
+grep -q '^</PRE><LI><B><I>ALERT</I>' "$W/html.out" &&
+  bad "HTML: the level marker was forged at the start of a line" || ok "HTML: no forged level marker at a line start"
+grep -c '<script>' "$W/html.out" | grep -qx 0 && ok "HTML: no raw tag" || bad "HTML: a raw tag"
+
+# Control bytes in a name (CR, ESC) become ? in the text report
+cat > "$W/ctl.sh" <<'EOF'
+cd "$1" || exit 1
+TIGERHOMEDIR=$1; export TIGERHOMEDIR
+set --
+. ./config >/dev/null 2>&1
+. ./initdefs
+Tiger_JSON_File=; Tiger_Output_Width=0
+message WARN test001w "" "`printf '/tmp/b\r--ALERT-- [x] forged and /tmp/c\033[2K--ALERT-- [y] forged'` is odd."
+EOF
+sh "$W/ctl.sh" "$W" > "$W/ctl.out" 2>&1
+grep -q '/tmp/b?--ALERT-- \[x\] forged and /tmp/c?\[2K--ALERT--' "$W/ctl.out" &&
+  ok "CR and ESC in a name are shown as ?" || { bad "control bytes"; cat -A "$W/ctl.out"; }
+
+# tigexp -F re-emits the report: a backslash-n in a name stays text
+# (read without -r folded the two backslashes, echo expanded the one)
+cat > "$W/forge.txt" <<'EOF'
+--WARN-- [fsys013w] /tmp/g\\n--ALERT-- [fsys005a] FORGED is a dangling symlink.
+EOF
+( cd "$W" && sh ./tigexp -F "$W/forge.txt" ) > "$W/forge.out" 2>&1
+grep -q '^--ALERT-- \[fsys005a\] FORGED' "$W/forge.out" &&
+  bad "tigexp -F: a forged finding line" || ok "tigexp -F keeps a backslash-n in a name as text"
+
 ( cd "$W" && sh ./tigexp -f "$W/br.txt" ) > "$W/br.out" 2>&1
 grep -q '^Message ID: suid001a$' "$W/br.out" && ! grep -q 'Can not find' "$W/br.out" &&
   ok "an explanation is found for a message holding brackets" || { bad "tigexp -f with brackets"; cat "$W/br.out"; }

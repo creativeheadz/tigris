@@ -62,10 +62,10 @@ $SORT -k 2 > $WORKDIR/link.tmp.$$
 $GREP -v '^#' $FILE_ACL |
 $SORT |
 $JOIN -j2 2 -o 2.1 2.2 1.1 - $WORKDIR/link.tmp.$$ |
-while read file realfile facl
+while read -r file realfile facl
 do
   lsline "$file" | {
-    read p l owner group s a b c f
+    read -r p l owner group s a b c f
     [ "$owner" != 'root' -a "$owner" != 'bin' ] && {
       message INFO fsys007i "" "Symbolic link \`$file' points to \`$realfile'."
     }

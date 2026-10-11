@@ -687,7 +687,7 @@ delete $Tiger_Accepted_Log
 tiger_status=0
 for _lvl in ERROR:2 WARN:3 FAIL:4 ALERT:5
 do
-  $GREP -e "^--${_lvl%:*}-- " -e "<I>${_lvl%:*}</I>" $logtmp >/dev/null 2>&1 &&
+  $GREP -e "^--${_lvl%:*}-- " -e "^</PRE><LI><B><I>${_lvl%:*}</I>" $logtmp >/dev/null 2>&1 &&
     tiger_status=${_lvl#*:}
 done
 # A check skipped because it needs root (skip_check) could not run; one

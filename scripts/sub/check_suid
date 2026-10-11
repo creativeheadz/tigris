@@ -52,17 +52,17 @@ echo "# Checking setuid executables..."
 haveallfiles BASEDIR WORKDIR || exit 1
 
 [ -n "$TigerCheckEmbedded" -a "x$Tiger_Embed_Check_SUID" = 'xY' ] && {
-  while read file
+  while read -r file
   do
     $LS -lLd "$file" 2>/dev/null | {
-      read p l owner rest
+      read -r p l owner rest
       [ "$owner" = root ] && echo "$file" >> $TigerCheckEmbedded
     }
   done
 }
 
 haveallcmds FILECMD LS SGREP STRINGS && {
-  while read file
+  while read -r file
   do
     # where it is: itself, or inside an offline root
     here=`__here "$file"`
@@ -72,7 +72,7 @@ haveallcmds FILECMD LS SGREP STRINGS && {
     }
 
     getpermit "$file" 2>/dev/null |
-    while read _file owner group ur uw ux gr gw gx or ow ox suid sgid stk
+    while read -r _file owner group ur uw ux gr gw gx or ow ox suid sgid stk
     do
       matchlist "$owner" "${Tiger_Admin_Accounts:+$Tiger_Admin_Accounts|}root" || {
         message FAIL fsys018f "" "File $file is not owned by an administrative user."
@@ -186,7 +186,7 @@ haveallcmds SORT COMM CAT && {
 haveallcmds LS AWK && {
   [ -s $WORKDIR/suid.list.$$ ] && {
     message ALERT fsys004a "$source" 'The following setuid programs are non-standard:'
-    while read file
+    while read -r file
     do
       lsline "$file"
     done < $WORKDIR/suid.list.$$ |
@@ -206,7 +206,7 @@ haveallfiles SIGNATURE_FILE && {
   $AWK '{print $3}' $SIGNATURE_FILE |
   $SORT |
   $COMM -13 - $WORKDIR/suid.$$ |
-  while read file
+  while read -r file
   do
     loc_signature=
     fh=`__here "$file"`
@@ -225,7 +225,7 @@ haveallfiles SIGNATURE_FILE && {
     esac
     [ -n "$loc_signature" ] && {
       $GREP "$loc_signature" $SIGNATURE_FILE | {
-	read flag msgid rfile p1 p2 p3 p4 p5 p6 p7 p8 comment
+	read -r flag msgid rfile p1 p2 p3 p4 p5 p6 p7 p8 comment
 	[ -n "$rfile" -a "$file" != "$rfile" ] && {
 	  message ALERT suid001a "" "\`$file' is a setuid copy of $rfile [$comment]."
 	  lsline "$file"

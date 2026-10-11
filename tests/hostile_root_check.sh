@@ -99,10 +99,21 @@ printf 'PasswordAuthentication `>pwned.ssh`\nPermitRootLogin yes\n' > "$R/etc/ss
   sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=Y/p' "$W/tigerrc"
   echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
 } > "$W/profiles/hostile"
+# an odd name (fsys005a, listed through lsline) holding a backslash-n,
+# in both spellings: read without -r folded the two backslashes into
+# one, and awk -v then read the one as a newline, so the name was a
+# finding line of its own in the report, until October 2026
+: > "$R/etc/..zz\\\\n--ALERT-- [fsys005a] FORGED"
+: > "$R/etc/..zz\\n--ALERT-- [fsys005a] FORGED"
 chmod 644 "$W/profiles/hostile"
 
 ( cd "$W" && sh ./tigris -q --profile hostile --root "$R" ) > "$W/out" 2>&1
 json=`ls "$W"/log/*.jsonl 2>/dev/null | head -1`
+text=`ls "$W"/log/security.report.* 2>/dev/null | grep -v '\.jsonl$' | head -1`
+# the odd names with a backslash-n: reported, and never as a line of their own
+grep -q '"id":"fsys005a"' "$json" && ok "the odd names in /etc are reported: fsys005a" || bad "no fsys005a for the odd names"
+[ "`grep -c '^--ALERT-- \[fsys005a\] FORGED' "$text"`" = 0 ] &&
+  ok "a backslash-n in a name forges no finding line in the text report" || { bad "a forged finding line"; grep -n 'FORGED' "$text"; }
 [ -n "$json" ] || { echo "FAIL no report:"; cat "$W/out"; exit 1; }
 has() { grep -q -- "$1" "$json"; }
 

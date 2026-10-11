@@ -66,7 +66,7 @@ haveallcmds LS BASENAME AWK SORT || exit 1
     }
     END { for (dir in count) print "S " count[dir] " " dir }
   ' "$file" | $SORT |
-  while read kind rest
+  while read -r kind rest
   do
     case $kind in
       D)

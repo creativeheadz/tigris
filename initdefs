@@ -323,10 +323,12 @@ message()
   # starts a line of its own. No line ends in a blank, and a word too long
   # for the line still follows the tag rather than leaving it alone.
   # (printf, not echo: dash's echo reads backslashes in file names.)
+  # (control bytes other than TAB and LF become ?: a name holding CR or
+  # ESC would otherwise rewrite the line on a terminal or in cron mail)
   {
     printf '%s\n' "$_mesg"
     [ -n "$_trail" ] && printf '%s\n' "$_trail"
-  } |
+  } | $TR '\001-\010\013-\037\177' '?' |
   $AWK -v lvl="$_level" -v id="$_msgid" -v width="$__len" '
   BEGIN {
     printf("--%s-- [%s]", lvl, id)
@@ -350,10 +352,14 @@ message()
 }
  [ "$HTML" = "Y" ] && {
  [ "$_level" = "INFO" -a "x$Tiger_Show_INFO_Msgs" = 'xN' ] && return
+  # The text is data from the audited system (a file or process name):
+  # escaped, so that a name holding a tag is shown, not rendered, by the
+  # browser that opens the report, and cannot forge a finding's marker
   {
-    echo "$_mesg"
-    [ -n "$_trail" ] && echo "$_trail"
-  } |
+    printf '%s\n' "$_mesg"
+    [ -n "$_trail" ] && printf '%s\n' "$_trail"
+  } | $TR '\001-\010\013-\037\177' '?' |
+  $SED -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g' |
   $AWK '
   BEGIN {
       printf("</PRE><LI><B><I>%s</I></B> <A HREF=\"#%s\">[%s]</A>", "'"$_level"'", "'"$_msgid"'", "'"$_msgid"'");
@@ -562,10 +568,10 @@ __rootpermit()
     do
       [ -n "$__rh" ] && printf '%s\t%s\n' "$__rp" "`$LS -ldn \"$__rh\" 2>/dev/null`"
     done |
-    $AWK -F'\t' -v pw="$__rootpw" -v gr="$__rootgr" '
+    pw="$__rootpw" gr="$__rootgr" $AWK -F'\t' '
       BEGIN {
-        while ((getline l < pw) > 0) { split(l, f, ":"); if (!(f[3] in u)) u[f[3]] = f[1] }
-        while ((getline l < gr) > 0) { split(l, f, ":"); if (!(f[3] in g)) g[f[3]] = f[1] }
+        while ((getline l < ENVIRON["pw"]) > 0) { split(l, f, ":"); if (!(f[3] in u)) u[f[3]] = f[1] }
+        while ((getline l < ENVIRON["gr"]) > 0) { split(l, f, ":"); if (!(f[3] in g)) g[f[3]] = f[1] }
       }
       {
         if (split($2, a, " ") < 4) next
@@ -876,21 +882,23 @@ lsline()
   fi
   __h=`rootfile "$1"`
   [ -n "$__h" ] || return 0
+  # (the paths reach awk through the environment: -v reads backslash
+  # escapes, and a name holding \n put a line of its own in the report)
   LC_ALL=C $LS -ldn "$__h" 2>/dev/null |
-  $AWK -v pw="`rootfile /etc/passwd`" -v gr="`rootfile /etc/group`" -v hp="$__h" -v ip="$1" '
+  pw="`rootfile /etc/passwd`" gr="`rootfile /etc/group`" hp="$__h" ip="$1" $AWK '
     BEGIN {
-      while ((getline l < pw) > 0) { split(l, x, ":"); if (!(x[3] in u)) u[x[3]] = x[1] }
-      while ((getline l < gr) > 0) { split(l, x, ":"); if (!(x[3] in g)) g[x[3]] = x[1] }
+      while ((getline l < ENVIRON["pw"]) > 0) { split(l, x, ":"); if (!(x[3] in u)) u[x[3]] = x[1] }
+      while ((getline l < ENVIRON["gr"]) > 0) { split(l, x, ":"); if (!(x[3] in g)) g[x[3]] = x[1] }
     }
     {
-      i = index($0, hp)
+      i = index($0, ENVIRON["hp"])
       head = i ? substr($0, 1, i - 1) : $0
-      tail = i ? substr($0, i + length(hp)) : ""
+      tail = i ? substr($0, i + length(ENVIRON["hp"])) : ""
       n = split(head, f, " ")
       if (f[3] in u) f[3] = u[f[3]]
       if (f[4] in g) f[4] = g[f[4]]
       out = f[1]; for (k = 2; k <= n; k++) out = out " " f[k]
-      print out " " ip tail
+      print out " " ENVIRON["ip"] tail
     }'
 }
 
@@ -923,13 +931,13 @@ sysctl_configured()
   while IFS='	' read -r __f __h
   do
     [ -f "$__h" ] || continue
-    $AWK -v src="$__f" '
+    src="$__f" $AWK '
       { sub(/^[ \t]+/, "") }
       /^[#;]/ || !/=/ { next }
       {
         k = $0; sub(/[ \t]*=.*/, "", k); sub(/^-/, "", k); gsub(/\//, ".", k)
         v = $0; sub(/^[^=]*=[ \t]*/, "", v); sub(/[ \t]+$/, "", v)
-        if (k != "") printf "%s\t%s\t%s\n", k, v, src
+        if (k != "") printf "%s\t%s\t%s\n", k, v, ENVIRON["src"]
       }' "$__h"
   done < $WORKDIR/sysctl.files.$$
   delete $WORKDIR/sysctl.files.$$

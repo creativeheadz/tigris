@@ -109,7 +109,12 @@ function jtext(rec, key,    s, out, c, i, n) {
     i++; c = substr(s, i, 1)
     if (c == "n") out = out "\n"
     else if (c == "t") out = out "\t"
-    else if (c == "u") { out = out sprintf("%c", hex(substr(s, i + 1, 4))); i += 4 }
+    else if (c == "u") {
+      # a control character (CR, ESC) stays written out: it would drive
+      # the terminal or the mail reader otherwise
+      v = hex(substr(s, i + 1, 4))
+      if (v < 32 && v != 9 && v != 10) out = out "\\u" substr(s, i + 1, 4); else out = out sprintf("%c", v)
+      i += 4 }
     else out = out c
   }
   return out
