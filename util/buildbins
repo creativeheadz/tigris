@@ -17,7 +17,8 @@
 #
 # buildbins - 06/16/93
 # 
-# Build Tiger binaries: realpath, snefru, testsuid, md5, and getpermit
+# Build Tiger binaries: snefru, testsuid and md5 (realpath is util/realpath,
+# a shell script; getpermit is the shell version in initdefs)
 # for the different operating systems.
 #
 #-----------------------------------------------------------------------------
@@ -81,10 +82,8 @@ haveallcmds CAT || exit 1
 haveallfiles BASEDIR BINDIR WORKDIR || exit 1
 
 snefru="snefru.c"
-realpath="realpath.c"
 testsuid="testsuid.c"
 md5="md5.c"
-getpermit="getpermit.c"
 
 toplevel=$BASEDIR/systems/$OS
 
@@ -180,11 +179,9 @@ fi
       echo "$cmdvar=$BINDIR/$cmd; export $cmdvar"
     fi
   done << EOF
-realpath REALPATH
 snefru SNEFRU
 testsuid TESTSUID
 md5 MD5
-getpermit GETPERMIT
 EOF
 } |
 {

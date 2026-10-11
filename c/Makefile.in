@@ -20,8 +20,10 @@
 # For some reason snefru and md5 were received wrongly
 # and they could not be compiled at first (they have
 # been added later)
-BINLIST=getpermit snefru md5 testsuid
-COPTS=-Wall
+BINLIST=snefru md5 testsuid
+# These run as root on data the audited system chose (file contents):
+# bounds-checked, stack-protected, read-only relocations
+COPTS=-Wall -O2 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -Wl,-z,relro,-z,now
 INSTALL=@INSTALL@
 CC=@CC@
 

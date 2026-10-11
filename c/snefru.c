@@ -221,7 +221,10 @@ Note that the test cases given are from 8-pass Snefru (e.g., SECURITY_LEVEL=8)
 /*  Identify this version for the "what" command */
 char ident[] ="@(#) Snefru Version 2.5a November 29, 1990";
 
-typedef unsigned long int word32;
+/* 32 bits on every platform: as unsigned long this was 64 bits on
+   x86_64 and arm64, and every digest came out wrong */
+#include <stdint.h>
+typedef uint32_t word32;
 /* The standard S-Box  */
 word32 standardSBoxes[MAX_SBOX_COUNT][256]= {
 
@@ -1494,7 +1497,7 @@ main ()
 	 * result, which is printed on standard output
 	 */
 	for (i = 0; i < OUTPUT_BLOCK_SIZE; i++)
-		printf (" %08lx", hash[i]);
+		printf (" %08x", (unsigned) hash[i]);
 	/*
 	 * Note that if the user wishes to view the output as a sequence
 	 * of bytes, then the byte order is the same as the order
