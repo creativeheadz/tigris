@@ -44,24 +44,24 @@ go() {  # go TREE setting...
 has()   { grep -F -q -- "$1" "$W/out"; }
 count() { grep -F -c -- "$1" "$W/out"; }
 
-# Hera: ext4 on NVMe, /dev/shm without noexec, a mouse's battery
-tree hera <<'EOF'
+# the desktop: ext4 on NVMe, /dev/shm without noexec, a mouse's battery
+tree desk <<'EOF'
 /dev/nvme0n1p2 / ext4 rw,relatime,errors=remount-ro 0 0
 /dev/nvme0n1p1 /boot/efi vfat rw,relatime 0 0
-/dev/nvme1n1p1 /media/andrei/Data ext4 rw,nosuid,nodev,relatime 0 0
+/dev/nvme1n1p1 /srv/data ext4 rw,nosuid,nodev,relatime 0 0
 tmpfs /dev/shm tmpfs rw,nosuid,nodev,inode64 0 0
 /dev/loop3 /snap/core22/2045 squashfs ro,nodev,relatime 0 0
 EOF
-blockdev hera nvme0n1p2; blockdev hera nvme1n1p1; battery hera hidpp_battery_0 Device
-go hera
+blockdev desk nvme0n1p2; blockdev desk nvme1n1p1; battery desk hidpp_battery_0 Device
+go desk
 has '--INFO-- [stor003i] /tmp is part of the root file system' && has '--INFO-- [stor002i] /dev/shm is mounted without noexec.' &&
-  [ "`count stor001w`" = 0 ] && ok "Hera: /tmp not separate, /dev/shm without noexec (INFO), nosuid and nodev there" || { bad "hera mounts"; cat "$W/out"; }
-has '--INFO-- [stor005i] Some local file systems are not encrypted' && has 'Not encrypted: / (/dev/nvme0n1p2), /media/andrei/Data (/dev/nvme1n1p1).' &&
-  [ "`count stor004w`" = 0 ] && ok "Hera: unencrypted disks INFO, /boot and snaps left out, a mouse's battery is not a laptop's" || { bad "hera crypt"; cat "$W/out"; }
+  [ "`count stor001w`" = 0 ] && ok "the desktop: /tmp not separate, /dev/shm without noexec (INFO), nosuid and nodev there" || { bad "desk mounts"; cat "$W/out"; }
+has '--INFO-- [stor005i] Some local file systems are not encrypted' && has 'Not encrypted: / (/dev/nvme0n1p2), /srv/data (/dev/nvme1n1p1).' &&
+  [ "`count stor004w`" = 0 ] && ok "the desktop: unencrypted disks INFO, /boot and snaps left out, a mouse's battery is not a laptop's" || { bad "desk crypt"; cat "$W/out"; }
 [ "`count stor007w`" = 0 ] && ok "core dumps to systemd-coredump: nothing" || { bad "coredump pipe"; cat "$W/out"; }
 
 # A laptop: the same disks, its own battery
-cp -r "$W/hera" "$W/laptop"; battery laptop BAT0
+cp -r "$W/desk" "$W/laptop"; battery laptop BAT0
 go laptop
 has '--WARN-- [stor004w] This machine runs on a battery' && ok "a laptop's own battery: stor004w" || { bad "laptop"; cat "$W/out"; }
 
@@ -86,29 +86,29 @@ go luks
 [ "`count stor006w`" = 0 ] && ok "a swap file on the encrypted root: nothing" || { bad "swapfile"; cat "$W/out"; }
 
 # Core dumps as files, then limited
-echo core > "$W/hera/proc/sys/kernel/core_pattern"
-go hera
+echo core > "$W/desk/proc/sys/kernel/core_pattern"
+go desk
 has '--WARN-- [stor007w] A program that crashes writes its memory to a core file' && ok "core_pattern \"core\", no limit: stor007w" || { bad "core"; cat "$W/out"; }
-echo '*    hard    core    0' > "$W/hera/etc/security/limits.d/10-core.conf"
-go hera
+echo '*    hard    core    0' > "$W/desk/etc/security/limits.d/10-core.conf"
+go desk
 [ "`count stor007w`" = 0 ] && ok "'* hard core 0' in limits.d: nothing" || { bad "core limit"; cat "$W/out"; }
 
 # USB storage, when the policy says none
-go hera "Tiger_Storage_NoUSB=Y"
+go desk "Tiger_Storage_NoUSB=Y"
 has '--WARN-- [stor008w] USB storage can be used' && ok "Tiger_Storage_NoUSB=Y, nothing blocks it: stor008w" || { bad "usb"; cat "$W/out"; }
-mkdir -p "$W/hera/etc/modprobe.d"; printf 'install usb-storage /bin/false\nblacklist usb-storage\n' > "$W/hera/etc/modprobe.d/usb.conf"
-go hera "Tiger_Storage_NoUSB=Y"
+mkdir -p "$W/desk/etc/modprobe.d"; printf 'install usb-storage /bin/false\nblacklist usb-storage\n' > "$W/desk/etc/modprobe.d/usb.conf"
+go desk "Tiger_Storage_NoUSB=Y"
 [ "`count stor008w`" = 0 ] && ok "usb-storage blocked in modprobe.d: nothing" || { bad "usb blocked"; cat "$W/out"; }
-rm -f "$W/hera/etc/modprobe.d/usb.conf"; go hera
+rm -f "$W/desk/etc/modprobe.d/usb.conf"; go desk
 [ "`count stor008w`" = 0 ] && ok "by default USB storage is not looked at" || { bad "usb default"; cat "$W/out"; }
 
 # FireWire storage, when the policy says none
-go hera "Tiger_Storage_NoFireWire=Y"
+go desk "Tiger_Storage_NoFireWire=Y"
 has '--WARN-- [stor010w] FireWire can be used' && ok "Tiger_Storage_NoFireWire=Y, nothing blocks it: stor010w" || { bad "firewire"; cat "$W/out"; }
-printf 'blacklist firewire-core\nblacklist firewire-ohci\n' > "$W/hera/etc/modprobe.d/firewire.conf"
-go hera "Tiger_Storage_NoFireWire=Y"
+printf 'blacklist firewire-core\nblacklist firewire-ohci\n' > "$W/desk/etc/modprobe.d/firewire.conf"
+go desk "Tiger_Storage_NoFireWire=Y"
 [ "`count stor010w`" = 0 ] && ok "FireWire blacklisted in modprobe.d: nothing" || { bad "firewire blocked"; cat "$W/out"; }
-rm -f "$W/hera/etc/modprobe.d/firewire.conf"; go hera
+rm -f "$W/desk/etc/modprobe.d/firewire.conf"; go desk
 [ "`count stor010w`" = 0 ] && ok "by default FireWire storage is not looked at" || { bad "firewire default"; cat "$W/out"; }
 
 # A container

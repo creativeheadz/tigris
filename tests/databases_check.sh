@@ -41,7 +41,7 @@ printf '[mysqld]\nskip-grant-tables\nlocal-infile = ON\nuser = root\n' > "$r/etc
 printf '[client]\nlocal-infile = 1\n' > "$r/etc/my.cnf"
 printf 'proof that bad.cnf was read\n' > "$r/etc/mysql/debian.cnf"
 chmod 755 "$r/var/lib/mysql"; chmod 644 "$r/etc/mysql/debian.cnf"
-printf "data_directory = '/var/lib/postgresql/16/main'\npassword_encryption = md5\nssl = off\nlisten_addresses = 'localhost, 192.168.7.7'\n" > "$r/etc/postgresql/16/main/postgresql.conf"
+printf "data_directory = '/var/lib/postgresql/16/main'\npassword_encryption = md5\nssl = off\nlisten_addresses = 'localhost, 192.0.2.7'\n" > "$r/etc/postgresql/16/main/postgresql.conf"
 printf 'local all all peer\nhost all all 0.0.0.0/0 trust\nhost all all ::/0 scram-sha-256\n' > "$r/etc/postgresql/16/main/pg_hba.conf"
 chmod 755 "$r/var/lib/postgresql/16/main"
 printf "# nothing set\n" > "$r/var/lib/pgsql/data/postgresql.conf"
@@ -92,7 +92,7 @@ has "Line 2 of \`/etc/postgresql/16/main/pg_hba.conf' authenticates with 'trust'
   ok "trust in pg_hba.conf: dbs005f with its line" || { bad "trust"; cat "$W/out"; }
 has "[dbs006w] Passwords are stored as md5 (/etc/postgresql/16/main/postgresql.conf):" &&
   ok "md5 passwords: dbs006w" || { bad "md5"; cat "$W/out"; }
-has "[dbs008w] PostgreSQL takes unencrypted connections from the network (ssl is off in /etc/postgresql/16/main/postgresql.conf, listening on 192.168.7.7)." &&
+has "[dbs008w] PostgreSQL takes unencrypted connections from the network (ssl is off in /etc/postgresql/16/main/postgresql.conf, listening on 192.0.2.7)." &&
   ok "ssl off on a network socket: dbs008w" || { bad "ssl off"; cat "$W/out"; }
 has "[dbs007f] PostgreSQL's data directory \`/var/lib/postgresql/16/main' is readable by anyone:" &&
   has "[dbs007f] PostgreSQL's data directory \`/var/lib/pgsql/data' is readable by anyone:" &&

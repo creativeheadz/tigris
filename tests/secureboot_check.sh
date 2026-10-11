@@ -4,7 +4,7 @@
 #
 # Each case is a /sys with the firmware's SecureBoot and SetupMode
 # variables written the way efivarfs shows them (four attribute bytes,
-# then the value; Hera's say 6 0 0 0 1) and a lockdown file, fed through
+# then the value; the desktop's say 6 0 0 0 1) and a lockdown file, fed through
 # Tiger_Sysctl_Root. Needs no root, no UEFI and no Secure Boot.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
@@ -43,7 +43,7 @@ count() { grep -c -- "$1" "$W/out"; }
 
 tree locked 1 0 "none [integrity] confidentiality"; go locked
 has '--INFO-- [boot012i] Secure Boot is on, and kernel lockdown is integrity.' && [ "`count .`" = 1 ] &&
-  ok "Secure Boot on, lockdown integrity (Hera): one INFO" || { bad "locked"; cat "$W/out"; }
+  ok "Secure Boot on, lockdown integrity (the desktop): one INFO" || { bad "locked"; cat "$W/out"; }
 tree open 1 0 "[none] integrity confidentiality"; go open
 has 'Secure Boot is on, and kernel lockdown is none.' &&
   has '--WARN-- [lin040w] Secure Boot is on, but the kernel is not locked down: root can still change the running kernel, which undoes what Secure Boot verified. Lockdown is none.' &&

@@ -32,7 +32,7 @@ echo "$X root root  1 1 1  1 1 1  1 0 1  0 0 0" | pathmsg tst001 tst002 "$X" roo
 echo "$D root root  1 1 1  1 0 1  1 1 1  0 0 0" | pathmsg tst001 tst002 "$D" root "Dir" ""
 echo "$X bin bin    1 1 1  1 0 1  1 0 1  0 0 0" | pathmsg tst001 tst002 "$X" root "Owner" ""
 echo "$D bin bin    1 1 1  1 0 1  1 0 1  0 0 0" | pathmsg tst001 tst002 "$D" root "Dirowner" ""
-echo "$X nobody nogroup  1 1 1  1 0 1  1 0 1  0 0 0" | pathmsg tst001 tst002 "$X" andrei "User" ""
+echo "$X nobody nogroup  1 1 1  1 0 1  1 0 1  0 0 0" | pathmsg tst001 tst002 "$X" alice "User" ""
 echo "$D root root  1 1 1  1 1 1  1 1 1  0 0 1" | pathmsg tst001 tst002 "$X" root "Sticky" ""
 EOF
 ( cd "$W" && TIGERHOMEDIR=$W sh ./drive.sh ) > "$W/out" 2>&1

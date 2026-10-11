@@ -12,7 +12,7 @@
 # silent, input without any is fire007w.
 #
 # The docker-* fixtures are the rules Docker writes for published ports:
-# Hera (Docker 29.8.2, iptables-nft), and docker:dind containers (29.8.2
+# the desktop (Docker 29.8.2, iptables-nft), and docker:dind containers (29.8.2
 # with its iptables and its nftables backend, 27.5.1) publishing TCP and
 # UDP ports on every address, one on loopback and one on the container's
 # own address, and one on an IPv6 network, then ufw enabled beside them.
@@ -135,9 +135,9 @@ has 'Incoming IPv4 traffic is denied by default (iptables-legacy INPUT: policy D
 
 # Docker: ports published on every address are forwarded before the input
 # chain, so they are open even where fire003i says the host is closed
-go "cat $FX/docker-hera.nft"
+go "cat $FX/docker-desktop.nft"
 has "--WARN-- [fire005w] Port 2283/tcp, published by Docker on every IPv4 address, is open to the network: Docker forwards it before the input chain, and no rule restricts it. Forwarded to 172.18.0.5:2283. DOCKER-USER is empty. To restrict it, publish it on one address only (-p 127.0.0.1:2283:2283 keeps it on the host), or drop what should not reach it in DOCKER-USER, e.g. 'iptables -I DOCKER-USER -i eth0 ! -s YOUR-NETWORK -j DROP'." &&
-  [ "`count fire005w`" = 1 ] && ok "Hera: Immich's 2283 is open over IPv4 (IPv6 goes to docker-proxy, a listener the input chain filters)" || { bad "docker on Hera"; cat "$W/out"; }
+  [ "`count fire005w`" = 1 ] && ok "the desktop: Immich's 2283 is open over IPv4 (IPv6 goes to docker-proxy, a listener the input chain filters)" || { bad "docker on the desktop"; cat "$W/out"; }
 go "cat $FX/docker-xt.nft"
 has '[fire005w] Port 8080/tcp, published by Docker on every IPv4 address' && has '[fire005w] Port 5353/udp, published by Docker on every IPv4 address' &&
   has '[fire005w] Port 8082/tcp, published by Docker on 172.17.0.2,' && has '[fire005w] Port 8443/tcp, published by Docker on every IPv6 address' &&

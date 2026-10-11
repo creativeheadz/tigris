@@ -36,7 +36,7 @@ PTCP
 n*:22
 p2
 csyncthing
-Landrei
+Lalice
 tIPv4
 PUDP
 n*:21027
@@ -48,16 +48,16 @@ PUDP
 n*:$3
 tIPv4
 PTCP
-n192.168.1.142:56176->81.150.150.132:443
+n192.0.2.10:56176->203.0.113.9:443
 p3
 cbrave
-Landrei
+Lalice
 tIPv4
 PUDP
-n192.168.1.142:$4
+n192.0.2.10:$4
 p4
 cnode
-Landrei
+Lalice
 tIPv4
 PTCP
 n*:3000
@@ -101,13 +101,13 @@ has() { grep -F -q "$1" "$A"; }
 has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The process `sshd'"'"' is listening on socket 22 (TCP) on every interface."' &&
   ok "root listener on every interface: lin002i WARN" || bad "sshd lin002i WARN"
 [ "`grep -c 'sshd' "$A"`" = 1 ] && ok "and only that, no INFO copy of it" || bad "sshd reported `grep -c sshd "$A"` times"
-has '"id":"lin003w","check":"check_listeningprocs","message":"The process `syncthing'"'"' is listening on socket 21027 (UDP on every interface) is run by andrei."' &&
+has '"id":"lin003w","check":"check_listeningprocs","message":"The process `syncthing'"'"' is listening on socket 21027 (UDP on every interface) is run by alice."' &&
   ok "a fixed port keeps its own finding" || bad "syncthing 21027"
-has '"message":"The process `syncthing'"'"' is listening on ephemeral ports (UDP on every interface) is run by andrei.","detail":"Ports 41402, 56706; the kernel gives out 32768-60999, so they change from run to run."' &&
+has '"message":"The process `syncthing'"'"' is listening on ephemeral ports (UDP on every interface) is run by alice.","detail":"Ports 41402, 56706; the kernel gives out 32768-60999, so they change from run to run."' &&
   ok "two ephemeral ports of one process: one finding, the ports in the detail" || bad "syncthing ephemeral"
-has '"message":"The process `brave'"'"' is listening on ephemeral ports (UDP on 192.168.1.142 interface) is run by andrei.","detail":"Port 47778;' &&
+has '"message":"The process `brave'"'"' is listening on ephemeral ports (UDP on 192.0.2.10 interface) is run by alice.","detail":"Port 47778;' &&
   ok "one ephemeral port on an address: Port, singular" || bad "brave ephemeral"
-has '"message":"The process `node'"'"' is listening on socket 3000 (TCP on every interface) is run by andrei."' &&
+has '"message":"The process `node'"'"' is listening on socket 3000 (TCP on every interface) is run by alice."' &&
   ok "a TCP listener on a fixed port, user process: lin003w with the port" || bad "node 3000"
 has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The process `dhclient'"'"' is listening on ephemeral ports (UDP) on every interface.","detail":"Port 44444;' &&
   ok "a root process on an ephemeral port: lin002i, folded the same way" || bad "dhclient lin002i"
@@ -123,7 +123,7 @@ grep -q '"detail":"Ports 37201, 58861;' "$W/b.jsonl" && ok "the second run's det
 # The range comes from the kernel: narrower, and 56706 is a port of its own
 printf '40000\t50000\n' > "$W/sys/proc/sys/net/ipv4/ip_local_port_range"
 go "Tiger_LSOF_Cmd='cat $W/a.lsof'" "$W/c.jsonl"
-grep -F -q 'syncthing'"'"' is listening on ephemeral ports (UDP on every interface) is run by andrei.","detail":"Port 41402; the kernel gives out 40000-50000' "$W/c.jsonl" &&
+grep -F -q 'syncthing'"'"' is listening on ephemeral ports (UDP on every interface) is run by alice.","detail":"Port 41402; the kernel gives out 40000-50000' "$W/c.jsonl" &&
   grep -F -q 'syncthing'"'"' is listening on socket 56706 (UDP' "$W/c.jsonl" &&
   ok "the range is read from ip_local_port_range" || bad "range from the kernel: `grep syncthing "$W/c.jsonl"`"
 printf '32768\t60999\n' > "$W/sys/proc/sys/net/ipv4/ip_local_port_range"
@@ -141,7 +141,7 @@ PTCP
 n*:22
 p2
 csyncthing
-Landrei
+Lalice
 tIPv6
 PTCP
 n*:22000
@@ -159,7 +159,7 @@ PTCP
 n[::1]:631
 p4
 cnode
-Landrei
+Lalice
 tIPv6
 PTCP
 n[::1]:3001
@@ -177,9 +177,9 @@ go "Tiger_LSOF_Cmd='cat $W/v6.lsof'" "$W/v6.jsonl"
 A="$W/v6.jsonl"
 has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The process `sshd'"'"' is listening on socket 22 (TCP) on every interface."' &&
   [ "`grep -c 'sshd' "$A"`" = 1 ] && ok "lsof: sshd on 0.0.0.0 and on :: is one finding" || bad "lsof sshd: `grep sshd "$A"`"
-has '"message":"The process `syncthing'"'"' is listening on socket 22000 (TCP on every interface) is run by andrei."' &&
+has '"message":"The process `syncthing'"'"' is listening on socket 22000 (TCP on every interface) is run by alice."' &&
   ok "lsof: a dual-stack listener is reported" || bad "lsof syncthing 22000"
-has '"message":"The process `syncthing'"'"' is listening on ephemeral ports (UDP on every interface) is run by andrei.","detail":"Ports 43283, 51780;' &&
+has '"message":"The process `syncthing'"'"' is listening on ephemeral ports (UDP on every interface) is run by alice.","detail":"Ports 43283, 51780;' &&
   ok "lsof: IPv4 and IPv6 ephemeral ports fold into one finding" || bad "lsof syncthing ephemeral"
 has '"level":"INFO","id":"lin002i","check":"check_listeningprocs","message":"The process `cupsd'"'"' is listening on socket 631 (TCP) on loopback interface."' &&
   ok "lsof: [::1] is loopback" || bad "lsof cupsd ::1"
@@ -241,8 +241,8 @@ Proto Recv-Q Send-Q Local Address           Foreign Address         State       
 tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      root       7871       1239/sshd
 tcp6       0      0 :::22                   :::*                    LISTEN      root       8654       1239/sshd
 tcp6       0      0 ::1:631                 :::*                    LISTEN      root       15584      1221/cupsd
-tcp6       0      0 :::22000                :::*                    LISTEN      andrei     21585      1988/syncthing
-udp6       0      0 :::21027                :::*                                andrei     20753      1988/syncthing
+tcp6       0      0 :::22000                :::*                    LISTEN      alice     21585      1988/syncthing
+udp6       0      0 :::21027                :::*                                alice     20753      1988/syncthing
 raw6       0      0 :::58                   :::*                    7           root       23567      994/NetworkManager
 EOF
 go "Tiger_Netstat_Cmd='cat $W/netstat.txt'" "$W/ns.jsonl"
@@ -252,13 +252,13 @@ has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The
   [ "`grep -c 'sshd' "$A"`" = 1 ] && ok "netstat: :::22 is every interface, one finding with 0.0.0.0:22" || bad "netstat sshd: `grep sshd "$A"`"
 has '"message":"The process `cupsd'"'"' is listening on socket 631 (TCP) on loopback interface."' &&
   ok "netstat: ::1:631 is loopback on port 631" || bad "netstat cupsd"
-has '"message":"The process `syncthing'"'"' is listening on socket 22000 (TCP on every interface) is run by andrei."' &&
-  has '"message":"The process `syncthing'"'"' is listening on socket 21027 (UDP on every interface) is run by andrei."' &&
+has '"message":"The process `syncthing'"'"' is listening on socket 22000 (TCP on every interface) is run by alice."' &&
+  has '"message":"The process `syncthing'"'"' is listening on socket 21027 (UDP on every interface) is run by alice."' &&
   ok "netstat: tcp6 and udp6 listeners" || bad "netstat syncthing"
 grep -q 'NetworkManager' "$A" && bad "netstat: a raw socket was reported" || ok "netstat: raw sockets are left out"
 
 # /proc itself, the last resort (Alpine without iproute2 has only busybox's
-# lsof and netstat): the kernel's tables as Hera has them, and fd links
+# lsof and netstat): the kernel's tables as a desktop has them, and fd links
 # from the processes to their sockets' inodes
 P="$W/sys/proc"; mkdir -p "$P/net"
 cat > "$P/net/tcp" <<'EOF'

@@ -33,7 +33,7 @@ or restrict who can reach it in the DOCKER-USER chain, which Docker
 consults before its own rules and never changes, for instance letting in
 only the local network on the outside interface:
 
-    iptables -I DOCKER-USER -i eth0 ! -s 192.168.1.0/24 -j DROP
+    iptables -I DOCKER-USER -i eth0 ! -s 192.168.0.0/16 -j DROP
 
 (ip6tables for IPv6). Docker's nftables backend has no DOCKER-USER chain;
 there, a drop rule in a forward chain of a table of your own does the

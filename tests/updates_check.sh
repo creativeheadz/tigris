@@ -4,7 +4,7 @@
 # of its own
 #
 # The package managers' answers are scripts replaying what the real ones
-# printed on 7 October 2026: apt-get -s dist-upgrade on Hera, dnf
+# printed on 7 October 2026: apt-get -s dist-upgrade on the desktop, dnf
 # updateinfo list --security on Fedora 44 (dnf 5) and Rocky 9 (dnf 4),
 # zypper --xmlout list-patches on Leap 16 (one patch's category made
 # security), rpm -q --last kernel-core in its usual shape. Files come

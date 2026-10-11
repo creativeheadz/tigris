@@ -74,7 +74,7 @@ Settled, so they do not have to be argued again:
 | Change over time     | `tigris-diff` and `tigris-accept`; `tigercron`                  | Mostly point-in-time                     |
 | Package integrity    | dpkg, rpm, apk, pacman, one finding id per kind of problem      | Limited                                  |
 | Offline audit        | `tigris --root`: every check reads an image except the ten that need the running system, nothing in it is run; a container image with every distribution's package tools | None |
-| Tests                | 102 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
+| Tests                | 103 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
 | Lynis parity         | Linux groups covered in Phase A (see below); macOS, BSD, Solaris-AIX ride the platform phases | 43 test groups across Linux, macOS, BSD, Solaris |
 
 Lynis is broad, maintained and popular (16k GitHub stars). Tigris
@@ -196,7 +196,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   So does `check_known`'s inetd backdoor test, which costs nothing when
   there is no inetd.
 - [x] `tigerrc-quick`: everything except the filesystem scan, about a
-  minute where the full run takes three (62 s on Hera, 175 lines).
+  minute where the full run takes three (62 s on the reference desktop, 175 lines).
 
 *New checks.*
 - [x] `check_sysctl`: kernel pointer and log restriction, Yama, ASLR,
@@ -265,7 +265,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   range are one finding per process, protocol and address, with the
   ports in the detail. Browsers and Syncthing hold UDP sockets on ports
   that change every run; with the port in the message, the first real
-  `--since` run on Hera reported 9 of them as new. Also: a root
+  `--since` run on the reference desktop reported 9 of them as new. Also: a root
   listener on every interface was reported as a WARN and again as an
   INFO (`&& message || message`, and `message()` returns non-zero).
   `tests/listening_check.sh` feeds `lsof -F` fixtures (`Tiger_LSOF_Cmd`).
@@ -278,19 +278,19 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   ends with a reject). Never runs nft or iptables unless their tables
   are already in the kernel (both would load modules). Replaces
   `lin019f`, which compared `iptables -nL` with an empty table: Docker's
-  rules made it pass on Hera while INPUT accepted everything, and an
+  rules made it pass on the reference desktop while INPUT accepted everything, and an
   nftables-only firewall made it fail. Fixtures captured from real
   rulesets in containers with their own network namespace (ufw on
   Ubuntu, firewalld on Fedora, nft on Debian); 15 assertions.
 - [x] `check_listeningprocs` reports IPv6 listeners. It kept only lsof's
   IPv4 records, so a daemon on `[::]` or on a dual-stack socket was never
-  seen (on Hera: Syncthing's sync port, 22000); the netstat fallback cut
+  seen (on the reference desktop: Syncthing's sync port, 22000); the netstat fallback cut
   `:::22` at the first colon and misread every `udp6` line. The sockets
   now come from `ss` when there is one (iproute2, on every current
   distribution, where lsof often is not), then lsof, then netstat. A
   process on `0.0.0.0` and on `::` is one finding, `::1` is loopback,
   and the user is each process's effective uid from `/proc`, as lsof
-  has it, so the findings do not depend on the tool: on Hera ss and
+  has it, so the findings do not depend on the tool: on the reference desktop ss and
   lsof give the same 12. A host without lsof no longer gets an
   `init001e` error from the check when netstat is there.
   `tests/listening_check.sh` has fixtures for all three tools and
@@ -309,15 +309,15 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   `dnat to` or nft's `xt target "DNAT"`) and its nftables backend
   (`docker-bridges`); on a host without nft (Ubuntu ships iptables-nft
   alone) from `iptables -S`, only while Docker runs, since listing a nat
-  table that does not exist creates it. On Hera: Immich's 2283 over
-  IPv4. Fixtures from Hera and docker:dind (Docker 29.8.2 with both
+  table that does not exist creates it. On the reference desktop: Immich's 2283 over
+  IPv4. Fixtures from the reference desktop and docker:dind (Docker 29.8.2 with both
   backends, 27.5.1, ufw); `tests/firewall_check.sh` makes 28
   assertions, under mawk, gawk and busybox awk.
 - [x] **`deb_statoverride`** (lin039w): on Debian and Ubuntu, files whose
   mode or owner differs from what `dpkg-statoverride` sets for them
   (crontab and plocate setgid, the D-Bus launch helper, `/etc/ssl/private`),
   with the chown and chmod that restore them. It is what remains of
-  `lin038w` for dpkg, which records no other modes. Silent on Hera, whose
+  `lin038w` for dpkg, which records no other modes. Silent on the reference desktop, whose
   six overrides all match; `tests/statoverride_check.sh` needs no root,
   and `tests/deb_checks.sh` plants a real override in Debian stable, sid
   and Ubuntu 24.04. `Tiger_Deb_StatOverride` turns it off.
@@ -352,24 +352,24 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   enrol keys: boot011w; on: boot012i; legacy BIOS: boot010i), and, when
   it is on, kernel lockdown: a verified kernel that is not locked down
   lets root load unsigned code into it (lin040w). Says nothing in a
-  container, whose /sys/firmware is empty. Hera: on, lockdown
+  container, whose /sys/firmware is empty. The reference desktop: on, lockdown
   integrity. `tests/secureboot_check.sh` builds a /sys per case.
 - [x] **`check_mac`**: AppArmor or SELinux enforcing (mac003i, with
   AppArmor's profiles counted by mode and the complain ones named), or
   not: neither active, or AppArmor with no profile enforced (mac001w),
   SELinux permissive (mac002w). Complain-mode profiles are not a finding
   of their own, since Ubuntu ships several that way (Transmission,
-  LibreOffice on Hera). **`check_audit`**: auditd running (aud001w), with
+  LibreOffice on the reference desktop). **`check_audit`**: auditd running (aud001w), with
   rules (aud002w, aud003i), and logs kept across reboots: journald's
   Storage= as systemd resolves journald.conf and its drop-ins, or a
-  syslog daemon (logf008w). Hera: AppArmor enforcing 26 profiles, no
+  syslog daemon (logf008w). The reference desktop: AppArmor enforcing 26 profiles, no
   auditd, journal on disk.
 - [x] **`check_timesync`**: a time daemon running (time001w), only one
   (time004w), and the clock synchronised (time002w, time003i): chronyc
   tracking for chronyd, which marks the kernel clock synchronised only
   with rtcsync, timedatectl for the others. `check_ntp` stays for an
   ntpd's configuration. Containers, on their host's clock, are left
-  alone. Hera: systemd-timesyncd, synchronised.
+  alone. The reference desktop: systemd-timesyncd, synchronised.
 - [x] **`check_updates`**, offline: security updates waiting (upd003f)
   from what the package manager has cached (apt's -security suites,
   dnf's security advisories, zypper's security patches; pacman and apk
@@ -377,7 +377,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   they are installed automatically (upd002w: unattended-upgrades, Linux
   Mint's update automation, dnf-automatic with apply_updates); and a
   reboot pending (upd001w: /run/reboot-required, the running kernel's
-  modules gone, a newer kernel-core installed). Hera: 12 security
+  modules gone, a newer kernel-core installed). The reference desktop: 12 security
   updates waiting, none installed automatically.
 - [x] **`check_sudo`**, from `cvtsudoers -e` (includes followed, aliases
   expanded): NOPASSWD for every command (sudo001w), for named commands
@@ -385,7 +385,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   commands (sudo004w), sudoers files not root's alone (sudo005w).
   **`check_pam`**: no password quality module (pam001w), a minimum
   length under 8 (pam002w), no lockout after failed logins (pam003w),
-  over /etc/pam.d and openSUSE's /usr/lib/pam.d. Hera: andrei's
+  over /etc/pam.d and openSUSE's /usr/lib/pam.d. The reference desktop: the maintainer's
   NOPASSWD, Mint's four NOPASSWD helpers, neither PAM module.
 - [x] **`check_units`**, what check_crontabs does for cron, for the
   enabled systemd services and those their timers and sockets start
@@ -396,7 +396,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   of package units replaced or extended there (sysd008i). pathmsg now
   passes over a sticky directory above the path, such as /tmp, which
   lets nobody replace what is not theirs; that changes check_crontabs'
-  and check_aliases' findings the same way. Hera: Wegweiser, the three backup
+  and check_aliases' findings the same way. The reference desktop: Wegweiser, the three backup
   units and two others local, nothing writable.
 - [x] **`check_storage`**: /tmp, /dev/shm and a separate /var/tmp without
   nosuid or nodev (stor001w) or noexec (stor002i), /tmp not a file
@@ -405,7 +405,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   machine with a battery of its own (stor004w) and an INFO elsewhere
   (stor005i); swap unencrypted under an encrypted root (stor006w); core
   dumps written as files with no limit (stor007w); USB storage when
-  Tiger_Storage_NoUSB=Y says there should be none (stor008w). Hera:
+  Tiger_Storage_NoUSB=Y says there should be none (stor008w). The reference desktop:
   /tmp on /, /dev/shm without noexec, nothing encrypted (its only
   battery is the mouse's).
 - [x] **`check_containers`**: the Docker or Podman socket usable by
@@ -415,7 +415,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   privileged or given SYS_ADMIN (cont004w), the host's PID namespace
   (cont005w) or network (cont006i), the engine's socket mounted
   (cont007w), the host's / or /etc mounted writable (cont008w). A new
-  category, containers. Hera: andrei in the docker group, dockerd as
+  category, containers. The reference desktop: the maintainer in the docker group, dockerd as
   root, Immich's four containers clean.
 - [x] **Setuid and setgid against the package database**: fsys004a and
   fsys011a now compare with what the installed packages ship setuid or
@@ -435,7 +435,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   profile stops the run (con013e). The run record names the profile,
   and tigris-diff counts it as part of the configuration.
 - [x] **Checks that need root are skipped, not guessed.** Run as an
-  ordinary user, a quick run on Hera gave false findings (grpck could
+  ordinary user, a quick run on the reference desktop gave false findings (grpck could
   not open /etc/gshadow, GRUB's configuration unreadable, dpkg files
   reported missing), lost real ones (sshd -T, the listening processes
   of others, the firewall) or errors. Twelve checks now say `# Tigris:
@@ -451,7 +451,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   nothing and said nothing. busybox's tools now count as missing, and
   the last resort is the kernel's own tables (/proc/net/tcp, tcp6, udp,
   udp6) with the processes found through their fd links; in an Alpine
-  container it now reports a busybox nc on port 2222. On Hera, as root,
+  container it now reports a busybox nc on port 2222. On the reference desktop, as root,
   /proc and ss give the same 12 findings. Tiger_Listening_Source=proc
   forces it.
 
@@ -500,7 +500,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   (`perm…`, `embed…`) but not a *new* id built from a variable: a
   mutation test confirmed `message WARN yyy$x"w"` passes unnoticed.
   Closed from the other side: the smoke test now checks that every id
-  in a real run's JSON has an explanation (28 ids on Hera).
+  in a real run's JSON has an explanation (28 ids on the reference desktop).
 - [x] Two runs in the same minute overwrite each other's report: the
   file names carried the time only to the minute. They now carry
   seconds (`security.report.HOST.YYMMDD-HH:MM:SS`); the byte sort in
@@ -535,7 +535,7 @@ what scripts and cron see.
   it is the GRUB 2 boot check.
 
 **Profiles** (also the answer to "lean")
-- [x] `quick`: leaves the filesystem scan out. 62 s on Hera, where the
+- [x] `quick`: leaves the filesystem scan out. 62 s on the reference desktop, where the
   full run takes about three minutes on a busy disk.
 - [x] `server`, `desktop` and `container`, each a short tigerrc selecting
   the checks and the prune list that make sense for that kind of machine

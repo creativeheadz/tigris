@@ -2,7 +2,7 @@
 """Render the tiger with the Kestrel's model: FLUX.2 klein, 512px, 4 steps.
 
 Runs on a machine with the card and the weights (Zeus: the flux venv in
-/home/andrei/flux-venv, the weights in /home/andrei/.cache/huggingface):
+~/flux-venv, the weights in ~/.cache/huggingface):
 
   python render.py OUTDIR [NAME ...]
 
@@ -20,7 +20,7 @@ import subprocess
 import sys
 import time
 
-os.environ.setdefault("HF_HOME", "/home/andrei/.cache/huggingface")
+os.environ.setdefault("HF_HOME", os.path.expanduser("~/.cache/huggingface"))
 
 MODEL = "black-forest-labs/FLUX.2-klein-4B"
 

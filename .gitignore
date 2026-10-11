@@ -4,3 +4,7 @@ bin/
 doc/explanations.html
 __pycache__/
 _site/
+# reports a run here would leave (ci.yml writes one into the checkout)
+*.jsonl
+security.report.*
+/report.jsonl

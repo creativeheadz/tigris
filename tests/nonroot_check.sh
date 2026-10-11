@@ -61,7 +61,7 @@ esac
 # tigris-diff: a check skipped in one run is left out of both sides
 cat > "$W/a.jsonl" <<'EOF'
 {"type":"run","schema":1,"id":"a","tool":"tigris","version":"x","host":"h","os":"Linux","release":"r","arch":"x86_64","config":"./tigerrc","start":"2026-10-07T10:00:00Z"}
-{"type":"finding","level":"WARN","id":"sudo001w","check":"check_sudo","message":"andrei may run any command as root with sudo, without a password: whoever gets that account's session gets root."}
+{"type":"finding","level":"WARN","id":"sudo001w","check":"check_sudo","message":"alice may run any command as root with sudo, without a password: whoever gets that account's session gets root."}
 {"type":"finding","level":"WARN","id":"time001w","check":"check_timesync","message":"No time synchronisation daemon is running."}
 {"type":"summary","id":"a","end":"2026-10-07T10:01:00Z","counts":{"ALERT":0,"FAIL":0,"WARN":2,"INFO":0,"ERROR":0},"skipped":0}
 EOF

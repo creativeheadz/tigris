@@ -12,7 +12,7 @@ One JSON object per line, UTF-8-safe plain ASCII, three kinds in this
 order:
 
 ```
-{"type":"run","schema":1,"id":"…","tool":"tigris","version":"3.2.4, 2026.10.04.15.40","host":"Hera","os":"Linux","release":"7.0.0-38-generic","arch":"x86_64","config":"./tigerrc","start":"2026-10-05T07:12:03Z"}
+{"type":"run","schema":1,"id":"…","tool":"tigris","version":"3.2.4, 2026.10.04.15.40","host":"desk","os":"Linux","release":"7.0.0-38-generic","arch":"x86_64","config":"./tigerrc","start":"2026-10-05T07:12:03Z"}
 {"type":"finding","level":"WARN","id":"ssh008w","check":"check_ssh","message":"sshd: x11forwarding is yes: X11 is forwarded, which exposes the client's display to this server","category":"ssh"}
 {"type":"finding","level":"WARN","id":"lin015w","check":"check_network_config","message":"The system has IP forwarding enabled","accepted":{"reason":"Docker needs IP forwarding","until":"-"},"category":"network"}
 {"type":"summary","id":"…","end":"2026-10-05T07:14:01Z","counts":{"ALERT":0,"FAIL":12,"WARN":52,"INFO":132,"ERROR":0}}

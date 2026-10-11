@@ -13,10 +13,12 @@
 
 # apk for Alpine roots: Debian has no apk-tools, so the static one Alpine
 # ships is copied in
-FROM alpine:3 AS apk
+FROM alpine:3@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS apk
 RUN apk add --no-cache apk-tools-static
 
-FROM debian:stable-slim
+# (pinned by digest, so that a rebuild is the same image; move the
+# digests when a release is cut: docker buildx imagetools inspect)
+FROM debian:stable-slim@sha256:eb593cf2c358cacef45ca0a424bbc7d30cfa3466265fc2662b9466a0ca6ba1c5
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       binutils file procps diffutils bsdextrautils \

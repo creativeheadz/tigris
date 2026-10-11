@@ -4,8 +4,15 @@ name: Release image
 # container image and pushes it to the GitHub Container Registry as
 # ghcr.io/creativeheadz/tigris:X.Y.Z and :latest, creates the GitHub
 # release with the tag's CHANGES section as notes, and attaches the
-# .deb, .rpm and .apk packages to it. Only on GitHub: the same
-# workflow runs on the Gitea mirror, which has no such registry.
+# source tarball, the .deb, .rpm and .apk packages, SHA256SUMS over all
+# of them, and PKGBUILD/.SRCINFO/APKBUILD with the tarball's sum filled
+# in (the ones in the tree say SKIP: the tarball does not exist before
+# the tag). The image and the packages get a build-provenance
+# attestation. Only on GitHub: the same workflow runs on the Gitea
+# mirror, which has no such registry.
+#
+# Actions are pinned to a commit (the tag after # is what it was); the
+# version from the tag reaches scripts through env, never interpolated.
 on:
   push:
     tags: ['version_*']
@@ -17,17 +24,20 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: The version, from the tag
         id: v
         run: echo "version=$(echo "${GITHUB_REF_NAME#version_}" | tr _ .)" >> "$GITHUB_OUTPUT"
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: build
         with:
           context: .
           push: true
@@ -36,6 +46,12 @@ jobs:
             ghcr.io/creativeheadz/tigris:latest
           labels: |
             org.opencontainers.image.version=${{ steps.v.outputs.version }}
+      - name: Attest the image
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-name: ghcr.io/creativeheadz/tigris
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
   notes:
     if: github.server_url == 'https://github.com'
@@ -43,19 +59,21 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: The version, from the tag
         id: v
         run: echo "version=$(echo "${GITHUB_REF_NAME#version_}" | tr _ .)" >> "$GITHUB_OUTPUT"
       - name: Create the release, with the CHANGES section as notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
-          v='${{ steps.v.outputs.version }}'
+          v="$VERSION"
           tag="version_$(echo "$v" | tr . _)"
           { printf '%s\n\n' '**This is an independent fork of TIGER, not the official project.** The official TIGER is on [GNU Savannah](https://savannah.nongnu.org/projects/tiger/), maintained by Javier Fernández-Sanguino Peña; fixes made here that apply to it are offered back there and to the Debian bug tracker.'
             sed -n "/^Changes (v $v)/,/^Changes (v /p" CHANGES | sed '1,3d' | sed '${/^Changes (v /d;}'
-            printf 'Container image: `ghcr.io/creativeheadz/tigris:%s`\n' "$v"
+            printf 'Container image: `ghcr.io/creativeheadz/tigris:%s`\n\n' "$v"
+            printf '%s\n' 'Verify what you download against `SHA256SUMS`, and the packages and the image against their provenance attestations (`gh attestation verify FILE --owner creativeheadz`).'
           } > notes.md
           gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "Tigris $v" --notes-file notes.md
 
@@ -66,15 +84,44 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: The version, from the tag
+        id: v
+        run: echo "version=$(echo "${GITHUB_REF_NAME#version_}" | tr _ .)" >> "$GITHUB_OUTPUT"
       - name: Build the packages
         run: |
           mkdir -p "$RUNNER_TEMP/out/deb" "$RUNNER_TEMP/out/rpm" "$RUNNER_TEMP/out/apk"
           docker run --rm -v "$PWD:/tiger:ro" -v "$RUNNER_TEMP/out/deb:/out" debian:stable sh /tiger/packaging/ci.sh deb /out
           docker run --rm -v "$PWD:/tiger:ro" -v "$RUNNER_TEMP/out/rpm:/out" fedora:latest sh /tiger/packaging/ci.sh rpm /out
           docker run --rm -v "$PWD:/tiger:ro" -v "$RUNNER_TEMP/out/apk:/out" alpine:latest sh /tiger/packaging/ci.sh apk /out
+      - name: The source tarball, the sums, and the packaging files with the sum in
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          v="$VERSION"
+          out="$RUNNER_TEMP/out"
+          mkdir -p "$out/src" "$out/packaging"
+          git archive --format=tar.gz --prefix="tigris-$v/" -o "$out/src/tigris-$v.tar.gz" "$GITHUB_REF_NAME"
+          sum=$(sha256sum "$out/src/tigris-$v.tar.gz" | cut -d' ' -f1)
+          url="https://github.com/creativeheadz/tigris/releases/download/$GITHUB_REF_NAME/tigris-$v.tar.gz"
+          # PKGBUILD and .SRCINFO: the release's own tarball, and its sum
+          sed -e "s|^source=(.*|source=(\"tigris-\$pkgver.tar.gz::$url\")|" -e "s|^sha256sums=.*|sha256sums=('$sum')|" packaging/PKGBUILD > "$out/packaging/PKGBUILD"
+          sed -e "s|^\tsource = .*|\tsource = tigris-$v.tar.gz::$url|" -e "s|^\tsha256sums = .*|\tsha256sums = $sum|" packaging/.SRCINFO > "$out/packaging/.SRCINFO"
+          sed -e "s|^sha512sums=.*|sha512sums=\"$(sha512sum "$out/src/tigris-$v.tar.gz" | cut -d' ' -f1)  tigris-$v.tar.gz\"|" packaging/APKBUILD > "$out/packaging/APKBUILD"
+          ( cd "$out" && sha256sum src/* deb/* rpm/* apk/* packaging/* | sed 's|  [a-z]*/|  |' > SHA256SUMS )
+          cat "$out/SHA256SUMS"
+      - name: Attest the packages and the tarball
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: |
+            ${{ runner.temp }}/out/src/*
+            ${{ runner.temp }}/out/deb/*
+            ${{ runner.temp }}/out/rpm/*
+            ${{ runner.temp }}/out/apk/*
       - name: Attach them to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP"/out/deb/* "$RUNNER_TEMP"/out/rpm/* "$RUNNER_TEMP"/out/apk/* --clobber
+        run: gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP"/out/src/* "$RUNNER_TEMP"/out/deb/* "$RUNNER_TEMP"/out/rpm/* "$RUNNER_TEMP"/out/apk/* "$RUNNER_TEMP"/out/packaging/* "$RUNNER_TEMP"/out/SHA256SUMS --clobber
