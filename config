@@ -413,20 +413,31 @@ checkfile()
   # names others could guess, and a link planted there by someone else
   # would be followed, as root. Owned by root, the runner or the user who
   # invoked sudo (a checkout), and writable by nobody else.
+  # Inside a container (the image's documented use mounts a directory of
+  # the host user's on /opt/tigris/log) the directory is the host user's,
+  # with the host user's modes, and nobody else runs there: said, and
+  # allowed.
+  __incontainer=
+  [ -f /.dockerenv ] || [ -f /run/.containerenv ] || [ -f /run/systemd/container ] && __incontainer=Y
   for __dir in "$WORKDIR" "$LOGDIR"
   do
     __dls=`ls -ldn "$__dir" 2>/dev/null`
     __downer=`echo "$__dls" | awk '{ print $3 }'`; __dmode=`echo "$__dls" | awk '{ print $1 }'`
+    __dwhy=
+    case "$__dmode" in
+      ?????w*|????????w*) __dwhy="is writable by its group or by others" ;;
+    esac
     case " 0 `id -u` ${SUDO_UID:-0} " in
       *" ${__downer:-?} "*) ;;
-      *) echo "--ERROR-- [con018e] The directory $__dir is owned by uid ${__downer:-?}, not by root, the user running Tigris or the user who invoked sudo: Tigris does not write there."
-         exit 1 ;;
+      *) __dwhy="${__dwhy:+$__dwhy, and }is owned by uid ${__downer:-?}, not by root, the user running Tigris or the user who invoked sudo" ;;
     esac
-    case "$__dmode" in
-      ?????w*|????????w*)
-         echo "--ERROR-- [con018e] The directory $__dir is writable by its group or by others: Tigris does not write there (chmod 700 $__dir)."
-         exit 1 ;;
-    esac
+    [ -n "$__dwhy" ] || continue
+    if [ -n "$__incontainer" ]; then
+      [ "$QUIET" != "Y" ] && echo "--CONFIG-- [con019c] The directory $__dir $__dwhy; inside a container that is the host user's, so Tigris writes there."
+    else
+      echo "--ERROR-- [con018e] The directory $__dir $__dwhy: Tigris does not write there (chown it to root or yourself, chmod 700)."
+      exit 1
+    fi
   done
 
 

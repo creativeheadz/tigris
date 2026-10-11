@@ -1,0 +1,13 @@
+Id: con019c
+Severity: CONFIG
+Category: tigris
+Check: config
+Fix: Nothing, if the directory is yours: a bind mount keeps its owner from the host. Otherwise mount one that is.
+References: tigris(8)
+
+The working or log directory belongs to a uid that is not root, the
+user running Tigris or the user who invoked sudo, which on a host would
+stop the run (con018e: Tigris writes there under names a bystander could
+guess and follows a link found in their place). Tigris is running inside
+a container, where such a directory is the host user's bind mount and
+nobody else runs, so it is used, and this says so.
