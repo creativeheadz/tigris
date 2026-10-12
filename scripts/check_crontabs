@@ -178,8 +178,8 @@ lowner=
   # in them.  We try to eliminate some of them, but there is no guarantee.
   #                                                   dls
   #
-  $AWK -F'\t' '$1 == "J" { print $2 "\t" $4 }' $WORKDIR/cron.in.$$ |
-  while IFS='	' read owner command
+  $AWK -F'\t' '$1 == "J" { print $2 "\t" $3 "\t" $4 }' $WORKDIR/cron.in.$$ |
+  while IFS='	' read owner src command
   do
     com="`echo \"$command\" | $SED -e 's/[0-9]*>//g' | $TR -d '()\;\`&!|'`"
     # the words from the command on: VAR=value before it sets the
@@ -238,7 +238,11 @@ lowner=
 	  here=`__here "$comp"`
 	  [ ! -c "$here" -a ! -b "$here" ] && {
 	    lgetpermit "$comp" |
-	    pathmsg cron002 cron003 "$comp" $owner "cron entry for $owner uses" "$command"
+	    # The job is named by the file it is in, never quoted: a command
+	    # line is where a database password or an API token is put, and
+	    # the JSON goes to dashboards and archives (it went there whole
+	    # until October 2026)
+	    pathmsg cron002 cron003 "$comp" $owner "cron entry for $owner uses" "The job is in $src."
 	  }
 	}
 	;;

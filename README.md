@@ -65,8 +65,10 @@ reason, never guessed at. The exit status is the worst finding.
 **Drift, not noise.** `tigris -q --since last` prints only what changed
 since the last run, so a nightly cron mails only when there is news.
 Findings you accept stay accepted, with a reason and an expiry date.
-The report quotes sudo rules and crontab command lines, so treat it,
-and the mail that carries it, as the sensitive document it is.
+The report quotes sudo rules, so treat it, and the mail that carries
+it, as the sensitive document it is. Crontab and mail-alias command
+lines, where passwords end up, it names by file and program, never
+quotes.
 
 </td>
 </tr>

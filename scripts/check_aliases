@@ -85,20 +85,23 @@ progalias()
   prog="`echo \"$rcpt\" | $SED -e 's/^[ 	|\"]*\([^\" ]*\).*$/\1/'`"
   hereprog=`__here "$prog"`
 
+  # The findings name the program, never the alias's whole command line:
+  # its arguments may hold a password or a token, and the JSON goes to
+  # dashboards and archives
   if [ ! -f "$hereprog" ]; then
-    message INFO ali001i "$rcpt" "Program alias \`$alias' executable does not exist$fmsg"
+    message INFO ali001i "$prog" "Program alias \`$alias' executable does not exist$fmsg"
   else
     [ -n "$TigerCheckEmbedded" ] && {
       echo "$prog $source" >> $TigerCheckEmbedded
     }
-    message WARN ali005w "$rcpt" "Alias \`$alias' contains a program entry${fmsg}:"
+    message WARN ali005w "$prog" "Alias \`$alias' contains a program entry${fmsg}:"
     case "$prog" in 
       *uudecode) message FAIL ali002f "" "Program alias \`$alias' executes $prog.";;
     esac
   fi
 
   lgetpermit "$prog" |
-  pathmsg ali003 ali004 "$prog" root "Program alias \`$alias' uses$fmsg executable" "Alias: $rcpt"
+  pathmsg ali003 ali004 "$prog" root "Program alias \`$alias' uses$fmsg executable" ""
 }
 
 filealias()

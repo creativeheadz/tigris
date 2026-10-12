@@ -37,7 +37,7 @@ zzlocal 49992/tcp
 EOF
 cat > "$R/etc/aliases" <<'EOF'
 evil: "|/usr/bin/uudecode"
-pipe: "|/opt/handler"
+pipe: "|/opt/handler --token=zz-alias-secret"
 ghost: "|/nonexistent/prog"
 list: :include:/etc/mail/list
 linked: "|/linkprog"
@@ -77,6 +77,8 @@ has '"id":"ali003w".*not owned by root (owned by milo)' &&
   ok "owners named from the root's passwd: ali003w" || bad "ali003w"
 has '"id":"ali004f"' &&
   ok "a world-writable handler: ali004f" || bad "ali004f"
+grep -q 'zz-alias-secret' "$json" && bad "an alias's command line, token and all, was quoted in the report" ||
+  ok "an alias's command line is not quoted (a token in it stays out of the report)"
 has '"id":"ali008i"' &&
   ok "a group-writable include file: ali008i" || bad "ali008i"
 grep '"type":"finding"' "$json" | grep -q "$R" && bad "a finding names the root's directory on this host" ||

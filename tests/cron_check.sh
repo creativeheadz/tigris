@@ -40,7 +40,9 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 17 *	* * *	root	cd / && run-parts --report /etc/cron.hourly
 25 6	* * *	root	test -x /usr/sbin/anacron || { cd / && run-parts --report /etc/cron.daily; }
 EOF
-echo '0 2 * * * root /opt/backup/run.sh --full --quiet' > "$R/etc/cron.d/backup"
+# (a password on the command line, as backup and database jobs carry
+# them: it must not reach the report)
+echo '0 2 * * * root /opt/backup/run.sh --full --quiet --password=zz-cron-secret' > "$R/etc/cron.d/backup"
 echo '0 3 * * * root /usr/bin/true' > "$R/etc/cron.d/world"
 echo '0 4 * * * root /usr/bin/true' > "$R/etc/cron.d/owned"
 echo '0 5 * * * root relative-and-ignored' > "$R/etc/cron.d/old.dpkg-old"
@@ -81,8 +83,10 @@ has "[cron008f] \`/etc/cron.d/world' is writable by everyone: anyone can have cr
 has "[cron008w] \`/etc/cron.daily/logrotate' is writable by group" && ok "a cron.daily script its group can write: cron008w" || bad "cron008w"
 has "[cron009w] \`/etc/cron.d/owned' is owned by milo, not root" &&
   ok "a cron.d file that is not root's, named by the root's passwd: cron009w" || bad "cron009w"
-has "[cron003f] cron entry for root uses \`/opt/backup/run.sh' which is" && has '/opt/backup/run.sh --full --quiet' &&
-  ok "a job running a script anyone can write, '--' in its arguments and all: cron003f" || bad "cron003f"
+has "[cron003f] cron entry for root uses \`/opt/backup/run.sh' which is" && has 'The job is in /etc/cron.d/backup.' &&
+  ok "a job running a script anyone can write, '--' in its arguments and all: cron003f, its file named" || bad "cron003f"
+has 'zz-cron-secret' && bad "a job's command line, password and all, was quoted in the report" ||
+  ok "the job's command line is not quoted (its password stays out of the report)"
 has "[cron001w] cron entry for milo does not use full pathname (backup.sh)" && ok "a relative path in a user's crontab: cron001w" || bad "cron001w"
 has "[cron010w] \`/var/spool/cron/crontabs/ghost' is a crontab for ghost, which is no account here" &&
   ok "a spool crontab for no account: cron010w" || bad "cron010w"
