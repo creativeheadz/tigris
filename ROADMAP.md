@@ -673,6 +673,24 @@ what scripts and cron see.
   (MySQL/MariaDB, PostgreSQL, Redis), DNS resolvers, remote logging,
   certificate expiry. Static configuration analysis, offline-capable;
   no credentials, no live probing.
+- [ ] **Package sources that stopped publishing.** A repository can go
+  quiet without an error: packager.io moved to a new host in 2026 and
+  left its old repositories in place, so a Zammad server installed from
+  the old one sat on 7.0.2, two releases and every fix behind, while apt
+  said it was up to date and check_updates (upd003f) had nothing to
+  report (found on the home fleet, 12 October 2026). Read the date each
+  repository last published from what the package manager has on disk
+  (apt's `*_InRelease` and `*_Release` `Date:` under
+  `/var/lib/apt/lists`, dnf's and zypper's `repomd.xml` timestamp,
+  pacman's sync databases, apk's APKINDEX), and report one whose
+  newest index is older than a configurable age (90 days, say), naming
+  the source file and the URL. Judge a repository by its newest suite:
+  a distribution's release pocket (Ubuntu's `noble`, Debian's
+  `trixie`) never changes after release by design, while its `-updates`
+  and `-security` do. Also say when the lists themselves were last
+  refreshed (an `apt update` that has not run in weeks hides the same
+  thing), and when a source's `Valid-Until` has passed. Offline-capable:
+  everything read is on disk.
 - [ ] **Rename the internals** in one release, with shims for old
   configurations: `tigerrc` to `tigris.conf`, `Tiger_*` to `Tigris_*`,
   `/etc/tiger` to `/etc/tigris`, `tigexp` to `tigris explain` (which
