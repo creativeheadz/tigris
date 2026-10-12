@@ -98,7 +98,9 @@ case " 0 `id -u` ${SUDO_UID:-0} " in
 esac
 case "$__bmode" in
   ?????w*|????????w*)
-     echo "--ERROR-- [init013e] \`$basedir' is writable by its group or by others: nothing is run from it."
+     # (Ubuntu gives users umask 002, so a fresh clone is group-writable:
+     # the README's first command must not just stop)
+     echo "--ERROR-- [init013e] \`$basedir' is writable by its group or by others: nothing is run from it. A clone made under umask 002 (Ubuntu's default) is: chmod -R go-w '$basedir'."
      exit 1 ;;
 esac
 . $basedir/config

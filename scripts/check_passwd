@@ -333,12 +333,21 @@ done < $WORKDIR/pass.list.$$
 # would check this host's files (pwck -R chroots, and glibc may then load
 # the root's NSS modules: the root's code, run as root), so it is left to
 # check_passwdformat, which reads the root's.
+# A missing home directory is a fault in an account that logs in; in one
+# whose shell is nologin or false it is not (lp, news, uucp, www-data,
+# list and irc on every stock Debian and Ubuntu host), and those lines go.
 [ -n "$PWCK" ] && [ -z "$TIGRIS_ROOT" ] && {
-  pwckerr=`$PWCK 2>&1`
+  pwckerr=`$PWCK 2>&1 | $AWK '
+    BEGIN { while ((getline l < "/etc/passwd") > 0) { n = split(l, f, ":"); if (n >= 7) shell[f[1]] = f[7] } }
+    /^pwck: no changes$/ { next }
+    /^user .*: directory .* does not exist$/ {
+      u = $0; sub(/^user ./, "", u); sub(/.: directory .*/, "", u)
+      if (shell[u] ~ /\/(nologin|false)$/) next
+    }
+    { print }'`
   if [ -n "$pwckerr" ] ; then
     message WARN pass006w "" "Integrity of password files questionable ($PWCK)."
-    output=`echo $pwckerr | $SED -e 's/pwck: no changes//' | $SED -e 's/ user /|user /g' | $TR "|" "\n"`
-    message WARN pass006w "" "Output of $PWCK is '$output'"
+    message WARN pass006w "" "Output of $PWCK is '$pwckerr'"
   fi
 }
 

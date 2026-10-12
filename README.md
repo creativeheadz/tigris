@@ -15,7 +15,7 @@
   <br>
   <img src="https://img.shields.io/badge/finding%20ids-520-e8833a?style=flat-square&labelColor=0f1822" alt="520 finding ids">
   <img src="https://img.shields.io/badge/categories-15-e8833a?style=flat-square&labelColor=0f1822" alt="15 categories">
-  <img src="https://img.shields.io/badge/test%20suites-103-e8833a?style=flat-square&labelColor=0f1822" alt="103 test suites">
+  <img src="https://img.shields.io/badge/test%20suites-104-e8833a?style=flat-square&labelColor=0f1822" alt="104 test suites">
   <img src="https://img.shields.io/badge/CI-Debian%20%C2%B7%20Ubuntu%20%C2%B7%20Fedora%20%C2%B7%20Rocky%20%C2%B7%20openSUSE%20%C2%B7%20Alpine%20%C2%B7%20Arch-c6d6e2?style=flat-square&labelColor=0f1822" alt="Tested on Debian, Ubuntu, Fedora, Rocky, openSUSE, Alpine and Arch">
 </p>
 
@@ -95,6 +95,7 @@ how to fix it.
 ```sh
 git clone https://github.com/creativeheadz/tigris.git
 cd tigris
+chmod -R go-w .                   # Tigris runs nothing others may change (Ubuntu's umask 002 leaves a clone group-writable)
 sudo ./tigris                     # the full audit, about two minutes
 sudo ./tigris --profile quick     # everything but the filesystem scan, about one
 ./tigris explain upd003f          # what a finding means and how to fix it

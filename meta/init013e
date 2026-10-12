@@ -10,4 +10,6 @@ tigris itself is) belongs to someone other than root, the user running
 Tigris or the user who invoked sudo, or its group or others may write
 it. Everything in it (config, initdefs, every check) is run as whoever
 runs Tigris, root as a rule, before any other safeguard: so nothing is
-run from a directory someone else could have changed.
+run from a directory someone else could have changed. A clone made
+under umask 002, Ubuntu's default for users, is group-writable
+throughout: chmod -R go-w it once.

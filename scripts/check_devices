@@ -35,6 +35,9 @@
 #                 by design (ptmx, fuse, nvidia*), the directories udev and
 #                 drivers create today, and any directory that holds only
 #                 symlinks (udev alias trees, LVM volume groups)
+# 10/12/2026 atrimbitas  /dev/autofs, /dev/kmsg and /dev/rfkill are not
+#                 dev004w: world-readable on every one of 42 stock hosts,
+#                 by design (kmsg's readers are kernel.dmesg_restrict's)
 # 03/31/2005 jfs  Added EXPECTEDIRS and EXPECTEDDEVICES in /dev (Os specific)
 #                 and added Solaris (9) devices
 # 05/20/2006 jfs  Handle the special case of having " in filenames by quoting
@@ -113,7 +116,17 @@ check_dev_file()
 		esac
 		elif [ $ror -eq 1 ]
 		then
+		case $device in
+		/dev/autofs|/dev/kmsg|/dev/rfkill)
+		# Readable by everyone on every Linux, as the kernel and udev
+		# make them, and harmless: autofs answers only CAP_SYS_ADMIN,
+		# kmsg is the kernel log, whose readers kernel.dmesg_restrict
+		# decides (lin021w), rfkill says which radios are blocked
+		;;
+		*)
 			message WARN dev004w "" "$device is world readable"
+		;;
+		esac
 		fi
 	done
 

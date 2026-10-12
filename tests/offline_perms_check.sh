@@ -54,6 +54,8 @@ if [ "$uid" = 0 ]; then
   chmod 4755 "$R/bin/login" "$R/bin/su"
   mknod -m 666 "$R/dev/sda" b 8 0
   mknod -m 644 "$R/dev/kmem" c 1 1
+  # world-readable on every Linux, by design: no dev004w
+  mknod -m 644 "$R/dev/kmsg" c 1 11; mknod -m 644 "$R/dev/autofs" c 10 235
   chown "$U:4243" "$R/var/run/utmp"; chmod 664 "$R/var/run/utmp"
 else
   chmod 600 "$R/var/run/utmp"
@@ -107,6 +109,9 @@ if [ "$uid" = 0 ]; then
     ok "a world-writable device node: dev002f" || bad "dev002f"
   has '"id":"dev004w".*/dev/kmem is world readable' &&
     ok "a world-readable device node: dev004w" || bad "dev004w"
+  { has '"id":"dev004w".*/dev/kmsg is world readable' || has '"id":"dev004w".*/dev/autofs is world readable'; } &&
+    bad "kmsg or autofs, world-readable by design, was dev004w" ||
+    ok "kmsg and autofs, world-readable on every Linux, stay silent"
   grep '"type":"finding"' "$json" | grep -q 'utmp permission should be' &&
     bad "utmp in the utmp group at 664 reported something" ||
     ok "utmp in the utmp group at 664 is silent, by the root's group file"

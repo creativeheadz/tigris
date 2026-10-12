@@ -206,6 +206,9 @@ udp UNCONN 0 0 [::]:43283 [::]:* users:(("syncthing",pid=1988,fd=27)) uid:1000 i
 tcp LISTEN 0 4096 [::1]:631 [::]:* users:(("cupsd",pid=1221,fd=7)) ino:15584 sk:12 cgroup:/system.slice/cups.service v6only:1 <->
 tcp LISTEN 0 4096 127.0.0.53%lo:53 0.0.0.0:* users:(("systemd-resolve",pid=871,fd=15)) uid:991 ino:13792 sk:f cgroup:/system.slice/systemd-resolved.service <->
 udp UNCONN 0 0 0.0.0.0%eth0:68 0.0.0.0:* users:(("dhclient",pid=900,fd=6)) ino:3000 sk:20 cgroup:/system.slice/dhclient.service <->
+udp UNCONN 0 0 192.0.2.10%eth0:68 0.0.0.0:* users:(("systemd-network",pid=901,fd=21)) uid:4242421 ino:3001 sk:25 cgroup:/system.slice/systemd-networkd.service <->
+udp UNCONN 0 0 0.0.0.0%virbr0:67 0.0.0.0:* users:(("dnsmasq",pid=902,fd=5)) ino:3002 sk:26 cgroup:/system.slice/libvirtd.service <->
+tcp LISTEN 0 4096 *:9090 *:* users:(("systemd",pid=1,fd=50)) ino:3003 sk:27 cgroup:/system.slice/cockpit.socket v6only:0 <->
 tcp LISTEN 0 64 0.0.0.0:2049 0.0.0.0:* ino:0 sk:21 <->
 tcp LISTEN 0 511 [2001:db8::10]:8443 [::]:* users:(("nginx",pid=702,fd=6),("nginx",pid=701,fd=6),("nginx",pid=700,fd=6)) ino:4000 sk:22 cgroup:/system.slice/nginx.service v6only:1 <->
 tcp LISTEN 0 128 *:5000 *:* users:(("Web Content",pid=950,fd=40)) uid:1000 ino:5000 sk:23 cgroup:/user.slice/user-1000.slice/session-c1.scope v6only:0 <->
@@ -216,15 +219,20 @@ A="$W/ss.jsonl"
 has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The process `sshd'"'"' is listening on socket 22 (TCP) on every interface."' &&
   [ "`grep -c 'sshd' "$A"`" = 1 ] && ok "ss: sshd on 0.0.0.0 and on :: is one finding, its owner root" || bad "ss sshd: `grep sshd "$A"`"
 has '"message":"The process `systemd'"'"' is listening on socket 22 (TCP) on every interface."' &&
-  ok "ss: every process sharing a socket is named, as lsof names them" || bad "ss systemd"
+  bad "ss: systemd was named beside sshd for the socket it holds for activation" ||
+  ok "ss: a socket systemd holds for activation, sshd holding it too, is sshd's alone"
+has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The process `systemd'"'"' is listening on socket 9090 (TCP) on every interface.","detail":"Socket activation:' &&
+  ok "ss: one systemd holds alone, before the first connection, is systemd's, and says why" || bad "ss systemd 9090"
 has '"message":"The process `syncthing'"'"' is listening on socket 22000 (TCP on every interface) is run by '"$u1000"'."' &&
   ok "ss: a dual-stack listener, its owner uid as a name ($u1000)" || bad "ss syncthing 22000"
 has '"message":"The process `syncthing'"'"' is listening on ephemeral ports (UDP on every interface) is run by '"$u1000"'.","detail":"Ports 43283, 51780;' &&
   ok "ss: IPv4 and IPv6 ephemeral ports fold into one finding" || bad "ss syncthing ephemeral"
 has '"level":"INFO","id":"lin002i","check":"check_listeningprocs","message":"The process `cupsd'"'"' is listening on socket 631 (TCP) on loopback interface."' &&
   ok "ss: [::1] is loopback" || bad "ss cupsd ::1"
-has '"message":"The process `dhclient'"'"' is listening on socket 68 (UDP) on eth0 interface."' &&
-  ok "ss: a socket bound to a device names the device" || bad "ss dhclient eth0"
+has '"message":"The process `dnsmasq'"'"' is listening on socket 67 (UDP) on virbr0 interface."' &&
+  ok "ss: a socket bound to a device names the device" || bad "ss dnsmasq virbr0"
+grep -q 'socket 68 ' "$A" && bad "ss: a DHCP client's socket (dhclient's, systemd-networkd's) was reported" ||
+  ok "ss: DHCP clients' sockets on UDP 68 are no listeners"
 has '"message":"The process `nginx'"'"' is listening on socket 8443 (TCP on 2001:db8::10 interface) is run by '"$u1000"'."' &&
   has '"level":"INFO","id":"lin002i","check":"check_listeningprocs","message":"The process `nginx'"'"' is listening on socket 8443 (TCP) on 2001:db8::10 interface."' &&
   [ "`grep -c 'nginx' "$A"`" = 2 ] && ok "ss: an IPv6 address kept whole; the root master and its two workers (euid $u1000) are two findings" || bad "ss nginx: `grep nginx "$A"`"

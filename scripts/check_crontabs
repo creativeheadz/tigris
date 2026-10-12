@@ -182,30 +182,34 @@ lowner=
   while IFS='	' read owner command
   do
     com="`echo \"$command\" | $SED -e 's/[0-9]*>//g' | $TR -d '()\;\`&!|'`"
+    # the words from the command on: VAR=value before it sets the
+    # environment and is no command (PATH="$PATH:/usr/local/bin" pihole)
+    run="`echo \"$com\" | $AWK '{ for (i = 1; i <= NF && $i ~ /^[A-Za-z_][A-Za-z0-9_]*=/; i++); s = \"\"; for (; i <= NF; i++) s = s (s == \"\" ? \"\" : \" \") $i; print s }'`"
 
     # Can't 'set' this because of shell meta-characters.
-    cmd="`echo \"$com\" | $AWK '{print $1}'`"
+    cmd="`echo \"$run\" | $AWK '{print $1}'`"
   
     # A shell running a script: the script is the command, or with -c, the
     # first word of what it is given
     base=`$BASENAME -- "$cmd" 2>/dev/null`
     case "$base" in
       sh|csh|ksh|tcsh|zsh|bash|dash)
-        if [ "`echo \"$com\" | $AWK '{print $2}'`" = "-c" ]; then
-          cmd="`echo \"$com\" | $AWK '{print $3}' | $TR -d \"'\\\"\"`"
+        if [ "`echo \"$run\" | $AWK '{print $2}'`" = "-c" ]; then
+          cmd="`echo \"$run\" | $AWK '{print $3}' | $TR -d \"'\\\"\"`"
         else
-          cmd="`echo \"$com\" | $AWK '{print $2}'`"
+          cmd="`echo \"$run\" | $AWK '{print $2}'`"
         fi ;;
       if|cd)
-        cmd="`echo \"$com\" | $AWK '{print $2}'`" ;;
+        cmd="`echo \"$run\" | $AWK '{print $2}'`" ;;
     esac
 
     [ -n "$TigerCheckEmbedded" ] && [ -f "`__here \"$cmd\"`" ] && [ "$owner" = 'root' ] && {
       echo "$cmd root.crontab" >> $TigerCheckEmbedded
     }
     # cron runs each job with /bin/sh: its builtins and keywords need no path
+    # (command -v X, which sysstat's entry starts with, only looks X up)
     case "$cmd" in
-      /*|test|\[|true|false|:|echo|printf|umask|cd|export|set|exec|if|'{'|'') ;;
+      /*|test|\[|true|false|:|echo|printf|umask|cd|export|set|exec|if|command|type|'{'|'') ;;
       *) message WARN cron001w "" "cron entry for $owner does not use full pathname ($cmd):" ;;
     esac
 

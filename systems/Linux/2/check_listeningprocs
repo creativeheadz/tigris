@@ -34,6 +34,11 @@
 #                 interface no longer comes with an INFO copy (&& || on
 #                 message(), which can return non-zero). Tiger_LSOF_Cmd
 #                 lets the tests feed lsof -F fixtures.
+# 10/12/2026 atrimbitas  A DHCP client's socket (UDP 68, 546) is no
+#                 listener, and a socket systemd holds for activation is
+#                 the service's once it holds it too: systemd-networkd's
+#                 lin003w and systemd's lin002i beside sshd came from every
+#                 one of 42 stock Ubuntu hosts.
 # 07/05/2006 jfs  Try not to botch when udp6 services are being read
 #                 (Debian Bug #375165)
 # 05/15/2005 jfs  Proper check for processes in loopback (Debian Bug #307695)
@@ -346,6 +351,20 @@ $AWK '
 		addr = "loopback"
 	print $1, $2, addr, port, rest
 }' |
+# Two kinds of socket are no service of their own: a DHCP client's (UDP 68
+# and 546, where the server's answers come: systemd-networkd's on every
+# Ubuntu host), and the one systemd holds for socket activation once the
+# service it started holds it too (ssh.socket and sshd on Ubuntu 24.04),
+# which is the service's. systemd's alone, before the first connection,
+# is still reported, as systemd's.
+$AWK '
+{
+	rest = $0; sub(/^[^ ]* [^ ]* [^ ]* [^ ]* */, "", rest)
+	if ($2 == "UDP" && ($4 == 68 || $4 == 546) && rest ~ /^(dhclient|dhcpcd|udhcpc|systemd-network|systemd-networkd|NetworkManager|connmand|wickedd-dhcp[46])$/) next
+	n++; line[n] = $0; key[n] = $2 " " $3 " " $4; sd[n] = (rest == "systemd")
+	if (!sd[n]) held[key[n]] = 1
+}
+END { for (i = 1; i <= n; i++) if (!(sd[i] && (key[i] in held))) print line[i] }' |
 # remove duplicates (a process on 0.0.0.0 and on :: is on every interface
 # once), fold the ephemeral ports of one process, user, protocol and
 # address into one line (the ports in the fifth field, "-" when there are
@@ -375,6 +394,8 @@ do
 	else
 		socktext="socket $socket"
 		trail=""
+		[ "$proc" = systemd ] &&
+			trail="Socket activation: systemd holds it for a service it starts on the first connection (systemctl list-sockets names the unit)."
 	fi
 	# The process and its user against the lists of those allowed. A
 	# process names itself, so its name is data any local user chooses:

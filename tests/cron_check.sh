@@ -44,6 +44,15 @@ echo '0 2 * * * root /opt/backup/run.sh --full --quiet' > "$R/etc/cron.d/backup"
 echo '0 3 * * * root /usr/bin/true' > "$R/etc/cron.d/world"
 echo '0 4 * * * root /usr/bin/true' > "$R/etc/cron.d/owned"
 echo '0 5 * * * root relative-and-ignored' > "$R/etc/cron.d/old.dpkg-old"
+# as sysstat, e2fsprogs and Pi-hole ship them on Debian and Ubuntu: a
+# builtin first, VAR=value before the command
+cat > "$R/etc/cron.d/stock" <<'EOF'
+PATH=/usr/lib/sysstat:/usr/sbin:/usr/bin:/sbin:/bin
+5-55/10 * * * * root command -v debian-sa1 > /dev/null && debian-sa1 1 1
+30 3 * * 0 root test -e /run/systemd/system || SERVICE_MODE=1 /usr/lib/x86_64-linux-gnu/e2fsprogs/e2scrub_all_cron
+10 3 * * * root SERVICE_MODE=1 /sbin/e2scrub_all -A -r
+49 4 * * 7 root PATH="$PATH:/usr/sbin:/usr/local/bin/" pihole updateGravity >/var/log/pihole_updateGravity.log || cat /var/log/pihole_updateGravity.log
+EOF
 printf '#!/bin/sh\n' > "$R/opt/backup/run.sh"
 printf '#!/bin/sh\n' > "$R/etc/cron.daily/logrotate"
 printf 'milo\n' > "$R/etc/at.allow"
@@ -80,6 +89,11 @@ has "[cron010w] \`/var/spool/cron/crontabs/ghost' is a crontab for ghost, which 
 [ -e "$W/ran" ] && bad "a crontab's file name was run" || ok "a crontab named \$(touch ...) is reported, not run"
 has 'relative-and-ignored' && bad "a cron.d file cron ignores (a dot in its name) was read" || ok "a cron.d file whose name cron ignores is left out"
 has '(test)' && bad "a shell builtin counted as a relative path" || ok "/etc/crontab's 'test -x ... ||' is not a relative path"
+has '(command)' && bad "the builtin command counted as a relative path" || ok "sysstat's 'command -v debian-sa1 && ...' is not a relative path"
+has 'pathname (SERVICE_MODE=1)' || has 'pathname (PATH=' && bad "VAR=value before a command was taken for the command" ||
+  ok "VAR=value before a command is not the command"
+has "[cron001w] cron entry for root does not use full pathname (pihole)" &&
+  ok "the command after VAR=value is: Pi-hole's relative pihole is cron001w" || bad "pihole after PATH=..."
 has "[cron009w] \`/var/spool/cron/crontabs/milo'" && bad "milo's own crontab reported as not his" || ok "a user's crontab may be the user's"
 has "[cron011w] User milo is allowed at usage." && ok "at.allow names a user: cron011w" || bad "cron011w"
 has "[cron012i] User ghost is denied at usage." && ok "at.deny names a user: cron012i" || bad "cron012i"
