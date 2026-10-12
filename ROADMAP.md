@@ -421,10 +421,34 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   fsys011a now compare with what the installed packages ship setuid or
   setgid (`util/pkgspecial`: rpm's file modes, pacman's mtree files,
   apk's installed database), where Tigris's static per-platform list
-  was all there was; dpkg, which records no modes, keeps the list. The
-  detail says which was used. `util/pkgspecial` agreed exactly with
-  `find -perm` in Fedora (9 setuid), Arch (12 setuid, 3 setgid) and
-  Alpine with sudo and shadow added (7, 1).
+  was all there was. The detail says which was used. `util/pkgspecial`
+  agreed exactly with `find -perm` in Fedora (9 setuid), Arch (12
+  setuid, 3 setgid) and Alpine with sudo and shadow added (7, 1).
+  dpkg, which records no modes, kept the 2003 list until 12 October
+  2026 (below).
+- [x] **Setuid and setgid on Debian and Ubuntu**: once the scan was on by
+  default, fsys004a and fsys011a fired on every one of 42 stock Ubuntu
+  and Debian hosts: the 2003 list named `/bin/su`, not usrmerge's
+  `/usr/bin/su`, and nothing of polkit, D-Bus, fuse3 or utempter. dpkg
+  now compares with `systems/Linux/2/dpkg_special_list`, what Debian and
+  Ubuntu packages make setuid or setgid (`util/mkdebspecial`, before
+  each release: the packages' own modes from Debian's lintian results
+  in UDD, and what maintainer scripts set, from installing the packages
+  that do in Debian 12 and 13 and Ubuntu 22.04 to 26.04 containers, once
+  more without CAP_SETFCAP for those that fall back to setuid when
+  setcap fails; 180 files of 120 packages), for the packages installed and the paths
+  their file lists hold (usrmerge and the multiarch triplet allowed
+  for), and with dpkg-statoverride's entries. One finding per file,
+  with its mode and owner, so the JSON says which; on dpkg the detail
+  names the package a file is from, or says no package installed it (a
+  vendor's chrome-sandbox against a dropped binary). Relative pathnames
+  (fsys002w) only for a non-standard program: sudo, pkexec and
+  ssh-keysign all name "../". World-writable directories (fsys008f) one
+  per finding, sticky ones as CIS allows them, except under `/etc`,
+  `/usr` and the other trees root reads programs from. The setuid-copy
+  signatures (2003's) only with `Tiger_Check_SIGNATURES`, as for setgid:
+  without the hash helpers built every run printed an ERROR. Rootless
+  Podman's image stores pruned like the system's.
 - [x] **Profiles as overlays**: `tigris --profile NAME` (or `-p`) reads
   `profiles/NAME` after the tigerrc, beside it first, then Tigris's own,
   so a profile holds only what differs: `quick` (no filesystem scan, the
@@ -547,8 +571,11 @@ what scripts and cron see.
 - [x] rpm, apk and pacman alongside dpkg.
 - [x] Setuid and setgid files compared with what the package manager says
   should be setuid, not only with Tigris's own lists. rpm, apk and
-  pacman only: dpkg records no modes (below). (`util/pkgspecial`, used
-  by check_suid and check_sgid; in 3.4.0.)
+  pacman from their own records (`util/pkgspecial`, used by check_suid
+  and check_sgid; in 3.4.0); dpkg, which records no modes (below), from
+  a list of what Debian and Ubuntu packages make setuid, made from
+  Debian's archive and from installing them (`util/mkdebspecial`; 12
+  October 2026).
 - [x] dpkg: the entries of `dpkg-statoverride --list`, the one place
   dpkg records a mode and owner, compared with the files themselves
   (`deb_statoverride`, lin039w; in 3.4.0).

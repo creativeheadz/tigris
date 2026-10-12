@@ -1,0 +1,128 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# mkdebspecial [OUT]: the files Debian and Ubuntu packages make setuid or
+#                 setgid (systems/Linux/2/dpkg_special_list), which
+#                 util/pkgspecial reads on dpkg systems: dpkg records no
+#                 file modes, so what a package makes setuid has to be
+#                 known beforehand.
+#
+#   For the maintainer, before a release: it needs the network, psql and
+#   docker, which an audit never does. Two sources, because a package
+#   makes a file setuid in one of two ways:
+#
+#   - in its contents: Debian's lintian results in UDD (the tag
+#     elevated-privileges, every binary package in unstable), from the
+#     public mirror udd-mirror.debian.net;
+#   - from a maintainer script, after unpacking (dpkg-statoverride, or
+#     chmod in postinst: dbus, cron, polkit, ssh-agent, postfix...), which
+#     no package's contents show: the packages in SURVEY are installed in
+#     a container of each Debian and Ubuntu release in IMAGES, and every
+#     setuid or setgid file there is recorded with the package it is from;
+#     those in SURVEY_NOCAPS once more where setcap fails, so the setuid
+#     they fall back to (ping, mtr-packet, GStreamer's PTP helper) is
+#     known too.
+#
+#   One line per file and package:
+#
+#     MODE PACKAGE PATH
+#
+#   MODE in octal (4755, 2755, 6755...), PATH under /usr where usrmerge
+#   put it; pkgspecial reads /bin, /sbin and /lib* as /usr/... and any
+#   multiarch triplet as any other.
+#
+#   PSQL is the psql command (default psql; or for example
+#   PSQL='docker run --rm -e PGPASSWORD=udd-mirror postgres:16-alpine psql').
+#
+#-----------------------------------------------------------------------------
+#
+T=`cd "\`dirname "$0"\`/.." && pwd`
+OUT=${1:-$T/systems/Linux/2/dpkg_special_list}
+AWK=${AWK:-awk}
+PSQL=${PSQL:-psql}
+IMAGES=${IMAGES:-"debian:oldstable debian:stable ubuntu:22.04 ubuntu:24.04 ubuntu:26.04"}
+# Packages that set modes from a maintainer script, or are Ubuntu's own;
+# SURVEY_ALT holds the ones that conflict with a package in SURVEY
+SURVEY=${SURVEY:-"at bsd-mailx cifs-utils cron dbus fuse3 iputils-ping
+  libpam-extrausers libpam-modules-bin liblockfile-bin libutempter0 login
+  mariadb-server mount mtr-tiny nfs-common ntfs-3g openssh-client passwd
+  pkexec plocate policykit-1 polkitd postfix ppp procmail screen snapd
+  sudo uidmap util-linux xserver-xorg-legacy"}
+SURVEY_ALT=${SURVEY_ALT:-"fuse mlocate exim4-daemon-light"}
+# Packages that give a program file capabilities, and make it setuid root
+# where they cannot (a file system without extended attributes): surveyed
+# again in a container without CAP_SETFCAP, where setcap fails
+SURVEY_NOCAPS=${SURVEY_NOCAPS:-"iputils-ping iputils-arping mtr-tiny fping
+  libgstreamer1.0-0"}
+command -v docker >/dev/null 2>&1 || { echo "mkdebspecial: docker is needed" >&2; exit 2; }
+W=`mktemp -d "${TMPDIR:-/tmp}/mkdebspecial.XXXXXX"` || exit 2
+trap 'rm -rf "$W"' 0
+
+# The modes in the packages' contents: "4755 root/root [usr/bin/passwd]"
+PGPASSWORD=udd-mirror; export PGPASSWORD
+$PSQL -h udd-mirror.debian.net -U udd-mirror -At -F ' ' udd -c \
+  "select distinct package, information from lintian where tag = 'elevated-privileges'" > "$W/udd" ||
+  { echo "mkdebspecial: cannot read UDD" >&2; exit 2; }
+$AWK '$2 ~ /^[0-7][0-7][0-7][0-7]$/ && $4 ~ /^\[.*\]$/ {
+    p = substr($4, 2, length($4) - 2); print $2, $1, "/" p }' "$W/udd" > "$W/contents"
+[ "`wc -l < "$W/contents"`" -gt 100 ] || { echo "mkdebspecial: too few files from UDD; $OUT left as it was" >&2; exit 2; }
+
+# The modes after installing, in a container: "MODE PACKAGE PATH" for
+# every setuid or setgid file, its package from dpkg -S (whose list may
+# still name /bin/... for a file usrmerge moved). The script is mounted,
+# not fed on stdin, where a maintainer script would read the rest of it.
+cat > "$W/survey.sh" <<'EOF'
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq >/dev/null 2>&1 || exit 2
+have=
+for p in "$@"; do apt-cache show "$p" >/dev/null 2>&1 && have="$have $p"; done
+apt-get install -y -qq --no-install-recommends $have >/dev/null 2>&1 ||
+  for p in $have; do apt-get install -y -qq --no-install-recommends "$p" >/dev/null 2>&1; done
+find / -xdev -perm /6000 -type f 2>/dev/null | while read -r f; do
+  m=`stat -c %a "$f"`
+  p=`dpkg -S "$f" 2>/dev/null | grep -v '^diversion' | head -1`
+  [ -n "$p" ] || case "$f" in /usr/*) p=`dpkg -S "${f#/usr}" 2>/dev/null | grep -v '^diversion' | head -1` ;; esac
+  [ -n "$p" ] && echo "$m ${p%%[:,]*} $f"
+done
+EOF
+for image in $IMAGES
+do
+  for set in "$SURVEY" "$SURVEY_ALT" "nocaps $SURVEY_NOCAPS"
+  do
+    caps=
+    case "$set" in nocaps\ *) caps="--cap-drop SETFCAP"; set=${set#nocaps } ;; esac
+    # shellcheck disable=SC2086
+    docker run --rm $caps -v "$W/survey.sh:/survey.sh:ro" "$image" sh /survey.sh $set < /dev/null >> "$W/installed" ||
+      { echo "mkdebspecial: the survey failed in $image" >&2; exit 2; }
+  done
+done
+[ "`wc -l < "$W/installed"`" -gt 20 ] || { echo "mkdebspecial: too few files from the survey; $OUT left as it was" >&2; exit 2; }
+
+{
+  echo "# What Debian and Ubuntu packages make setuid or setgid, read by"
+  echo "# util/pkgspecial on dpkg systems. Made `date -u +%Y-%m-%d` by util/mkdebspecial from"
+  echo "# UDD's lintian results (the packages' contents) and from installing"
+  echo "# packages in $IMAGES"
+  echo "# (what maintainer scripts set); do not edit, run sh util/mkdebspecial"
+  echo "# before a release instead."
+  echo "#"
+  echo "# mode  package  path"
+  cat "$W/contents" "$W/installed" |
+  $AWK '{ sub(/^\/(bin|sbin|lib|lib32|lib64|libx32)\//, "/usr/&", $3); sub(/^\/usr\/\//, "/usr/", $3); print }' |
+  sort -k3,3 -k2,2 -k1,1 -u
+} > "$W/out" || exit 2
+cat "$W/out" > "$OUT"

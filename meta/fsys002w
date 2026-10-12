@@ -6,13 +6,16 @@ Fix: Rebuild the program with absolute paths, or take the setuid bit off.
 References: strings(1); system(3)
 Controls: CIS 4.1; NIST AC-6, CM-7; ISO 8.2, 8.18; CE Secure configuration
 
-The listed program is a setuid executable, and it appears to contain
-relative pathnames (do not start with a '/').  This often represents
-a security hole in the program.  These relative pathnames can be caused
-by system()* or popen()* calls which do not use full pathnames to the
-executable, or, on systems which support dynamic linking, relative
-pathnames indicating the directories containing the libraries.  In any
-case, these need to be checked.
+The program is a setuid executable that no installed package makes
+setuid (fsys004a), and it appears to contain relative pathnames (do
+not start with a '/').  This often represents a security hole in the
+program.  These relative pathnames can be caused by system()* or
+popen()* calls which do not use full pathnames to the executable, or,
+on systems which support dynamic linking, relative pathnames
+indicating the directories containing the libraries.  In any case,
+these need to be checked.  The programs packages ship setuid are not
+looked at: they all contain "../" (sudo, pkexec and ssh-keysign name
+it to refuse it), so the test said nothing there.
 
 *Note:  system() and popen() should *never* be used from a program
         which is executing with privileges.

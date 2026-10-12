@@ -38,7 +38,7 @@ inputfile="$1"
 # elements are set.
 #
 [ "$Tiger_TESTMODE" = 'Y' ] && {
-  haveallcmds RM FILECMD SGREP LS STRINGS SORT COMM CAT AWK || exit 1
+  haveallcmds RM FILECMD SGREP GREP LS STRINGS SORT COMM CAT AWK || exit 1
   haveallfiles BASEDIR WORKDIR SUID_LIST || exit 1
   
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
@@ -59,6 +59,36 @@ haveallfiles BASEDIR WORKDIR || exit 1
       [ "$owner" = root ] && echo "$file" >> $TigerCheckEmbedded
     }
   done
+}
+
+# What is expected to be setuid: what the installed packages make setuid
+# (util/pkgspecial: rpm's and apk's file modes, pacman's mtree files; for
+# dpkg, which records no modes, Tigris's list of what Debian and Ubuntu
+# packages make setuid, for the packages installed, and what
+# dpkg-statoverride records), else Tigris's list for the platform. What
+# is not expected is listed in suid.list, one path a line.
+source=
+haveallcmds SORT COMM CAT && {
+  $SORT $inputfile > $WORKDIR/suid.in.$$
+  if sh $BASEDIR/util/pkgspecial suid > $WORKDIR/suid.pkg.$$ 2>/dev/null; then
+    $COMM -23 $WORKDIR/suid.in.$$ $WORKDIR/suid.pkg.$$ > $WORKDIR/suid.list.$$
+    case "$LXPKGMGR" in
+      dpkg) source="No installed package makes it setuid: compared with dpkg's file lists and statoverrides, and Tigris's list of what Debian and Ubuntu packages make setuid." ;;
+      *) source="No installed package makes it setuid ($LXPKGMGR's database)." ;;
+    esac
+  elif [ -n "$SUID_LIST" -a -s "$SUID_LIST" ]; then
+    $SORT $SUID_LIST |
+    $COMM -23 $WORKDIR/suid.in.$$ - > $WORKDIR/suid.list.$$
+    source="Not in Tigris's list of the setuid programs this platform ships."
+  else
+    message CONFIG fsys003c "" 'No setuid list... listing all setuid files'
+    $CAT $inputfile > $WORKDIR/suid.list.$$
+  fi
+}
+# nonstandard FILE: is it in suid.list (the path compared as text)
+nonstandard()
+{
+  [ -f $WORKDIR/suid.list.$$ ] && $GREP -F -x -q -e "$1" $WORKDIR/suid.list.$$
 }
 
 haveallcmds FILECMD LS SGREP STRINGS && {
@@ -87,9 +117,13 @@ haveallcmds FILECMD LS SGREP STRINGS && {
     ;;
     esac
   
+    # Relative pathnames, in a program no package makes setuid: the ones
+    # packages ship have them all (sudo, pkexec and ssh-keysign each name
+    # "../" in order to refuse it), so there the test said nothing
+    nonstandard "$file" &&
     $STRINGS - "$here" 2>/dev/null |
     $SGREP '\.\./' 2>/dev/null && {
-      $SGREP "$file" $REL_FILE_EXCP 2>/dev/null || {
+      $GREP -F -x -q -e "$file" $REL_FILE_EXCP 2>/dev/null || {
 	case "$file" in
 	  */xload)
 	  message WARN misc015w "" "$file appears to contain relative pathnames.  There is a known security vulnerability with xload in this configuration."
@@ -165,41 +199,34 @@ haveallcmds FILECMD LS SGREP STRINGS && {
   echo
 }
 
-# What is expected to be setuid: what the installed packages ship setuid,
-# where the package manager records modes (rpm, pacman, apk), else
-# Tigris's list for the platform
-source=
-haveallcmds SORT COMM CAT && {
-  if sh $BASEDIR/util/pkgspecial suid > $WORKDIR/suid.pkg.$$ 2>/dev/null; then
-    $SORT $inputfile | $COMM -23 - $WORKDIR/suid.pkg.$$ > $WORKDIR/suid.list.$$
-    source="Not setuid in any installed package ($LXPKGMGR's database)."
-  elif [ -n "$SUID_LIST" -a -s "$SUID_LIST" ]; then
-    $SORT $SUID_LIST |
-    $COMM -23 $inputfile - > $WORKDIR/suid.list.$$
-    source="Not in Tigris's list of the setuid programs this platform ships."
-  else
-    message CONFIG fsys003c "" 'No setuid list... listing all setuid files'
-    $CAT $inputfile > $WORKDIR/suid.list.$$
-  fi
-}
-
-haveallcmds LS AWK && {
-  [ -s $WORKDIR/suid.list.$$ ] && {
-    message ALERT fsys004a "$source" 'The following setuid programs are non-standard:'
-    while read -r file
-    do
-      lsline "$file"
-    done < $WORKDIR/suid.list.$$ |
-    $AWK '{printf("%10s %-8s %-8s %s\n", $1, $3, $4, $NF);}' |
-    $SORT
-    echo
-  }
+# One finding a file, its mode and owner in the message (the JSON has
+# no other place for them)
+haveallcmds LS AWK && [ -s $WORKDIR/suid.list.$$ ] && {
+  # on dpkg, the package each is from: Tigris's list cannot say what a
+  # package it does not know makes suid (a vendor's chrome-sandbox), but
+  # a file no package installed is another matter
+  owners=
+  sh $BASEDIR/util/pkgspecial owners < $WORKDIR/suid.list.$$ > $WORKDIR/suid.own.$$ 2>/dev/null && owners=Y
+  while read -r file
+  do
+    lsl=`lsline "$file" 2>/dev/null | $AWK '{ print $1, $3; exit }'`
+    set -f; set -- $lsl; set +f
+    detail=$source
+    [ -n "$owners" ] && {
+      pkg=`f="$file" $AWK -F'\t' '$1 == ENVIRON["f"] { print $2; exit }' $WORKDIR/suid.own.$$`
+      if [ -n "$pkg" ]; then detail="$source It is from package $pkg."; else detail="$source No package installed it."; fi
+    }
+    message ALERT fsys004a "$detail" "Setuid program $file (${1:-?}, owner ${2:-?}) is non-standard."
+  done < $WORKDIR/suid.list.$$
+  echo
 }
 
 #
 # Try to locate setuid copies of any executables we have signatures
-# for.
+# for (with Tiger_Check_SIGNATURES, as check_sgid: the signatures are
+# 2003's, and without the hash helpers built every run said ERROR)
 #
+if [ "$Tiger_Check_SIGNATURES" != 'N' ]; then
 haveallcmds SORT AWK COMM GREP LS SNEFRU &&
 haveallfiles SIGNATURE_FILE && {
   $SORT $WORKDIR/suid.list.$$ > $WORKDIR/suid.$$
@@ -234,5 +261,6 @@ haveallfiles SIGNATURE_FILE && {
     }
   done
 }
+fi
 
-delete $WORKDIR/suid.list.$$ $WORKDIR/suid.pkg.$$ $WORKDIR/suid.$$
+delete $WORKDIR/suid.list.$$ $WORKDIR/suid.pkg.$$ $WORKDIR/suid.$$ $WORKDIR/suid.in.$$ $WORKDIR/suid.own.$$

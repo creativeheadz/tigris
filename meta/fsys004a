@@ -2,9 +2,18 @@ Id: fsys004a
 Severity: ALERT
 Category: filesystem
 Check: check_suid
-Fix: chmod u-s the file unless a package installs it that way (util/pkgspecial).
+Fix: chmod u-s the file, unless its package installs it so (a vendor's, which Tigris cannot check on dpkg: then accept it, tigris-accept).
 References: chmod(1)
 Controls: CIS 4.1; NIST AC-6, CM-7; ISO 8.2, 8.18; CE Secure configuration
 
-The listed programs are setuid, but are not in the database of
-setuid programs which appear in the OS distribution.
+The program is setuid, and no installed package makes it so. Tigris
+compares with the package manager: rpm's and apk's file modes and
+pacman's mtree files; on dpkg systems, which record no modes, the
+installed packages' file lists against Tigris's list of what Debian
+and Ubuntu packages make setuid (made from Debian's archive and from
+installing packages, util/mkdebspecial), and the modes
+dpkg-statoverride records. Elsewhere Tigris's own list for the
+platform. On dpkg the detail names the package the file is from: a
+vendor's package Tigris's list does not know (a browser's
+chrome-sandbox) may ship it setuid, while a file no package installed
+was put there by hand. One finding per file.

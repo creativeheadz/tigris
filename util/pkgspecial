@@ -17,7 +17,12 @@
 #
 # pkgspecial suid|sgid: the files the installed packages ship setuid (or
 #                 setgid), one per line, sorted; exit status 1 when the
-#                 package manager records no modes (dpkg) or cannot be read.
+#                 package manager cannot be read.
+# pkgspecial owners: for each path on standard input that an installed
+#                 package has in its file list, "PATH<TAB>PACKAGE"; dpkg
+#                 only (exit status 1 otherwise), where Tigris's list
+#                 cannot say whether a package unknown to it ships a file
+#                 setuid, and which package it is helps the reader.
 #
 # 10/07/2026 atrimbitas - Initial version. rpm: each file's mode from
 #                 rpm -qa. pacman: the mode= of each entry in the packages'
@@ -28,6 +33,14 @@
 #                 check_sgid, with config's settings in the environment;
 #                 Tiger_Sysctl_Root prefixes the databases and
 #                 Tiger_Rpm_Modes_Cmd replaces the rpm query, for the tests.
+# 10/12/2026 atrimbitas - dpkg, which records no modes: Tigris's list of
+#                 what Debian and Ubuntu packages make setuid or setgid
+#                 (DPKG_SPECIAL, made by util/mkdebspecial), for the
+#                 packages installed here and the paths their file lists
+#                 hold, and the modes dpkg-statoverride records. A list
+#                 path and a file list path are the same file when they
+#                 differ only by usrmerge (/bin is /usr/bin) or by the
+#                 multiarch triplet.
 #
 #-----------------------------------------------------------------------------
 #
@@ -35,11 +48,36 @@ which=$1
 case "$which" in
   suid) bits=4567 ;;
   sgid) bits=2367 ;;
-  *) echo "usage: pkgspecial suid|sgid" >&2; exit 2 ;;
+  owners) ;;
+  *) echo "usage: pkgspecial suid|sgid|owners" >&2; exit 2 ;;
 esac
 # the tests' root, or an offline root's (tigris --root) database
 root=${Tiger_Sysctl_Root:-$TIGRIS_ROOT}
-AWK=${AWK:-awk} SORT=${SORT:-sort}
+AWK=${AWK:-awk} SORT=${SORT:-sort} GREP=${GREP:-grep}
+
+if [ "$which" = owners ]; then
+  info=$root/var/lib/dpkg/info
+  [ "$LXPKGMGR" = dpkg ] && [ -d "$info" ] || exit 1
+  merged=0; [ -L "$root/bin" ] && merged=1
+  # each path, and where usrmerge made /bin a link to usr/bin, the /bin/...
+  # a file list may still call it
+  $AWK -v merged="$merged" '{
+    print
+    if (merged && $0 ~ /^\/usr\/(bin|sbin|lib|lib32|lib64|libx32)\//) print substr($0, 5)
+  }' > "$WORKDIR/owners.$$"
+  # one grep over every file list: "INFO/PACKAGE[:ARCH].list:PATH"
+  $GREP -H -F -x -f "$WORKDIR/owners.$$" "$info"/*.list 2>/dev/null |
+    info="$info/" merged="$merged" $AWK '{
+      l = substr($0, length(ENVIRON["info"]) + 1)
+      i = index(l, ".list:"); if (!i) next
+      p = substr(l, 1, i - 1); sub(/:.*/, "", p)
+      f = substr(l, i + 6)
+      if (ENVIRON["merged"] && f ~ /^\/(bin|sbin|lib|lib32|lib64|libx32)\//) f = "/usr" f
+      print f "\t" p
+    }'
+  rm -f "$WORKDIR/owners.$$"
+  exit 0
+fi
 
 # Is there a database with modes in it? Decided here, before the
 # pipeline, so that the exit status says so
@@ -47,6 +85,7 @@ case "$LXPKGMGR" in
   rpm) [ -n "$Tiger_Rpm_Modes_Cmd" ] || command -v rpm >/dev/null 2>&1 || exit 1 ;;
   pacman) [ -d "$root/var/lib/pacman/local" ] || exit 1 ;;
   apk) [ -f "$root/lib/apk/db/installed" ] || exit 1 ;;
+  dpkg) [ -d "$root/var/lib/dpkg/info" ] && [ -n "$DPKG_SPECIAL" ] && [ -f "$DPKG_SPECIAL" ] || exit 1 ;;
   *) exit 1 ;;
 esac
 
@@ -83,6 +122,54 @@ modes()
         /^F:/ { dir = substr($0, 3) }
         /^R:/ { file = "/" dir "/" substr($0, 3) }
         /^a:/ && file != "" { print $4, file; file = "" }' "$root/lib/apk/db/installed"
+      ;;
+    dpkg)
+      # where usrmerge made /bin a link to usr/bin, a file list's /bin/su
+      # is the /usr/bin/su the scan finds
+      merged=0; [ -L "$root/bin" ] && merged=1
+      info=$root/var/lib/dpkg/info
+      {
+        # each package the list names that is installed: its file list
+        # ("pkg.list", or "pkg:arch.list" for a Multi-Arch: same one)
+        $AWK '!/^#/ && NF == 3 { print $2 }' "$DPKG_SPECIAL" | $SORT -u |
+        while read -r pkg
+        do
+          for l in "$info/$pkg.list" "$info/$pkg":*.list
+          do
+            [ -f "$l" ] || continue
+            echo "@pkg $pkg"
+            cat "$l"
+          done
+        done
+      } | $AWK -v merged="$merged" '
+        # the same file, whichever way a path names it
+        function norm(p) {
+          if (p ~ /^\/(bin|sbin|lib|lib32|lib64|libx32)\//) p = "/usr" p
+          gsub(/\/[a-z0-9_]+-linux-gnu[a-z0-9_]*\//, "/@/", p)
+          return p
+        }
+        function here(p) {
+          if (merged && p ~ /^\/(bin|sbin|lib|lib32|lib64|libx32)\//) p = "/usr" p
+          return p
+        }
+        BEGIN {
+          list = ENVIRON["DPKG_SPECIAL"]
+          while ((getline l < list) > 0) {
+            if (l ~ /^#/) continue
+            split(l, f, " ")
+            if (f[3] != "") mode[f[2] SUBSEP norm(f[3])] = f[1]
+          }
+        }
+        /^@pkg / { pkg = $2; next }
+        { k = pkg SUBSEP norm($0); if (k in mode) print mode[k], here($0) }'
+      # and what dpkg-statoverride records: "owner group mode path"
+      [ -f "$root/var/lib/dpkg/statoverride" ] &&
+        $AWK -v merged="$merged" '
+          NF >= 4 && $3 ~ /^[0-7]+$/ {
+            p = $0; sub(/^[^ ]+ +[^ ]+ +[^ ]+ +/, "", p)
+            if (merged && p ~ /^\/(bin|sbin|lib|lib32|lib64|libx32)\//) p = "/usr" p
+            print $3, p
+          }' "$root/var/lib/dpkg/statoverride"
       ;;
   esac
 }

@@ -167,7 +167,7 @@ all into `doc/explanations.html`.
 | Category | Ids | What is looked at |
 |---|---:|---|
 | **services** | 93 | What enabled systemd services and timers run, their unit files and sandboxing, time synchronisation, inetd; Apache, nginx and its TLS; MySQL and MariaDB, PostgreSQL, Redis, MongoDB, Oracle; Postfix, Exim, Dovecot and sendmail; PHP, SNMP, Squid, CUPS; certificates about to expire, private keys, entropy |
-| **filesystem** | 85 | Setuid and setgid files against what the packages ship, world-writable files and directories, devices, files nobody owns, `/tmp` and `/dev/shm` mount options, disk encryption (LUKS, FileVault), swap, core dumps, umask |
+| **filesystem** | 85 | Setuid and setgid files against what the installed packages make so (on Debian and Ubuntu, from a list built from Debian's archive and real installs, each finding naming the package a file came from), world-writable files and directories (a sticky one only under /etc, /usr and the like), devices, files nobody owns, `/tmp` and `/dev/shm` mount options, disk encryption (LUKS, FileVault), swap, core dumps, umask |
 | **accounts** | 80 | Password and shadow files, root's account, groups, sudo's and doas's rules (NOPASSWD, wildcards, `!authenticate`), PAM's password quality and lockout, every account's PATH, login shells, accounts that never logged in, Kerberos encryption types and keytabs, LDAP's root password |
 | **network** | 47 | What listens on which port, IPv4 and IPv6, and as whom; network sysctls; NFS exports; NTP; DNS resolvers (`resolv.conf`, unbound, BIND); sendmail's configuration |
 | **tigris** | 39 | Tigris's own configuration and the run itself |

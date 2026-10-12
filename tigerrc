@@ -361,12 +361,15 @@ Tiger_FSScan_ReadOnly=N
 # Directories the file system scan should skip, pipe-separated.
 # Each entry is a find -path pattern, e.g. '/srv/backups|/home/*/.cache'
 #
-# The default skips the stores that hold container images, Flatpak runtimes
-# and snaps. Their symlinks resolve inside their own root, not on the host,
-# and on a desktop they produced 16,000 dangling-symlink warnings in a run.
-# Set it to '' to scan them too.
+# The default skips the stores that hold container images (rootless
+# Podman's too, in each home), Flatpak runtimes and snaps. Their symlinks
+# resolve inside their own root, not on the host, and on a desktop they
+# produced 16,000 dangling-symlink warnings in a run; a rootless image's
+# setuid programs, owned by the user its root maps to, each came out as
+# non-standard and not owned by an administrator. Set it to '' to scan
+# them too.
 #
-Tiger_FSScan_PruneDirs='/var/lib/flatpak|/var/lib/docker|/var/lib/containerd|/var/lib/containers|/var/lib/snapd|/var/snap|/snap'
+Tiger_FSScan_PruneDirs='/var/lib/flatpak|/var/lib/docker|/var/lib/containerd|/var/lib/containers|/home/*/.local/share/containers|/root/.local/share/containers|/var/lib/snapd|/var/snap|/snap'
 #
 # Where the filesystem scan lists its oddities one by one: pipe-separated
 # path prefixes. In these directories a dangling symlink can be a path a

@@ -34,7 +34,7 @@ file="$1"
 # elements are set.
 #
 [ "$Tiger_TESTMODE" = 'Y' ] && {
-  haveallcmds GREP CAT RM AWK GETCLIENTDIRS || exit 1
+  haveallcmds GREP CAT RM AWK SORT LS GETCLIENTDIRS || exit 1
   haveallfiles WORKDIR || exit 1
   
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
@@ -45,7 +45,7 @@ file="$1"
 echo
 echo "# Checking for writable directories..."
 
-haveallcmds GREP CAT SED || exit 1
+haveallcmds GREP CAT SED AWK SORT LS || exit 1
 haveallvars WORKDIR || exit 1
 
 [ ! -n "$FS_WDIRSYS" ] && FS_WDIRSYS="/tmp/ /usr/tmp/"
@@ -72,9 +72,31 @@ $AWK -v dirs="$FS_WDIRSYS $dltmpdirs" '
   BEGIN { n = split(dirs, d, " ") }
   { for (i = 1; i <= n; i++) if (index($0, d[i]) == 1) next; print }' > $WORKDIR/wdir.tmp.$$
 
+# One finding a directory. A sticky one is shared as /tmp is, which is
+# what CIS asks of every world-writable directory: no finding, but where
+# root reads programs or configuration (or a web server its pages), since
+# anyone can still add files there.
 [ -s $WORKDIR/wdir.tmp.$$ ] && {
-  message FAIL fsys008f "" 'The following directories are world writable:'
-  $SORT $WORKDIR/wdir.tmp.$$
+  $SORT $WORKDIR/wdir.tmp.$$ |
+  while read -r dir
+  do
+    d=${dir%/}; [ -n "$d" ] || d=/
+    lsl=`lsline "$d" 2>/dev/null | $AWK '{ print $1, $3; exit }'`
+    set -f; set -- $lsl; set +f
+    case "${1:-?}" in
+      ?????????[tT]*)
+        case "$dir" in
+          /var/www/*)
+            detail="Sticky, but under /var/www, where a web server reads its pages: anyone can add files there." ;;
+          /etc/*|/usr/*|/bin/*|/sbin/*|/lib/*|/lib32/*|/lib64/*|/libx32/*|/boot/*|/root/*|/opt/*)
+            tree=${dir#/}; tree=/${tree%%/*}
+            detail="Sticky, but under $tree, where root reads programs and configuration: anyone can add files there." ;;
+          *) continue ;;
+        esac ;;
+      *) detail="Not sticky: anyone can delete or replace the files others keep there." ;;
+    esac
+    message FAIL fsys008f "$detail" "Directory $d is world writable (${1:-?}, owner ${2:-?})."
+  done
 }
 
 delete $WORKDIR/wdir.tmp.$$

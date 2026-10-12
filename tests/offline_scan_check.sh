@@ -4,8 +4,10 @@
 #
 # Runs tigris --root with the scan on (setuid, setgid, world-writable
 # directories, unowned files, links, odd names, devices) over a root that
-# holds one of each: a setuid program no package ships, a setgid script, a
-# world-writable directory, a directory named "...", an absolute link to a
+# holds one of each: a setuid program no package ships, a setgid script,
+# world-writable directories (one not sticky, reported; one sticky as /tmp
+# is, not reported; one sticky under /etc, reported), a directory named
+# "...", an absolute link to a
 # file this host has and the root does not (dangling inside the root; it
 # must not be followed to this host's file), and one to a file the root
 # has (not dangling). The root's passwd knows the files' uid but its group
@@ -30,12 +32,12 @@ U=$uid; G=`id -g`
 find / -maxdepth 0 -printf '' 2>/dev/null || { echo "ok   (no GNU find here: nothing to test)"; echo PASS; exit 0; }
 
 R=$W/img
-mkdir -p "$R/etc" "$R/usr/bin" "$R/srv/drop" "$R/opt/..." "$R/dev"
+mkdir -p "$R/etc" "$R/usr/bin" "$R/srv/drop" "$R/srv/shared" "$R/etc/zz-drop" "$R/opt/..." "$R/dev"
 printf 'root:x:0:0:root:/root:/bin/sh\nmilo:x:%s:%s:Milo:/home/milo:/bin/sh\n' "$U" "$G" > "$R/etc/passwd"
 printf 'root:x:0:\n' > "$R/etc/group"
 printf '\177ELF' > "$R/usr/bin/zz-suid"; chmod 4755 "$R/usr/bin/zz-suid"
 printf '#!/bin/sh\necho hi\n' > "$R/usr/bin/zz-sgid-script"; chmod 2755 "$R/usr/bin/zz-sgid-script"
-chmod 777 "$R/srv/drop"
+chmod 777 "$R/srv/drop"; chmod 1777 "$R/srv/shared" "$R/etc/zz-drop"
 ln -s /etc/hostname "$R/etc/zz-hostlink"
 ln -s /etc/passwd "$R/etc/zz-ok"
 [ -e /etc/hostname ] || : > "$W/hostname-missing"
@@ -61,10 +63,18 @@ report=`ls "$W"/log/security.report.* 2>/dev/null | grep -v '\.jsonl$' | head -1
 [ -n "$report" ] || { echo "FAIL no report:"; cat "$W/out"; exit 1; }
 has() { grep -F -q -- "$1" "$report"; }
 
-has '/usr/bin/zz-suid' && has 'The following setuid programs are non-standard' &&
+has '[fsys004a] Setuid program /usr/bin/zz-suid (-rwsr-xr-x, owner' &&
   ok "a setuid program no package ships, by the root's path: fsys004a" || bad "fsys004a"
 has '[fsys010w] File /usr/bin/zz-sgid-script is a setgid script' && ok "a setgid script: fsys010w" || bad "fsys010w"
-has 'The following directories are world writable' && has '/srv/drop/' && ok "a world-writable directory: fsys008f" || bad "fsys008f"
+has '[fsys008f] Directory /srv/drop is world writable (drwxrwxrwx' && has 'Not sticky' &&
+  ok "a world-writable directory: fsys008f" || bad "fsys008f"
+# (as a finding of its own, or a line of the list fsys008f printed until
+# October 2026, which ended in a slash)
+{ has 'Directory /srv/shared ' || grep -qx '/srv/shared/' "$report"; } &&
+  bad "a sticky world-writable directory, shared as /tmp is, was reported" ||
+  ok "a sticky one, shared as /tmp is: no finding"
+has '[fsys008f] Directory /etc/zz-drop is world writable (drwxrwxrwt' && has 'Sticky, but under /etc' &&
+  ok "a sticky one under /etc, where root reads configuration: fsys008f" || bad "sticky under /etc"
 has "Unusual filename \`...' found" && ok "a directory named ...: fsys005a" || bad "fsys005a"
 has '[fsys013w] /etc/zz-hostlink is a dangling symlink' &&
   ok "an absolute link to a file this host has and the root does not: dangling inside the root" || bad "dangling"

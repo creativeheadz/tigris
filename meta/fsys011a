@@ -2,9 +2,9 @@ Id: fsys011a
 Severity: ALERT
 Category: filesystem
 Check: check_sgid
-Fix: chmod g-s the file unless a package installs it that way (util/pkgspecial).
+Fix: chmod g-s the file, unless its package installs it so (a vendor's, which Tigris cannot check on dpkg: then accept it, tigris-accept).
 References: chmod(1)
 Controls: CIS 4.1; NIST AC-6, CM-7; ISO 8.2, 8.18; CE Secure configuration
 
-The listed programs are setgid, but are not in the database of
-setgid programs which appear in the OS distribution.
+The program is setgid, and no installed package makes it so: compared
+as for setuid programs (fsys004a). One finding per file.

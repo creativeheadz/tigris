@@ -430,5 +430,6 @@ GEN_INETD_SETS gen_inetd
 GETDISKS getdisks
 EMBEDDEDLIST embedlist
 EOL_LIST eol_list
+DPKG_SPECIAL dpkg_special_list
 EOL
 `

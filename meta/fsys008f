@@ -2,10 +2,16 @@ Id: fsys008f
 Severity: FAIL
 Category: filesystem
 Check: check_wdir
-Fix: chmod o-w the directory, or make it sticky (chmod +t) if it must be shared.
+Fix: chmod o-w the directory; if it must be shared, make it sticky (chmod +t), and keep it out of /etc, /usr and the like.
 References: chmod(1)
 Controls: CIS 3.3; NIST AC-3; ISO 8.3; CE Secure configuration
 
-The listed directories are world writable.  These provide a location
-for intruders to store files.  They should be checked for unusual
-files.
+The directory is world writable, outside the ones meant to be
+(FS_WDIRSYS: /tmp, /var/tmp, /dev/shm, /run...). Without the sticky
+bit anyone can delete or replace the files others keep there. A
+sticky one, shared as /tmp is, is what CIS asks of every
+world-writable directory and is not reported, unless it is under a
+tree root reads programs or configuration from (/etc, /usr, /bin,
+/sbin, /lib*, /boot, /root, /opt) or a web server its pages
+(/var/www), where anyone can still add files. One finding per
+directory; check them for files you did not expect.
