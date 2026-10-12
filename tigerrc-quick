@@ -363,6 +363,7 @@ Tiger_FSScan_Devs=Y		# device files
 Tiger_FSScan_SymLinks=Y		# strange symbolic links
 Tiger_FSScan_ofNote=Y		# weird filenames
 Tiger_FSScan_WDIR=Y		# world writable directories
+Tiger_FSScan_WFILE=Y		# world writable files
 Tiger_FSScan_Unowned=Y		# files with undefined owners/groups
 #  The following variables change the way the GET_MOUNTS (gen_mounts) script works:
 Tiger_FSScan_WarnUnknown=Y	# Warn about unknown filesystems used
@@ -388,11 +389,13 @@ Tiger_FSScan_PruneDirs='/var/lib/flatpak|/var/lib/docker|/var/lib/containerd|/va
 #
 # Where the filesystem scan lists its oddities one by one: pipe-separated
 # path prefixes. In these directories a dangling symlink can be a path a
-# privileged program follows into somewhere another user can create, and
-# a file with a strange name is worth a look. Elsewhere (help files, icon
-# themes, home directories, copies of other machines' disks) dangling
-# symlinks and odd names are routine, so they are counted per directory
-# instead. Set to '*' to list everything.
+# privileged program follows into somewhere another user can create, a
+# file with a strange name is worth a look, and a world-writable file is
+# one anyone can make root, a server or a daemon read what they like.
+# Elsewhere (help files, icon themes, home directories, copies of other
+# machines' disks) dangling symlinks, odd names and world-writable files
+# (a tool's lock or cache file, as often as not) are routine, so they are
+# counted per directory instead. Set to '*' to list everything.
 #
 Tiger_FSScan_DetailDirs='/etc|/bin|/sbin|/lib|/usr/bin|/usr/sbin|/usr/lib|/usr/local|/opt|/boot|/root|/var/lib|/var/spool|/srv'
 #

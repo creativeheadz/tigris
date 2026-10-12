@@ -13,9 +13,9 @@
   <a href="COPYING"><img src="https://img.shields.io/badge/licence-GPL--2.0--or--later-52c7e8?style=flat-square&labelColor=0f1822" alt="Licence: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/written%20in-POSIX%20sh%20%2B%20awk-4fd67f?style=flat-square&labelColor=0f1822" alt="Written in POSIX sh and awk">
   <br>
-  <img src="https://img.shields.io/badge/finding%20ids-520-e8833a?style=flat-square&labelColor=0f1822" alt="520 finding ids">
+  <img src="https://img.shields.io/badge/finding%20ids-522-e8833a?style=flat-square&labelColor=0f1822" alt="522 finding ids">
   <img src="https://img.shields.io/badge/categories-15-e8833a?style=flat-square&labelColor=0f1822" alt="15 categories">
-  <img src="https://img.shields.io/badge/test%20suites-104-e8833a?style=flat-square&labelColor=0f1822" alt="104 test suites">
+  <img src="https://img.shields.io/badge/test%20suites-105-e8833a?style=flat-square&labelColor=0f1822" alt="105 test suites">
   <img src="https://img.shields.io/badge/CI-Debian%20%C2%B7%20Ubuntu%20%C2%B7%20Fedora%20%C2%B7%20Rocky%20%C2%B7%20openSUSE%20%C2%B7%20Alpine%20%C2%B7%20Arch-c6d6e2?style=flat-square&labelColor=0f1822" alt="Tested on Debian, Ubuntu, Fedora, Rocky, openSUSE, Alpine and Arch">
 </p>
 
@@ -85,7 +85,7 @@ as code: a test plants commands in an image to prove it.
 
 **A contract for machines.** Every run also writes JSON Lines with a
 versioned schema, a category and the compliance controls per finding,
-and `tigris explain ID` says what any of the 520 finding ids means and
+and `tigris explain ID` says what any of the 522 finding ids means and
 how to fix it.
 
 </td>
@@ -170,7 +170,7 @@ all into `doc/explanations.html`.
 | Category | Ids | What is looked at |
 |---|---:|---|
 | **services** | 93 | What enabled systemd services and timers run, their unit files and sandboxing, time synchronisation, inetd; Apache, nginx and its TLS; MySQL and MariaDB, PostgreSQL, Redis, MongoDB, Oracle; Postfix, Exim, Dovecot and sendmail; PHP, SNMP, Squid, CUPS; certificates about to expire, private keys, entropy |
-| **filesystem** | 85 | Setuid and setgid files against what the installed packages make so (on Debian and Ubuntu, from a list built from Debian's archive and real installs, each finding naming the package a file came from), world-writable files and directories (a sticky one only under /etc, /usr and the like), devices, files nobody owns, `/tmp` and `/dev/shm` mount options, disk encryption (LUKS, FileVault), swap, core dumps, umask |
+| **filesystem** | 87 | Setuid and setgid files against what the installed packages make so (on Debian and Ubuntu, from a list built from Debian's archive and real installs, each finding naming the package a file came from), world-writable files (each one under the system trees, with what reads it there; counted per directory elsewhere) and directories (a sticky one only under /etc, /usr and the like), devices, files nobody owns, `/tmp` and `/dev/shm` mount options, disk encryption (LUKS, FileVault), swap, core dumps, umask |
 | **accounts** | 80 | Password and shadow files, root's account, groups, sudo's and doas's rules (NOPASSWD, wildcards, `!authenticate`), PAM's password quality and lockout, every account's PATH, login shells, accounts that never logged in, Kerberos encryption types and keytabs, LDAP's root password |
 | **network** | 47 | What listens on which port, IPv4 and IPv6, and as whom; network sysctls; NFS exports; NTP; DNS resolvers (`resolv.conf`, unbound, BIND); sendmail's configuration |
 | **tigris** | 39 | Tigris's own configuration and the run itself |
@@ -228,7 +228,7 @@ package databases. Nothing in the image is run.
 
 | Reads an offline root | Skipped there, with the reason |
 |---|---|
-| Everything that is on disk: the file system scan (setuid and setgid files against what its packages ship, world-writable directories, files whose owner its own passwd does not know, devices outside /dev, dangling links, odd names), the permissions of its system files, devices and log files, accounts and passwords (the root's passwd, shadow and group files, homes, dot files, every account's PATH, root's access, accounts that never logged in), umask in login.defs and the shells' start-up files, cron, systemd units, the boot loader and single-user mode, the kernel and network settings it applies at boot (its sysctl.d, layered as systemd-sysctl layers it), mount options and encryption from its fstab and crypttab, core dumps, USB storage, package integrity (dpkg, rpm, apk, pacman), security updates waiting, PAM, sshd's configuration (worked out from its files, as sshd would), sudo's rules, dpkg's mode overrides, services and mail aliases, NFS exports, the release, the places intruders use, the paths embedded in its binaries, nginx, databases, DNS, logging and certificates | What needs the running system, skipped saying so: processes and listening ports, the firewall, Secure Boot and the CPU's flaws, AppArmor or SELinux, auditd, time daemons, rootkit traces in the running binaries, containers |
+| Everything that is on disk: the file system scan (setuid and setgid files against what its packages ship, world-writable files and directories, files whose owner its own passwd does not know, devices outside /dev, dangling links, odd names), the permissions of its system files, devices and log files, accounts and passwords (the root's passwd, shadow and group files, homes, dot files, every account's PATH, root's access, accounts that never logged in), umask in login.defs and the shells' start-up files, cron, systemd units, the boot loader and single-user mode, the kernel and network settings it applies at boot (its sysctl.d, layered as systemd-sysctl layers it), mount options and encryption from its fstab and crypttab, core dumps, USB storage, package integrity (dpkg, rpm, apk, pacman), security updates waiting, PAM, sshd's configuration (worked out from its files, as sshd would), sudo's rules, dpkg's mode overrides, services and mail aliases, NFS exports, the release, the places intruders use, the paths embedded in its binaries, nginx, databases, DNS, logging and certificates | What needs the running system, skipped saying so: processes and listening ports, the firewall, Secure Boot and the CPU's flaws, AppArmor or SELinux, auditd, time daemons, rootkit traces in the running binaries, containers |
 
 On Debian, Ubuntu, Fedora, Rocky, openSUSE, Alpine and Arch the package
 checks report the same of a copy of a system as of the system itself, and

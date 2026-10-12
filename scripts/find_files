@@ -17,6 +17,9 @@
 #
 # find_files - 06/14/93
 #
+# 10/12/2026 atrimbitas World-writable regular files (Tiger_FSScan_WFILE): one
+#	     more class in the one-pass find and in flogit, judged by
+#	     sub/check_wfile.
 # 10/07/2026 atrimbitas An offline root (--root): the root is walked, its
 #                /proc, /sys and /run (a running system's, not its own) left
 #                out; files nobody owns are those whose uid or gid is no
@@ -220,6 +223,12 @@ saveifs="$IFS"
 [ "x$Tiger_FSScan_WDIR" != 'xN' ] && {
   wdiropt='\( -type d -a -perm -000002 \)'
 }
+#
+# Options for finding world-writable regular files
+#
+[ "x$Tiger_FSScan_WFILE" != 'xN' ] && {
+  wfileopt='\( -type f -a -perm -000002 \)'
+}
 
 [ "x$Tiger_FSScan_Unowned" != 'xN' ] && {
   #
@@ -242,15 +251,15 @@ findopt=
 
 [ -n "$otheropt" ] && {
   findopt="$findopt $otheropt"
-  [ -n "$suidopt$sgidopt$devopt$linkopt$wdiropt$nownopt$nogrpopt" ] &&
+  [ -n "$suidopt$sgidopt$devopt$linkopt$wdiropt$wfileopt$nownopt$nogrpopt" ] &&
   findopt="$findopt -o"
 }
 
-[ -n "$suidopt$sgidopt$devopt$linkopt$wdiropt$nownopt$nogrpopt" ] &&
+[ -n "$suidopt$sgidopt$devopt$linkopt$wdiropt$wfileopt$nownopt$nogrpopt" ] &&
 findopt="$findopt \("
 
 prevopt=
-for xopt in "$suidopt" "$sgidopt" "$devopt" "$linkopt" "$wdiropt" "$nownopt" "$nogrpopt"
+for xopt in "$suidopt" "$sgidopt" "$devopt" "$linkopt" "$wdiropt" "$wfileopt" "$nownopt" "$nogrpopt"
 do
   [ -n "$prevopt" ] &&
   findopt="$findopt -o"
@@ -260,7 +269,7 @@ do
   prevopt="$xopt"
 done
 
-[ -n "$suidopt$sgidopt$devopt$linkopt$wdiropt$nownopt$nogrpopt" ] &&
+[ -n "$suidopt$sgidopt$devopt$linkopt$wdiropt$wfileopt$nownopt$nogrpopt" ] &&
 findopt="$findopt \)"
 
 #
@@ -302,6 +311,8 @@ fastopts()
   fi
   [ "x$Tiger_FSScan_WDIR" != 'xN' ] &&
     fo="$fo${fo:+ ,} \( -type d -perm -000002 -fprintf \"$1.wdir.$2\" '%p\n' \)"
+  [ "x$Tiger_FSScan_WFILE" != 'xN' ] &&
+    fo="$fo${fo:+ ,} \( -type f -perm -000002 -fprintf \"$1.wfile.$2\" '%p\n' \)"
   [ "x$Tiger_FSScan_Unowned" != 'xN' ] &&
     fo="$fo${fo:+ ,} \( $nouser -fprintf \"$1.nouser.$2\" '%p\n' \) , \( $nogroup -fprintf \"$1.nogroup.$2\" '%p\n' \)"
   [ -n "$fo" ] && printf '%s\n' "\( $fo \)"
@@ -325,10 +336,10 @@ pidlist=$WORKDIR/pid.list$$
 mountlist=$WORKDIR/mount.list$$
 outfile=$WORKDIR/find.out.$$
 
-safe_temp $pidlist $mountlist $outfile $WORKDIR/suid.msgs.$$  $WORKDIR/sgid.msgs.$$ $WORKDIR/other.msgs.$$ $WORKDIR/devs.msgs.$$ $WORKDIR/link.msgs.$$ $WORKDIR/wdir.msgs.$$ $WORKDIR/noowner.msgs.$$
+safe_temp $pidlist $mountlist $outfile $WORKDIR/suid.msgs.$$  $WORKDIR/sgid.msgs.$$ $WORKDIR/other.msgs.$$ $WORKDIR/devs.msgs.$$ $WORKDIR/link.msgs.$$ $WORKDIR/wdir.msgs.$$ $WORKDIR/wfile.msgs.$$ $WORKDIR/noowner.msgs.$$
 
 # Define this for the cleanup() function
-TigerCleanup="$TigerCleanup $WORKDIR/suid.msgs.$$ $WORKDIR/sgid.msgs.$$ $WORKDIR/other.msgs.$$ $WORKDIR/devs.msgs.$$ $WORKDIR/link.msgs.$$ $WORKDIR/wdir.msgs.$$ $WORKDIR/noowner.msgs.$$"
+TigerCleanup="$TigerCleanup $WORKDIR/suid.msgs.$$ $WORKDIR/sgid.msgs.$$ $WORKDIR/other.msgs.$$ $WORKDIR/devs.msgs.$$ $WORKDIR/link.msgs.$$ $WORKDIR/wdir.msgs.$$ $WORKDIR/wfile.msgs.$$ $WORKDIR/noowner.msgs.$$"
 
 counter=1
 
@@ -398,7 +409,7 @@ fi
     {
       output="$BASEDIR/util/flogit"
       # Do not change the order of these words
-      for what in suid dev link wdir nouser nogroup test sgid
+      for what in suid dev link wdir nouser nogroup test sgid wfile
       do
 	output="$output ${outfile}.${what}.$counter"
       done
@@ -435,7 +446,7 @@ fi
   $WAIT `[ "$WAIT" != 'wait' ] && $CAT $pidlist`
   pidlist=
 
-  for what in suid sgid other dev link wdir nouser nogroup dangling
+  for what in suid sgid other dev link wdir wfile nouser nogroup dangling
   do
     count=1
     while [ $count -lt $counter ]
@@ -450,7 +461,7 @@ fi
 
   if [ -n "$TIGRIS_ROOT" ]; then
     # the root's own paths in every list
-    for what in suid sgid other dev link wdir nouser nogroup
+    for what in suid sgid other dev link wdir wfile nouser nogroup
     do
       [ -s $outfile.$what ] || continue
       $AWK -v r="$TIGRIS_ROOT" '$0 == r { $0 = "/" } index($0, r "/") == 1 { $0 = substr($0, length(r) + 1) } { print }' $outfile.$what > $outfile.$what.tmp &&
@@ -539,6 +550,11 @@ $WAIT $pid
     pidlist="$pidlist $!"
   }
 
+  [ "x$Tiger_FSScan_WFILE" != 'xN' ] && {
+    $SCRIPTDIR/sub/check_wfile $outfile.wfile > $WORKDIR/wfile.msgs.$$ &
+    pidlist="$pidlist $!"
+  }
+
   [ "x$Tiger_FSScan_Unowned" != 'xN' ] && {
     $SCRIPTDIR/sub/check_nousrgrp $outfile.nouser $outfile.nogroup \
     > $WORKDIR/noowner.msgs.$$ &
@@ -557,7 +573,7 @@ $WAIT $pid
 for file in $WORKDIR/suid.msgs.$$ $WORKDIR/sgid.msgs.$$ \
 	$WORKDIR/other.msgs.$$ \
 	$WORKDIR/devs.msgs.$$ $WORKDIR/link.msgs.$$ \
-	$WORKDIR/wdir.msgs.$$ $WORKDIR/noowner.msgs.$$
+	$WORKDIR/wdir.msgs.$$ $WORKDIR/wfile.msgs.$$ $WORKDIR/noowner.msgs.$$
 do
   [ -s "$file" ] && $CAT $file
 done
@@ -565,7 +581,7 @@ done
 delete $pidlist $mountlist ${outfile}*
 delete $WORKDIR/suid.msgs.$$ $WORKDIR/sgid.msgs.$$ \
        $WORKDIR/other.msgs.$$ $WORKDIR/devs.msgs.$$ \
-      $WORKDIR/link.msgs.$$ $WORKDIR/wdir.msgs.$$ $WORKDIR/noowner.msgs.$$
+      $WORKDIR/link.msgs.$$ $WORKDIR/wdir.msgs.$$ $WORKDIR/wfile.msgs.$$ $WORKDIR/noowner.msgs.$$
 
 #
 exit 0

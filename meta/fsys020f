@@ -1,0 +1,22 @@
+Id: fsys020f
+Severity: FAIL
+Category: filesystem
+Check: check_wfile
+Fix: chmod o-w the file; if several accounts must write it, give them a group and make it group-writable instead.
+References: chmod(1); tigerrc
+Controls: CIS 3.3; NIST AC-3; ISO 8.3; CE Secure configuration
+
+A regular file anyone on the system can write, under a directory root
+reads programs and configuration from (/etc, /usr, /bin, /sbin, /lib*,
+/boot, /root, /opt), a server reads what it serves from (/var/www,
+/srv), daemons their queues (/var/spool) or services their state
+(/var/lib): the directories Tiger_FSScan_DetailDirs names. Whoever
+can write it decides what the program that reads it does; a script, a
+configuration file or a rake task is the usual way from one account to
+another, or to root. Unlike a world-writable directory, the sticky bit
+does not help: the file itself is open. No package ships such a file;
+one is the work of an installer or an unpacking with umask 000 (a
+vendor's .deb with two gem directories and a gemspec at 777 and 666
+was one), or of a log directory a service was given with mode 676.
+Elsewhere (home directories, caches, /tmp) such files are counted per
+directory instead (fsys021w).

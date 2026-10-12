@@ -1,0 +1,107 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 1993 Douglas Lee Schales, David K. Hess, David R. Safford
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# sub/check_wfile - 10/12/2026
+#
+# World-writable regular files, from the list the filesystem scan made
+# (find -type f -perm -o+w, or flogit). Under the system directories
+# Tiger_FSScan_DetailDirs names, one finding per file with its mode and
+# owner and what reads it there: whoever can write a program or a
+# configuration file root reads, a page a web server serves or a queue a
+# daemon works decides what they do, and the sticky bit, which makes a
+# shared directory safe, does nothing for a file. Elsewhere (home
+# directories, caches, /tmp) a world-writable file is a tool's lock or
+# cache file as often as not, so they are counted per directory, as
+# find_files does with dangling links and check_names with odd names.
+#
+#-----------------------------------------------------------------------------
+# This script is not runnable directly.
+#
+file="$1"
+
+[ "$CONFIGURED_ALREADY" != "YES" ] && {
+  echo "--ERROR-- [init008e] This script can not be run directly."
+  exit 1
+}
+
+. $BASEDIR/initdefs
+
+#
+# If run in test mode (-t) this will verify that all required
+# elements are set.
+#
+[ "$Tiger_TESTMODE" = 'Y' ] && {
+  haveallcmds AWK SORT LS || exit 1
+  haveallfiles WORKDIR || exit 1
+
+  echo "--CONFIG-- [init003c] $0: Configuration ok..."
+  exit 0
+}
+
+#------------------------------------------------------------------------
+echo
+echo "# Checking for world-writable files..."
+
+haveallcmds AWK SORT LS || exit 1
+haveallvars WORKDIR || exit 1
+
+[ -s "$file" ] && {
+  # The same split as find_files's dangling links and check_names's odd
+  # names: listed under the prefixes Tiger_FSScan_DetailDirs names,
+  # counted per directory (two levels deep) elsewhere
+  $AWK -v detail="${Tiger_FSScan_DetailDirs-/etc|/bin|/sbin|/lib|/usr/bin|/usr/sbin|/usr/lib|/usr/local|/opt|/boot|/root|/var/lib|/var/spool|/srv}" '
+    BEGIN { n = split(detail, prefix, "|") }
+    {
+      listed = (detail == "*")
+      for (i = 1; i <= n && !listed; i++)
+        if (index($0, prefix[i]) == 1) listed = 1
+      if (listed) { print "D " $0; next }
+      split($0, part, "/")
+      dir = "/" part[2]
+      if (part[4] != "") dir = dir "/" part[3]
+      count[dir]++
+    }
+    END { for (dir in count) print "S " count[dir] " " dir }
+  ' "$file" | $SORT |
+  while read -r kind rest
+  do
+    case $kind in
+      D)
+	f=$rest
+	lsl=`lsline "$f" 2>/dev/null | $AWK '{ print $1, $3; exit }'`
+	set -f; set -- $lsl; set +f
+	case "$f" in
+	  /etc/*|/usr/*|/bin/*|/sbin/*|/lib/*|/lib32/*|/lib64/*|/libx32/*|/boot/*|/root/*|/opt/*)
+	    tree=${f#/}; tree=/${tree%%/*}
+	    detail="Under $tree, where root reads programs and configuration: anyone can change what this one does." ;;
+	  /var/www/*|/srv/*)
+	    tree=${f#/}; tree=/${tree%%/*}; [ "$tree" = /var ] && tree=/var/www
+	    detail="Under $tree, where a server reads what it serves: anyone can change it." ;;
+	  /var/spool/*)
+	    detail="Under /var/spool, where cron, mail and print daemons read their queues: anyone can change what they act on." ;;
+	  /var/lib/*)
+	    detail="Under /var/lib, where services and the package manager keep their state: anyone can change it." ;;
+	  *) detail="Anyone can change its contents." ;;
+	esac
+	message FAIL fsys020f "$detail" "File $f is world writable (${1:-?}, owner ${2:-?})." ;;
+      S)
+	n=${rest%% *}; dir=${rest#* }
+	message WARN fsys021w "" "$n world-writable files under $dir are not listed (see Tiger_FSScan_DetailDirs)." ;;
+    esac
+  done
+}

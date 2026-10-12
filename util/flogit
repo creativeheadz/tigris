@@ -28,6 +28,8 @@ linkfile="$3"
 wdirfile="$4"
 nouserfile="$5"
 nogroupfile="$6"
+# ($7 and $8, test and sgid, are lists find_files names and this path never fills)
+wfilefile="$9"
 [ -z "$suidfile" ] && suidfile=
 
 getpermit()
@@ -87,4 +89,13 @@ do
       esac
     }
   fi
+
+  # A regular file anyone can write (not a link to one): the list
+  # sub/check_wfile judges
+  [ "x$Tiger_FSScan_WFILE" != 'xN' -a -n "$wfilefile" -a -f "$file" -a ! -h "$file" ] && {
+    getpermit "$file" | {
+      read owner group ur uw ux gr gw gx or ow ox
+      [ "$ow" = '1' ] && echo "$file" >> $wfilefile
+    }
+  }
 done

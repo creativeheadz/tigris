@@ -6,7 +6,8 @@
 # directories, unowned files, links, odd names, devices) over a root that
 # holds one of each: a setuid program no package ships, a setgid script,
 # world-writable directories (one not sticky, reported; one sticky as /tmp
-# is, not reported; one sticky under /etc, reported), a directory named
+# is, not reported; one sticky under /etc, reported), world-writable files
+# (one under /etc, listed; two in a home directory, counted), a directory named
 # "...", an absolute link to a
 # file this host has and the root does not (dangling inside the root; it
 # must not be followed to this host's file), and one to a file the root
@@ -32,12 +33,14 @@ U=$uid; G=`id -g`
 find / -maxdepth 0 -printf '' 2>/dev/null || { echo "ok   (no GNU find here: nothing to test)"; echo PASS; exit 0; }
 
 R=$W/img
-mkdir -p "$R/etc" "$R/usr/bin" "$R/srv/drop" "$R/srv/shared" "$R/etc/zz-drop" "$R/opt/..." "$R/dev"
+mkdir -p "$R/etc" "$R/usr/bin" "$R/srv/drop" "$R/srv/shared" "$R/etc/zz-drop" "$R/opt/..." "$R/dev" "$R/home/milo"
 printf 'root:x:0:0:root:/root:/bin/sh\nmilo:x:%s:%s:Milo:/home/milo:/bin/sh\n' "$U" "$G" > "$R/etc/passwd"
 printf 'root:x:0:\n' > "$R/etc/group"
 printf '\177ELF' > "$R/usr/bin/zz-suid"; chmod 4755 "$R/usr/bin/zz-suid"
 printf '#!/bin/sh\necho hi\n' > "$R/usr/bin/zz-sgid-script"; chmod 2755 "$R/usr/bin/zz-sgid-script"
 chmod 777 "$R/srv/drop"; chmod 1777 "$R/srv/shared" "$R/etc/zz-drop"
+: > "$R/etc/zz-open"; : > "$R/home/milo/zz-a"; : > "$R/home/milo/zz-b"
+chmod 666 "$R/etc/zz-open" "$R/home/milo/zz-a" "$R/home/milo/zz-b"
 ln -s /etc/hostname "$R/etc/zz-hostlink"
 ln -s /etc/passwd "$R/etc/zz-ok"
 [ -e /etc/hostname ] || : > "$W/hostname-missing"
@@ -53,7 +56,7 @@ fi
   sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
   echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
   echo 'Tiger_Check_FILESYSTEM=Y'
-  for s in Setuid Setgid Devs SymLinks ofNote WDIR Unowned; do echo "Tiger_FSScan_$s=Y"; done
+  for s in Setuid Setgid Devs SymLinks ofNote WDIR WFILE Unowned; do echo "Tiger_FSScan_$s=Y"; done
   echo "Tiger_FSScan_PruneDirs=''"
 } > "$W/profiles/scan"
 chmod 644 "$W/profiles/scan"
@@ -75,6 +78,11 @@ has '[fsys008f] Directory /srv/drop is world writable (drwxrwxrwx' && has 'Not s
   ok "a sticky one, shared as /tmp is: no finding"
 has '[fsys008f] Directory /etc/zz-drop is world writable (drwxrwxrwt' && has 'Sticky, but under /etc' &&
   ok "a sticky one under /etc, where root reads configuration: fsys008f" || bad "sticky under /etc"
+has '[fsys020f] File /etc/zz-open is world writable (-rw-rw-rw-, owner' && has 'Under /etc, where root reads programs and configuration' &&
+  ok "a world-writable file under /etc, listed with its mode and owner: fsys020f" || bad "fsys020f"
+# (the text report wraps at 79 columns: match what fits on the first line)
+has '[fsys021w] 2 world-writable files under /home/milo' && ! has 'File /home/milo/zz-a ' &&
+  ok "two in a home directory: counted, not listed: fsys021w" || bad "fsys021w"
 has "Unusual filename \`...' found" && ok "a directory named ...: fsys005a" || bad "fsys005a"
 has '[fsys013w] /etc/zz-hostlink is a dangling symlink' &&
   ok "an absolute link to a file this host has and the root does not: dangling inside the root" || bad "dangling"
