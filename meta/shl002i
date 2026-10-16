@@ -1,0 +1,9 @@
+Id: shl002i
+Severity: INFO
+Category: filesystem
+Check: check_shells
+References: bash(1), tcsh(1)
+Controls: CIS 4.3; NIST AC-12; ISO 8.5; CE User access control
+
+Shell idle timeouts are set: the values named kill idle sessions,
+so whoever walks up to one finds it gone.

@@ -77,6 +77,7 @@ check:check_links         | 4.1                | CM-6                     | 8.9 
 check:check_names         | -                  | SI-4                     | 8.16                | -
 check:check_embedded      | 4.1                | AC-3, CM-6               | 8.9                 | Secure configuration
 check:check_umask         | 4.1                | AC-3, CM-6               | 8.9                 | Secure configuration
+check:check_shells        | 4.3                | AC-12                    | 8.5                 | User access control
 check:check_rcumask       | 4.1                | AC-3, CM-6               | 8.9                 | Secure configuration
 check:find_files          | 4.1                | CM-6                     | 8.9                 | Secure configuration
 check:check_storage       | 4.1                | CM-6                     | 8.9                 | Secure configuration

@@ -1,0 +1,119 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# check_shells: idle sessions are killed: TMOUT in the Bourne-family
+#             startup (/etc/profile, /etc/profile.d, /etc/bashrc,
+#             /etc/bash.bashrc) or autologout in the C-shell startup
+#             (/etc/csh.login, /etc/csh.cshrc). None set anywhere is
+#             an idle session that never dies (shl001w); set is
+#             inventoried with its values (shl002i). A zero disables,
+#             like being unset. Only the system files are read: what
+#             users set in their own dotfiles is their business.
+#
+# 10/16/2026 - Initial version. Presence only: any positive timeout
+#             counts, and the value is reported for the assessor.
+#
+# References:
+#   bash(1), tcsh(1)
+#
+# Tigris: offline
+#   the root's shell startup files.
+#
+#-----------------------------------------------------------------------------
+#
+TigerInstallDir='.'
+
+#
+# Set default base directory.
+# Order or preference:
+#      -B option
+#      TIGERHOMEDIR environment variable
+#      TigerInstallDir installed location
+#
+basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+
+for parm
+do
+   case $parm in
+   -B) basedir=$2; break;;
+   esac
+done
+
+#
+# Verify that a config file exists there, and if it does
+# source it.
+#
+[ ! -r $basedir/config ] && {
+  echo "--ERROR-- [init002e] No 'config' file in \`$basedir'."
+  exit 1
+}
+
+. $basedir/config
+
+. $BASEDIR/initdefs
+#
+# If run in test mode (-t) this will verify that all required
+# elements are set.
+#
+[ "$Tiger_TESTMODE" = 'Y' ] && {
+  haveallcmds AWK CAT GREP SORT || exit 1
+  haveallfiles BASEDIR WORKDIR || exit 1
+
+  echo "--CONFIG-- [init003c] $0: Configuration ok..."
+  exit 0
+}
+
+#------------------------------------------------------------------------
+
+haveallcmds AWK CAT GREP SORT || exit 1
+
+files=`{ for f in /etc/profile /etc/bashrc /etc/bash.bashrc /etc/csh.login /etc/csh.cshrc
+do
+  [ -f "\`rootfile $f\`" ] && echo "$f"
+done
+rootls /etc/profile.d 2>/dev/null | $GREP '\.sh$'; } | $SORT -u`
+
+# No shell startup files: nothing to read
+[ -z "$files" ] && exit 0
+
+echo
+echo "# Checking shell idle timeouts..."
+
+found=`for f in $files
+do
+  $CAT "\`rootfile $f\`" 2>/dev/null | $AWK -v file="$f" '
+    { sub(/#.*$/, "")
+      line = tolower($0)
+      # TMOUT=600, TMOUT = 600, export TMOUT=600
+      if (line ~ /(^|[^a-z_])tmout[ \t]*=/) {
+        v = line; sub(/^.*tmout[ \t]*=[ \t]*/, "", v); sub(/[^0-9].*$/, "", v)
+        if (v != "" && v + 0 > 0) print "TMOUT=" v " in " file
+      }
+      # set autologout=30, set autologout 30 (minutes)
+      if (line ~ /(^|[^a-z_])autologout([ \t]*=[ \t]*|[ \t]+)/) {
+        v = line; sub(/^.*autologout([ \t]*=[ \t]*|[ \t]+)/, "", v); sub(/[^0-9].*$/, "", v)
+        if (v != "" && v + 0 > 0) print "autologout=" v " in " file
+      } }'
+done`
+
+if [ -z "$found" ]; then
+  message WARN shl001w "Set TMOUT in /etc/profile (TMOUT=600; readonly TMOUT; export TMOUT) and autologout in /etc/csh.login for the C shells." "No shell idle timeout is set: an idle session never dies, and whoever walks up to it is the user."
+else
+  message INFO shl002i "" "Shell idle timeouts are set: `echo "$found" | $SORT -u | $AWK '{ printf "%s%s", (NR > 1 ? ", " : ""), $0 }'`."
+fi
+
+exit 0

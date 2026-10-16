@@ -500,6 +500,12 @@ aidepid=
   progress_end
 }
 
+[ "$Tiger_Check_SHELLS" != 'N' ] && {
+  progress_start "Checking shell idle timeouts..."
+  run_script check_shells >> $logtmp
+  progress_end
+}
+
 #
 # The following check has been "promoted" from Linux to
 # any system since it is pretty general

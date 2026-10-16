@@ -1,0 +1,13 @@
+Id: shl001w
+Severity: WARN
+Category: filesystem
+Check: check_shells
+Fix: Set TMOUT in /etc/profile and autologout in /etc/csh.login.
+References: bash(1), tcsh(1)
+Controls: CIS 4.3; NIST AC-12; ISO 8.5; CE User access control
+
+No shell idle timeout is set: neither TMOUT in the Bourne-family
+startup nor autologout in the C-shell startup, so an idle session
+never dies, and whoever walks up to it is the user. Set TMOUT in
+/etc/profile (TMOUT=600; readonly TMOUT; export TMOUT) and
+autologout in /etc/csh.login for the C shells.

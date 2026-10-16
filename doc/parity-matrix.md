@@ -52,7 +52,7 @@ re-running the inventory and updating the counts below.
 | memory_processes | 5 | check_runprocs, check_finddeleted | prelink handled (Oct 2026: no longer called for checksums, no longer shipped); zombie/heavy-IO are informational |
 | nameservices | 27 | check_dns (resolvers, unbound, BIND, PowerDNS) | DONE 2026-10-16: PowerDNS (dns008f; recursor allow-from and auth allow-recursion, include-dir); verify hosts duplicates; NIS retired deliberately |
 | scheduling | 5 | check_crontabs, check_cron | verify `at` jobs coverage; DONE 2026-10-09: macOS half (tabs, periodic, full pathnames; cron008f/008w/009w/001w reused; orphans and at-allow cut) |
-| shells | 4 | login shells, umask in shell configs | console TTYs (verify), idle-session killing |
+| shells | 4 | login shells, umask in shell configs | console TTYs (verify); DONE 2026-10-16: idle killing (shl001w/002i; TMOUT, autologout) |
 | storage_nfs | 8 | check_exports | DONE 2026-10-09: check_nfsd (nfs015w/016i; daemon consistency) |
 | usb | 3 | check_storage (USB storage) | DONE 2026-10-16: USBGuard (stor014i/015w/016w; running, dead, bare allow), uas required with usb-storage, authorized_default=0 counts, connected storage named |
 
