@@ -22,7 +22,7 @@ trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
 # INFO findings (at.deny among them) are silent by default
-echo "Tiger_Show_INFO_Msgs=Y" >> "$W/tigerrc"
+echo "Tigris_Show_INFO_Msgs=Y" >> "$W/tigris.conf"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }

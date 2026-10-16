@@ -29,8 +29,8 @@ case "$rootsh" in */nologin|*/false|'') echo "ok   (root does not log in here: n
 cat > "$W/drive.sh" <<'EOF'
 basedir=$TIGERHOMEDIR
 . $basedir/config
-PWCK="sh $STUB" Tiger_Output_Width=0
-export PWCK Tiger_Output_Width
+PWCK="sh $STUB" Tigris_Output_Width=0
+export PWCK Tigris_Output_Width
 sh $BASEDIR/scripts/check_passwd
 EOF
 go() {  # go LINE...: pwck prints the lines

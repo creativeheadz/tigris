@@ -7,7 +7,7 @@
 # network namespace (docker run --cap-add NET_ADMIN): nothing loaded, ufw
 # enabled on Ubuntu 24.04, firewalld started on Fedora, and nftables
 # configurations loaded with nft 1.1.3 on Debian stable. Each run feeds one
-# of them through Tiger_NFT_Cmd and checks what is concluded for IPv4 and
+# of them through Tigris_NFT_Cmd and checks what is concluded for IPv4 and
 # IPv6. Logging is covered both ways: verdicts with log rules stay
 # silent, input without any is fire007w.
 #
@@ -34,19 +34,19 @@ bad() { echo "FAIL $1"; fail=1; }
 mkdir -p "$W/sys/proc/net" "$W/sys/proc/sys/net/ipv6/conf/all" "$W/sys/sys/module/nf_tables"
 : > "$W/sys/proc/net/if_inet6"
 echo 0 > "$W/sys/proc/sys/net/ipv6/conf/all/disable_ipv6"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 
 # go NFT-COMMAND [setting=value ...]: run the check, findings to $W/out
 go() {
-  cp "$W/tigerrc.base" "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
   {
-    echo "Tiger_NFT_Cmd='$1'"
-    echo "Tiger_Sysctl_Root='$W/sys'"
-    echo "Tiger_Firewall_Frontends=''"
-    echo "Tiger_Show_INFO_Msgs=Y"
+    echo "Tigris_NFT_Cmd='$1'"
+    echo "Tigris_Sysctl_Root='$W/sys'"
+    echo "Tigris_Firewall_Frontends=''"
+    echo "Tigris_Show_INFO_Msgs=Y"
     shift
     for s; do echo "$s"; done
-  } >> "$W/tigerrc"
+  } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_firewall ) 2>&1 |
     # one line per finding: join the wrapped lines
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
@@ -129,7 +129,7 @@ EOF
 ipt() { echo "sh $W/fakeipt $FX/$1 $2 $3"; }
 
 # Legacy iptables, read beside an empty nftables ruleset
-go "cat $FX/none.nft" "Tiger_IPT_Legacy_Cmd='`ipt legacy-drop.ipt - -`'"
+go "cat $FX/none.nft" "Tigris_IPT_Legacy_Cmd='`ipt legacy-drop.ipt - -`'"
 has 'Incoming IPv4 traffic is denied by default (iptables-legacy INPUT: policy DROP).' && has '[fire002w]' &&
   ok "legacy iptables INPUT policy DROP counts for IPv4, not IPv6" || { bad "legacy iptables"; cat "$W/out"; }
 
@@ -167,29 +167,29 @@ has 'Incoming IPv4 traffic is denied by default (nftables ip filter INPUT: polic
 
 # Without nft (Ubuntu): iptables -S, and Docker's chains only when Docker runs
 : > "$W/ipt.log"
-go "" "Tiger_IPT_Cmd='`ipt input-accept.ipt $FX/docker-nat.ipt $FX/docker-user-rules.ipt`'" \
-      "Tiger_IP6T_Cmd='`ipt input-accept.ipt $FX/docker-nat6.ipt $FX/docker-user-empty.ipt`'"
+go "" "Tigris_IPT_Cmd='`ipt input-accept.ipt $FX/docker-nat.ipt $FX/docker-user-rules.ipt`'" \
+      "Tigris_IP6T_Cmd='`ipt input-accept.ipt $FX/docker-nat6.ipt $FX/docker-user-empty.ipt`'"
 has '[fire001w] Incoming IPv4 traffic is not denied by default: no input chain drops what it does not accept. Input chains: iptables INPUT: policy ACCEPT.' &&
   [ "`count 'fire00[56]'`" = 0 ] && ! grep -q nat "$W/ipt.log" &&
   ok "iptables without nft: INPUT read, Docker's nat table not listed while Docker is not running" || { bad "iptables, no docker"; cat "$W/out" "$W/ipt.log"; }
-go "" "Tiger_IPT_Cmd='`ipt input-accept.ipt - -`'" "Tiger_IP6T_Cmd='`ipt input-accept.ipt - -`'"
+go "" "Tigris_IPT_Cmd='`ipt input-accept.ipt - -`'" "Tigris_IP6T_Cmd='`ipt input-accept.ipt - -`'"
 [ "`count fire007w`" = 2 ] && ok "iptables without a LOG rule: fire007w for both families" || { bad "iptables logging"; cat "$W/out"; }
 mkdir -p "$W/sys/run"; : > "$W/sys/run/docker.sock"
-go "" "Tiger_IPT_Cmd='`ipt input-accept.ipt $FX/docker-nat.ipt $FX/docker-user-rules.ipt`'" \
-      "Tiger_IP6T_Cmd='`ipt input-accept.ipt $FX/docker-nat6.ipt $FX/docker-user-empty.ipt`'"
+go "" "Tigris_IPT_Cmd='`ipt input-accept.ipt $FX/docker-nat.ipt $FX/docker-user-rules.ipt`'" \
+      "Tigris_IP6T_Cmd='`ipt input-accept.ipt $FX/docker-nat6.ipt $FX/docker-user-empty.ipt`'"
 has 'Docker publishes IPv4 ports to the network, and there are rules that may restrict them, which this check does not evaluate. Ports: 5353/udp, 8080/tcp, 8082/tcp, 8443/tcp. DOCKER-USER has 2 rules.' &&
   has '[fire005w] Port 8443/tcp, published by Docker on every IPv6 address, is open to the network: Docker forwards it before the input chain, and no rule restricts it. Forwarded to [fd00:dead::2]:443.' &&
   ok "iptables without nft: DOCKER and DOCKER-USER read from iptables -S" || { bad "iptables docker"; cat "$W/out"; }
-go "" "Tiger_IPT_Cmd='`ipt input-accept.ipt $FX/docker-nat.ipt $FX/docker27-user.ipt`'"
+go "" "Tigris_IPT_Cmd='`ipt input-accept.ipt $FX/docker-nat.ipt $FX/docker27-user.ipt`'"
 has '[fire005w] Port 8080/tcp, published by Docker on every IPv4 address' && has 'Forwarded to 172.18.0.2:80.' && [ "`count 8081`" = 0 ] &&
   has '[fire005w] Port 8082/tcp, published by Docker on 172.17.0.2,' &&
   ok "iptables -S: '-j RETURN' alone is an empty DOCKER-USER, -d 127.0.0.1/32 is left out" || { bad "iptables docker 27"; cat "$W/out"; }
 # Legacy iptables: Docker's nat table only when the kernel has it loaded
 : > "$W/ipt.log"
-go "cat $FX/none.nft" "Tiger_IPT_Legacy_Cmd='`ipt legacy-drop.ipt $FX/docker-nat.ipt $FX/docker-user-empty.ipt`'"
+go "cat $FX/none.nft" "Tigris_IPT_Legacy_Cmd='`ipt legacy-drop.ipt $FX/docker-nat.ipt $FX/docker-user-empty.ipt`'"
 [ "`count 'fire00[56]'`" = 0 ] && ! grep -q nat "$W/ipt.log" && ok "legacy: no nat in ip_tables_names, so it is not listed" || { bad "legacy, no nat"; cat "$W/out" "$W/ipt.log"; }
 printf 'filter\nnat\n' > "$W/sys/proc/net/ip_tables_names"
-go "cat $FX/none.nft" "Tiger_IPT_Legacy_Cmd='`ipt legacy-drop.ipt $FX/docker-nat.ipt $FX/docker-user-empty.ipt`'"
+go "cat $FX/none.nft" "Tigris_IPT_Legacy_Cmd='`ipt legacy-drop.ipt $FX/docker-nat.ipt $FX/docker-user-empty.ipt`'"
 has 'Incoming IPv4 traffic is denied by default (iptables-legacy INPUT: policy DROP).' && has '[fire005w] Port 8080/tcp, published by Docker on every IPv4 address' &&
   ok "legacy: denied by default, and Docker's ports still open" || { bad "legacy docker"; cat "$W/out"; }
 rm -f "$W/sys/proc/net/ip_tables_names" "$W/sys/run/docker.sock"
@@ -209,9 +209,9 @@ has '--ERROR-- [fire004e] The nftables ruleset could not be read' && has 'Error:
   [ "`count 'fire00[123]'`" = 0 ] && ok "an unreadable ruleset is an ERROR (fire004e) with nft's reason, not a WARN" || { bad "unreadable ruleset"; cat "$W/out"; }
 
 # The advice names what is installed
-go "cat $FX/none.nft" "Tiger_Firewall_Frontends='ufw'"
+go "cat $FX/none.nft" "Tigris_Firewall_Frontends='ufw'"
 has "ufw is installed: 'ufw enable' turns on its default-deny policy." && ok "with ufw installed, the advice is 'ufw enable'" || { bad "ufw advice"; cat "$W/out"; }
-go "cat $FX/none.nft" "Tiger_Firewall_Frontends='firewalld'"
+go "cat $FX/none.nft" "Tigris_Firewall_Frontends='firewalld'"
 has "firewalld is installed: 'systemctl enable --now firewalld'" && ok "with firewalld installed, the advice is to start it" || { bad "firewalld advice"; cat "$W/out"; }
 
 [ $fail -eq 0 ] && echo "PASS"

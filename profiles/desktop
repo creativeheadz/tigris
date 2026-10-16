@@ -5,11 +5,11 @@
 #
 #   sudo ./tigris --profile desktop
 #
-# Read after the tigerrc; only what differs from it.
+# Read after the tigris.conf; only what differs from it.
 #
 # Stringent checks of network servers' configuration.
-Tiger_Check_STRICTNW=N
+Tigris_Check_STRICTNW=N
 # NFS exports and mail aliases: a workstation exports nothing and runs no
 # mail server.
-Tiger_Check_EXPORTS=N
-Tiger_Check_ALIASES=N
+Tigris_Check_EXPORTS=N
+Tigris_Check_ALIASES=N

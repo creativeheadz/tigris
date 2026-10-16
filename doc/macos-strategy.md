@@ -12,8 +12,8 @@ most specific (`MacOSX/<REL>/<REV>/<ARCH>`) wins, falling back to
 `systems/MacOSX/default/` and then `systems/default/`. Ship
 version-independent checks in `systems/MacOSX/default/` first and add
 a version tree only when Apple moves behavior between releases. `tiger`
-gets dispatch blocks for the new checks behind `Tiger_Check_*` gates,
-exactly like the Linux ones; `tigerrc` and `tigerrc-quick` carry the
+gets dispatch blocks for the new checks behind `Tigris_Check_*` gates,
+exactly like the Linux ones; `tigris.conf` and `tigris-quick.conf` carry the
 toggles identically, or `profile_check.sh` fails.
 
 ## Fixtures without a Mac
@@ -26,13 +26,13 @@ Two kinds of input, two mechanisms. Nothing else is allowed.
 2. macOS-only live commands (`csrutil`, `fdesetup`,
    `system_profiler`, `pkgutil`, `dscl`, `launchctl`, `profiles`,
    `spctl`, `pmset`, `diskutil`, `pwpolicy`) go through per-tool
-   overrides: `Tiger_Csrutil_Cmd`, `Tiger_Fdesetup_Cmd`, and so on,
+   overrides: `Tigris_Csrutil_Cmd`, `Tigris_Fdesetup_Cmd`, and so on,
    defaulting to empty, meaning the real tool. This mirrors
-   `Tiger_SSHD_Cmd` (check_ssh) and `Tiger_Mount_Probe_Cmd`
-   (documented in tigerrc). Every override gets a commented-out
-   documented line in both tigerrcs. Suites point the variables at
+   `Tigris_SSHD_Cmd` (check_ssh) and `Tigris_Mount_Probe_Cmd`
+   (documented in tigris.conf). Every override gets a commented-out
+   documented line in both tigris.confs. Suites point the variables at
    fixture scripts under `tests/fixtures/macos/` through the suite
-   tigerrc.
+   tigris.conf.
 
 Four rules with teeth, all learned the hard way:
 
@@ -44,7 +44,7 @@ Four rules with teeth, all learned the hard way:
 - NEVER shadow `PATH` to fake a tool: `config` resets PATH to
   `/sbin:/usr/sbin:/bin:/usr/bin`, so a fake earlier in PATH never
   reaches the check. The override variable is the only door.
-- `Tiger_Sysctl_Root` is meaningless on macOS (there is no
+- `Tigris_Sysctl_Root` is meaningless on macOS (there is no
   `/sys` or `/proc`): live macOS state arrives only through the
   `_Cmd` overrides. Fixture trees for it would lie about the
   platform; do not build them.

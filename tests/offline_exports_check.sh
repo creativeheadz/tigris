@@ -43,8 +43,8 @@ printf 'diskless1 root=nfsrootimg:/export/root\n' > "$R/etc/bootparams"
 [ "$uid" = 0 ] && chown -R "$U:$G" "$R"
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Check_EXPORTS=Y'
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Check_EXPORTS=Y'
 } > "$W/profiles/exports"
 chmod 644 "$W/profiles/exports"
 

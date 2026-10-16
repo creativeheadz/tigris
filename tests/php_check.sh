@@ -6,7 +6,7 @@
 # errors shown); a hardened one (off everywhere, errors to stderr);
 # two SAPIs with only one gone loose; and an empty root, where PHP
 # is not in use and nothing is said. INFO findings only show with
-# Tiger_Show_INFO_Msgs=Y. Runs as a user and as root; the fixtures
+# Tigris_Show_INFO_Msgs=Y. Runs as a user and as root; the fixtures
 # read the same for both.
 #
 TIGER=${TIGER:-`cd "\`dirname \"$0\"\`/.." && pwd`}
@@ -15,13 +15,13 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc.base" "$W/tigerrc" 2>/dev/null || cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf.base" "$W/tigris.conf" 2>/dev/null || cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 run() {  # run ROOT OUTFILE: check_php with ROOT as the audited system
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$1" sh ./systems/Linux/2/check_php ) 2>&1 |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$2" || true

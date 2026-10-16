@@ -6,8 +6,8 @@ Fix: Blacklist usb-storage and uas in /etc/modprobe.d, or set usbcore authorized
 References: modprobe.d(5)
 Controls: NIST MP-7; ISO 7.10
 
-The policy is to allow no USB storage (Tiger_Storage_NoUSB=Y in
-tigerrc), but neither driver is blocked in /etc/modprobe.d (both
+The policy is to allow no USB storage (Tigris_Storage_NoUSB=Y in
+tigris.conf), but neither driver is blocked in /etc/modprobe.d (both
 usb-storage and uas must be: USB3 sticks use uas when it loads),
 and new devices are not left unauthorized either
 (usbcore authorized_default), so a USB stick plugged in is mounted
@@ -22,4 +22,4 @@ To fix it, add to a file in /etc/modprobe.d:
     blacklist uas
 
 then rebuild the initramfs (update-initramfs -u, or dracut -f). If USB
-storage is wanted, set Tiger_Storage_NoUSB=N.
+storage is wanted, set Tigris_Storage_NoUSB=N.

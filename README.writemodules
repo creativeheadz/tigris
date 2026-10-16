@@ -39,7 +39,7 @@ appropriate files in doc/. If you add new messages to the module (which
 you should always do since you are reporting something after all) you
 must include the message verbose description of the issue into the files
 (shown below). User's will be able to retrieve this information if
-they execute 'tigexp codeword'. Codewords are usually three letters followed
+they execute 'tigris-explain codeword'. Codewords are usually three letters followed
 by a number (different numbers for each of the messages in a file)
 and the letter 'f' if the problem is a 'failure' (a relevant security issue)
 or 'w' if the problem is a 'warning' (a problem that might be an issue or
@@ -145,16 +145,16 @@ Sat,  9 Aug 2003 11:50:33 +0200
 #-----------------------------------------------------------------------------
 #
 # This is the directory Tiger is installed on
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -179,7 +179,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK GREP CAT JOIN LS RM || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME || exit 1

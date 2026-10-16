@@ -4,7 +4,7 @@
 #
 # Each case is a /sys with the list of active security modules and
 # AppArmor's profiles (one per line, "name (mode)", as securityfs shows
-# them to root) or SELinux's enforce flag, fed through Tiger_Sysctl_Root.
+# them to root) or SELinux's enforce flag, fed through Tigris_Sysctl_Root.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -12,7 +12,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -28,8 +28,8 @@ profiles() {  # profiles NAME, the lines on stdin
   mkdir -p "$W/$1/sys/kernel/security/apparmor"; cat > "$W/$1/sys/kernel/security/apparmor/profiles"
 }
 go() {
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$W/$1'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$W/$1'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_mac ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"

@@ -30,7 +30,7 @@ IMPROVEMENTS
 - check_known should be improved to detect for symlink attacks and
   hard links in user writable directories (/tmp, /var/tmp and, in
   some systems, /var/spool/mail too, the directory list might be
-  defined in tigerrc or extracted by parsing the file system)
+  defined in tigris.conf or extracted by parsing the file system)
 
 
 NEW CHECKS 

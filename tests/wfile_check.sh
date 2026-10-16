@@ -8,9 +8,9 @@
 # anyone can write in the wfile list and nothing else there (not the
 # world-writable directory, which is wdir's, not a link to the file, not
 # a file nobody else can write), and fill no wfile list with
-# Tiger_FSScan_WFILE=N. sub/check_wfile, run as find_files runs it
+# Tigris_FSScan_WFILE=N. sub/check_wfile, run as find_files runs it
 # (config sourced, the list in), must list each file under the prefixes
-# Tiger_FSScan_DetailDirs names, with its mode and owner, and count the
+# Tigris_FSScan_DetailDirs names, with its mode and owner, and count the
 # others per directory; '*' lists them all. The one-pass find and the
 # offline root are tests/offline_scan_check.sh's.
 #
@@ -34,11 +34,11 @@ me=`id -un`
 cat > "$W/drive.sh" <<'DRIVE'
 basedir=$TIGERHOMEDIR
 . $basedir/config
-# tigerrc sets these: the test's values are given after it
-CONFIGURED_ALREADY=YES Tiger_Output_Width=0
-export CONFIGURED_ALREADY Tiger_Output_Width
-[ -n "$DETAIL" ] && { Tiger_FSScan_DetailDirs=$DETAIL; export Tiger_FSScan_DetailDirs; }
-[ -n "$WFILE" ] && { Tiger_FSScan_WFILE=$WFILE; export Tiger_FSScan_WFILE; }
+# tigris.conf sets these: the test's values are given after it
+CONFIGURED_ALREADY=YES Tigris_Output_Width=0
+export CONFIGURED_ALREADY Tigris_Output_Width
+[ -n "$DETAIL" ] && { Tigris_FSScan_DetailDirs=$DETAIL; export Tigris_FSScan_DetailDirs; }
+[ -n "$WFILE" ] && { Tigris_FSScan_WFILE=$WFILE; export Tigris_FSScan_WFILE; }
 case "$KIND" in
   flogit) sh $BASEDIR/util/flogit "$O.suid" "$O.dev" "$O.link" "$O.wdir" "$O.nouser" "$O.nogroup" "$O.test" "$O.sgid" "$O.wfile" < "$INPUT" ;;
   *) sh $BASEDIR/scripts/sub/check_wfile "$INPUT" ;;
@@ -60,8 +60,8 @@ grep -qx "$F/lnk" "$W/o.link" 2>/dev/null && ! grep -q "$F/lnk" "$W/o.wfile" &&
   ok "flogit: the link to the file is in link's list, not wfile's" || bad "flogit: the link"
 rm -f "$W/o".*
 ( cd "$W" && TIGERHOMEDIR=$W KIND=flogit INPUT=$W/list O=$W/o WFILE=N sh ./drive.sh ) > "$W/out" 2>&1
-[ -s "$W/o.wfile" ] && bad "flogit: Tiger_FSScan_WFILE=N still filled the wfile list" ||
-  ok "flogit: Tiger_FSScan_WFILE=N fills no wfile list"
+[ -s "$W/o.wfile" ] && bad "flogit: Tigris_FSScan_WFILE=N still filled the wfile list" ||
+  ok "flogit: Tigris_FSScan_WFILE=N fills no wfile list"
 
 # --- check_wfile
 printf '%s\n' "$F/open" "$F/sub/deeper" > "$W/wlist"
@@ -69,7 +69,7 @@ go() { ( cd "$W" && TIGERHOMEDIR=$W KIND=check INPUT=$W/wlist DETAIL="$1" sh ./d
 has() { grep -F -q -- "$1" "$W/out"; }
 
 go /etc
-has "--WARN-- [fsys021w] 2 world-writable files under $W are not listed (see Tiger_FSScan_DetailDirs)." && ! has fsys020f &&
+has "--WARN-- [fsys021w] 2 world-writable files under $W are not listed (see Tigris_FSScan_DetailDirs)." && ! has fsys020f &&
   ok "outside the detail directories: counted per directory, not listed" || { bad "counted"; cat "$W/out"; }
 go "$F/sub"
 has "--FAIL-- [fsys020f] File $F/sub/deeper is world writable (-rw-rw-rw-, owner $me)." && has "Anyone can change its contents." &&

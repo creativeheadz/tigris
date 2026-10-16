@@ -1,22 +1,23 @@
-.TH TIGEXP 8 "12 August 2003" "Security" "Administrator Commands"
+.TH TIGRIS-EXPLAIN 8 "12 August 2003" "Security" "Administrator Commands"
 .SH NAME
-tigexp \- UNIX Security Checker Explanation Generator
+tigris-explain \- UNIX Security Checker Explanation Generator
 .SH SYNOPSIS
-.B tigexp
+.B tigris-explain
 .IR msgid " [" msgid [ msgid ...]]
 .LP
 .B tigris explain
 .IR msgid " [" msgid [ msgid ...]]
 .LP
-.B tigexp
+.B tigris-explain
 .RB [ -f | -F ]
 .RI [ security_report ]
 .LP
 .SH DESCRIPTION
 .LP
-\fBTigexp\fR is used to generate explanations of the output from the
-\fBTiger\fR security checking package.  In the first form,
-.B tigexp
+\fBtigris explain\fR generates explanations of the output from the
+\fBTiger\fR security checking package, through the tigris-explain helper
+(the old tigexp command still runs it). In the first form,
+.B tigris-explain
 will generate an explanation of each of the message ids listed,
 after its severity, category and the checks that report it;
 .B "tigris explain"
@@ -52,9 +53,9 @@ messages appear in this category.
 .I INFO
 These includes information messages which are not necessarily a security
 violation but might be useful for the administrator. Note that the
-.I tigerrc
+.I tigris.conf
 configuration file through the
-.I Tiger_Show_INFO_Msgs
+.I Tigris_Show_INFO_Msgs
 option determines whether or not
 .B Tiger
 shows these items. The default behaviour is to

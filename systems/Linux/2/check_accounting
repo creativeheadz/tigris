@@ -37,16 +37,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -71,7 +71,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT FIND GREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 

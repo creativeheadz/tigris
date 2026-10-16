@@ -28,10 +28,10 @@
 #                 Battery, scope not Device: a wireless mouse's does not
 #                 count). Core dumps are files when kernel.core_pattern is
 #                 not a pipe to a handler (systemd-coredump, apport).
-#                 USB storage is looked at only when Tiger_Storage_NoUSB=Y
+#                 USB storage is looked at only when Tigris_Storage_NoUSB=Y
 #                 says the policy is to have none. fs.suid_dumpable is
 #                 check_sysctl's (lin027w). Containers are left alone.
-#                 Tiger_Sysctl_Root prefixes /proc, /sys, /dev and /etc
+#                 Tigris_Sysctl_Root prefixes /proc, /sys, /dev and /etc
 #                 for the tests.
 #
 # References:
@@ -47,7 +47,7 @@
 #                 FireWire storage from its modprobe.d (each behind its
 #                 own policy setting). The LVM layout from its metadata
 #                 backups (stor011i), named ACL entries past the mode on
-#                 root's files (stor012w, getfacl, Tiger_Getfacl to point
+#                 root's files (stor012w, getfacl, Tigris_Getfacl to point
 #                 elsewhere), and the locate database, whose filenames
 #                 name everything (stor013w). What only the hardware says
 #                 (a battery) is not asked.
@@ -64,16 +64,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -99,7 +99,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT GREP LS SED || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -111,7 +111,7 @@ done
 
 haveallcmds AWK CAT GREP LS SED || exit 1
 
-root=${Tiger_Sysctl_Root:-}
+root=${Tigris_Sysctl_Root:-}
 
 # usb_blocked: whether modprobe.d blocks usb-storage and uas, by
 # blacklist or install override. Both: USB3 sticks use uas when it
@@ -255,8 +255,8 @@ storage_second()
     fi
   done
   # Named access beyond the mode, on files that should be root's alone
-  # (Tiger_Getfacl points at another getfacl, for the tests)
-  __getfacl=${Tiger_Getfacl:-getfacl}
+  # (Tigris_Getfacl points at another getfacl, for the tests)
+  __getfacl=${Tigris_Getfacl:-getfacl}
   havefacl=
   case "$__getfacl" in
     */*) [ -x "$__getfacl" ] && havefacl=Y ;;
@@ -376,11 +376,11 @@ if [ -n "$TIGRIS_ROOT" ]; then
     *) core_limited || message WARN stor007w "kernel.core_pattern is \"$pattern\" ($where). Add '* hard core 0' to /etc/security/limits.conf, or install systemd-coredump, which keeps them where only root reads them." "A program that crashes writes its memory to a core file beside it, passwords and keys included, and nothing limits that." ;;
   esac
 
-  if [ "$Tiger_Storage_NoUSB" = Y ]; then
-    usb_blocked || usb_auth_default || message WARN stor008w "Add 'install usb-storage /bin/false' and 'blacklist usb-storage' to a file in /etc/modprobe.d (and uas likewise), then rebuild the initramfs." "USB storage can be used, and the policy (Tiger_Storage_NoUSB) is to have none."
+  if [ "$Tigris_Storage_NoUSB" = Y ]; then
+    usb_blocked || usb_auth_default || message WARN stor008w "Add 'install usb-storage /bin/false' and 'blacklist usb-storage' to a file in /etc/modprobe.d (and uas likewise), then rebuild the initramfs." "USB storage can be used, and the policy (Tigris_Storage_NoUSB) is to have none."
   fi
-  if [ "$Tiger_Storage_NoFireWire" = Y ]; then
-    firewire_blocked || message WARN stor010w "Add 'install firewire-core /bin/false' and 'blacklist firewire-core' to a file in /etc/modprobe.d (and firewire-ohci likewise), then rebuild the initramfs." "FireWire can be used, and the policy (Tiger_Storage_NoFireWire) is to have none: a device on the bus reads and writes memory directly."
+  if [ "$Tigris_Storage_NoFireWire" = Y ]; then
+    firewire_blocked || message WARN stor010w "Add 'install firewire-core /bin/false' and 'blacklist firewire-core' to a file in /etc/modprobe.d (and firewire-ohci likewise), then rebuild the initramfs." "FireWire can be used, and the policy (Tigris_Storage_NoFireWire) is to have none: a device on the bus reads and writes memory directly."
   fi
   storage_usbguard
   storage_second
@@ -502,12 +502,12 @@ esac
 #
 # USB storage, when the policy is to have none
 #
-if [ "$Tiger_Storage_NoUSB" = Y ]; then
-  usb_blocked || usb_auth_default || message WARN stor008w "Add 'install usb-storage /bin/false' and 'blacklist usb-storage' to a file in /etc/modprobe.d (and uas likewise), then rebuild the initramfs." "USB storage can be used, and the policy (Tiger_Storage_NoUSB) is to have none."
-  dev=`usb_storage_connected` && message WARN stor008w "Disconnect it; to keep storage off, blacklist usb-storage and uas in /etc/modprobe.d and rebuild the initramfs." "A USB storage device ('$dev') is connected, and the policy (Tiger_Storage_NoUSB) is to have none."
+if [ "$Tigris_Storage_NoUSB" = Y ]; then
+  usb_blocked || usb_auth_default || message WARN stor008w "Add 'install usb-storage /bin/false' and 'blacklist usb-storage' to a file in /etc/modprobe.d (and uas likewise), then rebuild the initramfs." "USB storage can be used, and the policy (Tigris_Storage_NoUSB) is to have none."
+  dev=`usb_storage_connected` && message WARN stor008w "Disconnect it; to keep storage off, blacklist usb-storage and uas in /etc/modprobe.d and rebuild the initramfs." "A USB storage device ('$dev') is connected, and the policy (Tigris_Storage_NoUSB) is to have none."
 fi
-if [ "$Tiger_Storage_NoFireWire" = Y ]; then
-  firewire_blocked || message WARN stor010w "Add 'install firewire-core /bin/false' and 'blacklist firewire-core' to a file in /etc/modprobe.d (and firewire-ohci likewise), then rebuild the initramfs." "FireWire can be used, and the policy (Tiger_Storage_NoFireWire) is to have none: a device on the bus reads and writes memory directly."
+if [ "$Tigris_Storage_NoFireWire" = Y ]; then
+  firewire_blocked || message WARN stor010w "Add 'install firewire-core /bin/false' and 'blacklist firewire-core' to a file in /etc/modprobe.d (and firewire-ohci likewise), then rebuild the initramfs." "FireWire can be used, and the policy (Tigris_Storage_NoFireWire) is to have none: a device on the bus reads and writes memory directly."
 fi
 storage_usbguard
 if usbguard_running; then

@@ -48,7 +48,7 @@
 #
 # TODO:
 # - Consider if the the path '/bin/ /usr/bin/ /sbin/ /usr/sbin/
-# /lib/ /usr/X11R6/bin/' should be customizable in tigerrc.
+# /lib/ /usr/X11R6/bin/' should be customizable in tigris.conf.
 # Also, the maxpath could be set in another option.
 # - Consider the use of 'dlocate' which will be faster than DPKG. Notice
 # however that it's priority "optional"
@@ -59,7 +59,7 @@
 # Tigris: offline
 #
 #-----------------------------------------------------------------------------
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 
 #
@@ -67,9 +67,9 @@ TigerInstallDir='.'
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -95,9 +95,9 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK FIND GREP SED || exit 1
-  if [ "$Tiger_DPKG_Optimize" = "N" ]
+  if [ "$Tigris_DPKG_Optimize" = "N" ]
   then
   	haveallcmds DPKG || exit 1
   fi
@@ -113,7 +113,7 @@ echo
 echo "# Checking installed files against packages..."
 
 haveallcmds AWK FIND GREP SED || exit 1
-if [ "$Tiger_DPKG_Optimize" = "N" ]
+if [ "$Tigris_DPKG_Optimize" = "N" ]
 then
 	haveallcmds DPKG || exit 1
 fi
@@ -155,7 +155,7 @@ binfiles()
 
 # We have two options here, use dpkg (non-optimal but on the safe side)
 # or use grep (optimal but not on the safe side)
-if [ "$Tiger_DPKG_Optimize" = "N" ]
+if [ "$Tigris_DPKG_Optimize" = "N" ]
 then
         binfiles |
         # We are not using -maxdepth here, but we could...

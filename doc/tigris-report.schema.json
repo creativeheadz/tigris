@@ -76,12 +76,12 @@
         },
         "config": {
           "type": "string",
-          "description": "Path of the tigerrc the run used."
+          "description": "Path of the tigris.conf the run used."
         },
         "profile": {
           "type": "string",
           "pattern": "^[a-z0-9_-]+$",
-          "description": "The profile applied on top of the tigerrc (--profile), when there was one: quick, server, desktop, container, or a site's own. Absent in reports older than the field, and when none was."
+          "description": "The profile applied on top of the tigris.conf (--profile), when there was one: quick, server, desktop, container, or a site's own. Absent in reports older than the field, and when none was."
         },
         "root": {
           "type": "string",
@@ -441,7 +441,7 @@
         },
         "configs_differ": {
           "type": "boolean",
-          "description": "true when the two runs used different tigerrc files, so a check on in only one shows its findings as new or resolved."
+          "description": "true when the two runs used different tigris.conf files, so a check on in only one shows its findings as new or resolved."
         },
         "skipped_checks": {
           "type": "array",

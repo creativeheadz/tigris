@@ -36,16 +36,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -70,7 +70,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK FIND GREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -120,11 +120,11 @@ echo
 echo "# Checking the antivirus signatures..."
 
 if [ -z "$dbs" ]; then
-  message WARN av001w "Fetch them and keep them coming (run freshclam, and leave its timer or daemon enabled)." "ClamAV is installed but has no signatures in $dbdir: freshclam never fetched any, so it scans with nothing to match."
+  message WARN avir001w "Fetch them and keep them coming (run freshclam, and leave its timer or daemon enabled)." "ClamAV is installed but has no signatures in $dbdir: freshclam never fetched any, so it scans with nothing to match."
 elif [ -z "$fresh" ]; then
-  message WARN av001w "Fetch new ones and keep them coming (run freshclam, and leave its timer or daemon enabled)." "ClamAV's signatures in $dbdir are all older than a week: freshclam stopped fetching, so it scans with yesterday's knowledge."
+  message WARN avir001w "Fetch new ones and keep them coming (run freshclam, and leave its timer or daemon enabled)." "ClamAV's signatures in $dbdir are all older than a week: freshclam stopped fetching, so it scans with yesterday's knowledge."
 else
-  message INFO av002i "" "ClamAV is the malware scanner in place, with fresh signatures in $dbdir."
+  message INFO avir002i "" "ClamAV is the malware scanner in place, with fresh signatures in $dbdir."
 fi
 
 exit 0

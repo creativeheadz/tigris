@@ -1,9 +1,9 @@
 #!/bin/sh -e
 
 # System configuration file:
-CONFIG=/etc/tiger/tigerrc
+CONFIG=/etc/tigris/tigris.conf
 # Package-provided configuration file:
-PKGCONFIG=/usr/share/tiger/tigerrc
+PKGCONFIG=/usr/share/tiger/tigris.conf
 
 test $DEBIAN_SCRIPT_DEBUG && set -v -x
 
@@ -47,7 +47,7 @@ case "$1" in
             echo "ERROR in maintainer script, cannot find package configuration file at $PKGCONFIG" >&2
             exit 1
         fi
-        $CAT $PKGCONFIG | sed -e "s/^Tiger_Mail_RCPT=.*$/Tiger_Mail_RCPT=\"$MAIL_RCPT\"/"  > $tempfile
+        $CAT $PKGCONFIG | sed -e "s/^Tigris_Mail_RCPT=.*$/Tigris_Mail_RCPT=\"$MAIL_RCPT\"/"  > $tempfile
 
         # Use UCF to handle file changes
         ucf --debconf-ok $tempfile $CONFIG

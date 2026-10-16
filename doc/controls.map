@@ -277,8 +277,8 @@ id:ids003i                | -                  | -                        | -   
 id:int003i                | -                  | -                        | -                   | -
 # stor014i: names the USB authorization in place; not a gap.
 id:stor014i               | -                  | -                        | -                   | -
-# av002i: names the antivirus in place with fresh signatures; not a gap.
-id:av002i                 | -                  | -                        | -                   | -
+# avir002i: names the antivirus in place with fresh signatures; not a gap.
+id:avir002i               | -                  | -                        | -                   | -
 # rlog001i: forwarding is the arrangement to have; the finding only records where the copies go.
 id:rlog001i               | -                  | -                        | -                   | -
 # Tigris's own messages (its configuration, the run, its helpers) are about

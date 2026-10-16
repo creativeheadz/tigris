@@ -2,8 +2,8 @@ Id: issue003w
 Severity: WARN
 Category: accounts
 Check: check_issue
-Fix: Provide the sample issue file Tigris compares against, or turn the check off (Tiger_Check_ISSUE=N).
-References: issue(5); tigerrc
+Fix: Provide the sample issue file Tigris compares against, or turn the check off (Tigris_Check_ISSUE=N).
+References: issue(5); tigris.conf
 Controls: NIST AC-8
 
 The Tiger program does not find the an administrator-provided issue (or

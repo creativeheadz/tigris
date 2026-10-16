@@ -35,7 +35,7 @@ file="$1"
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds LS RM BASENAME || exit 1
   
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
@@ -49,10 +49,10 @@ echo "# Checking unusual file names..."
 haveallcmds LS BASENAME AWK SORT || exit 1
 
 [ -s "$file" ] && {
-  # List each file in the system directories named by Tiger_FSScan_DetailDirs;
+  # List each file in the system directories named by Tigris_FSScan_DetailDirs;
   # elsewhere (home directories, data disks) odd names are routine and get
   # one line per directory. Same split as find_files uses for dangling links.
-  $AWK -v detail="${Tiger_FSScan_DetailDirs-/etc|/bin|/sbin|/lib|/usr/bin|/usr/sbin|/usr/lib|/usr/local|/opt|/boot|/root|/var/lib|/var/spool|/srv}" '
+  $AWK -v detail="${Tigris_FSScan_DetailDirs-/etc|/bin|/sbin|/lib|/usr/bin|/usr/sbin|/usr/lib|/usr/local|/opt|/boot|/root|/var/lib|/var/spool|/srv}" '
     BEGIN { n = split(detail, prefix, "|") }
     {
       listed = (detail == "*")
@@ -82,7 +82,7 @@ haveallcmds LS BASENAME AWK SORT || exit 1
 	esac;;
       S)
 	set -- $rest
-	message WARN fsys017w "" "$1 files with unusual names under $2 are not listed (see Tiger_FSScan_DetailDirs).";;
+	message WARN fsys017w "" "$1 files with unusual names under $2 are not listed (see Tigris_FSScan_DetailDirs).";;
     esac
   done
   echo

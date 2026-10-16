@@ -22,10 +22,10 @@
 #             shares the moment it does.
 #
 # 10/09/2026 - Initial version. Serving is read two ways: rpcinfo's
-#             registrations (Tiger_RPCInfo_Cmd feeds fixtures, default
+#             registrations (Tigris_RPCInfo_Cmd feeds fixtures, default
 #             "rpcinfo -p"), and the kernel's nfsd threads, which catch
 #             an NFSv4-only server that needs no rpcbind. The threads
-#             come from Tiger_ProcDir (/proc for the tests' fixtures).
+#             come from Tigris_ProcDir (/proc for the tests' fixtures).
 #             When rpcinfo cannot run, nothing can be said either way,
 #             so nothing is.
 #
@@ -38,16 +38,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -72,7 +72,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds CAT GREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -100,7 +100,7 @@ findtool()
   done
   return 1
 }
-rpcinfo=${Tiger_RPCInfo_Cmd:-}
+rpcinfo=${Tigris_RPCInfo_Cmd:-}
 [ -z "$rpcinfo" ] && { rpcinfo=`findtool rpcinfo` && rpcinfo="$rpcinfo -p" || rpcinfo=; }
 [ -z "$rpcinfo" ] && exit 0
 rpcout=`$rpcinfo 2>/dev/null` || exit 0
@@ -109,7 +109,7 @@ evidence=
 case "$rpcout" in
   *" 100003 "*) evidence="rpcinfo registers nfs" ;;
 esac
-threads=`$CAT "${Tiger_ProcDir:-/proc}/fs/nfsd/threads" 2>/dev/null`
+threads=`$CAT "${Tigris_ProcDir:-/proc}/fs/nfsd/threads" 2>/dev/null`
 case "$threads" in
   ''|0) ;;
   *) [ -n "$evidence" ] && evidence="$evidence and the kernel runs nfsd threads" ||

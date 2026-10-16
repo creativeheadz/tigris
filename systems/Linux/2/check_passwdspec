@@ -35,15 +35,15 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -68,7 +68,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallfiles BASEDIR || exit 1
   haveallcmds AWK CUT || exit 1
   
@@ -106,7 +106,7 @@ IFS=:
   while read user pwd
   do
  
-    [ "$Tiger_Check_PASSWD_SHADOW" = 'Y' ] && [ -s "$passwd" ] && [ "x$pwd" != "xx" ] && {
+    [ "$Tigris_Check_PASSWD_SHADOW" = 'Y' ] && [ -s "$passwd" ] && [ "x$pwd" != "xx" ] && {
       message WARN pass020w "" "Login ID $user is not configured to use shadow passwords."
     }
 

@@ -44,8 +44,8 @@ if [ "$uid" = 0 ]; then
 fi
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Check_KNOWN=Y'
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Check_KNOWN=Y'
 } > "$W/profiles/known"
 chmod 644 "$W/profiles/known"
 

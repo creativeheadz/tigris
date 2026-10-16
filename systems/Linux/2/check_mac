@@ -24,7 +24,7 @@
 #                 only), SELinux's mode in /sys/fs/selinux/enforce. Profiles
 #                 in complain mode are listed in the summary rather than
 #                 reported one by one: Ubuntu ships several that way.
-#                 Tiger_Sysctl_Root prefixes /sys for the tests.
+#                 Tigris_Sysctl_Root prefixes /sys for the tests.
 # 10/09/2026 - TOMOYO (domains in enforcing mode, from its securityfs
 #                 profile) and PaX (softmode off means on). TOMOYO's
 #                 verdict stands on its own: where it reports, the
@@ -44,16 +44,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -79,7 +79,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT GREP SED || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -91,8 +91,8 @@ done
 
 haveallcmds AWK CAT GREP SED || exit 1
 
-sys="${Tiger_Sysctl_Root:-}/sys"
-proc="${Tiger_Sysctl_Root:-}/proc"
+sys="${Tigris_Sysctl_Root:-}/sys"
+proc="${Tigris_Sysctl_Root:-}/proc"
 # Nothing to judge without the kernel's view (a container without /sys)
 [ -d "$sys/kernel" ] || exit 0
 

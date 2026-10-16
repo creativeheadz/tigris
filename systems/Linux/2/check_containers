@@ -30,8 +30,8 @@
 #                 host's PID or network namespace, the Docker socket or
 #                 the host's / or /etc mounted in it. Ports Docker
 #                 publishes are check_firewall's (fire005w).
-#                 Tiger_Sysctl_Root prefixes /proc, /etc and /run, and
-#                 Tiger_Container_List_Cmd replaces the inspect, for the
+#                 Tigris_Sysctl_Root prefixes /proc, /etc and /run, and
+#                 Tigris_Container_List_Cmd replaces the inspect, for the
 #                 tests.
 #
 # References:
@@ -43,16 +43,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -78,7 +78,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT GREP LS SED SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -90,7 +90,7 @@ done
 
 haveallcmds AWK CAT GREP LS SED SORT TR || exit 1
 
-root=${Tiger_Sysctl_Root:-}
+root=${Tigris_Sysctl_Root:-}
 sockets=
 for s in /run/docker.sock /run/podman/podman.sock
 do
@@ -178,7 +178,7 @@ echo "$engines" | $AWK '$1 == "dockerd" && $2 == 0 { found = 1 } END { exit !fou
 #
 # The running containers
 #
-cmd=${Tiger_Container_List_Cmd:-}
+cmd=${Tigris_Container_List_Cmd:-}
 fmt='{{.Name}}|{{.HostConfig.Privileged}}|{{.HostConfig.PidMode}}|{{.HostConfig.NetworkMode}}|{{.HostConfig.CapAdd}}|{{range .Mounts}}{{.Source}}:{{.RW}} {{end}}'
 if [ -z "$cmd" ]; then
   list=

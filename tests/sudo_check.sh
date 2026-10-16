@@ -3,8 +3,8 @@
 # tests/sudo_check.sh - check_sudo against rules and files of its own
 #
 # The rules are what cvtsudoers -e -f sudoers prints (a desktop's own, captured
-# 7 October 2026, then one rule per case), through Tiger_Cvtsudoers_Cmd;
-# the files are an /etc/sudoers and sudoers.d under Tiger_Sysctl_Root.
+# 7 October 2026, then one rule per case), through Tigris_Cvtsudoers_Cmd;
+# the files are an /etc/sudoers and sudoers.d under Tigris_Sysctl_Root.
 # They belong to whoever runs the test, so the owner is expected to be
 # reported unless that is root. Then an offline root (TIGRIS_ROOT, as
 # tigris --root sets it), whose sudoers names its drop-ins with
@@ -20,7 +20,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -56,8 +56,8 @@ r="$W/root"; mkdir -p "$r/etc/sudoers.d"
 : > "$r/etc/sudoers.d/ops"; chmod 0440 "$r/etc/sudoers.d/ops"
 uid=`id -u`
 go() {
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$r'"; echo "Tiger_Cvtsudoers_Cmd='sh $W/$1'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$r'"; echo "Tigris_Cvtsudoers_Cmd='sh $W/$1'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_sudo ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
@@ -117,8 +117,8 @@ ln -s /opt/dave "$R/etc/sudoers.d/dave"
 echo 'Defaults:erin !authenticate' > "$R/etc/sudoers.rel"
 chmod 0440 "$R/etc/sudoers" "$R/etc/sudoers.d/alice" "$R/etc/sudoers.d/bob.disabled" "$R/etc/sudoers.extra" "$R/opt/dave" "$R/etc/sudoers.rel"
 offline() {
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { [ -n "$1" ] && echo "Tiger_Cvtsudoers_Cmd='$1'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { [ -n "$1" ] && echo "Tigris_Cvtsudoers_Cmd='$1'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGRIS_ROOT=$R TIGERHOMEDIR=$W sh ./systems/Linux/2/check_sudo ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"

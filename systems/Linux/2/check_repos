@@ -35,8 +35,8 @@
 #             pocket never changes by design, its -updates and
 #             -security do. APKINDEX names carry a hash of the URL,
 #             not the URL, so apk findings name the file and point at
-#             /etc/apk/repositories. Tiger_Repos_MaxAge (90 days)
-#             sets the age; Tiger_Repos_Now replaces the clock, for
+#             /etc/apk/repositories. Tigris_Repos_MaxAge (90 days)
+#             sets the age; Tigris_Repos_Now replaces the clock, for
 #             the tests.
 #
 # 10/16/2026 - Initial version. apt (Date, Valid-Until, refresh),
@@ -51,16 +51,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -85,7 +85,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK FIND SED SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -97,9 +97,9 @@ done
 
 haveallcmds AWK FIND SED SORT || exit 1
 
-MaxAge=${Tiger_Repos_MaxAge:-90}
+MaxAge=${Tigris_Repos_MaxAge:-90}
 case "$MaxAge" in *[!0-9]*|"") MaxAge=90 ;; esac
-now=${Tiger_Repos_Now:-`date +%s`}
+now=${Tigris_Repos_Now:-`date +%s`}
 case "$now" in *[!0-9]*|"") now=`date +%s` ;; esac
 nowdays=`expr $now / 86400`
 

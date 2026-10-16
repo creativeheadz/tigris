@@ -7,20 +7,20 @@
 #
 #   ./tigris --profile container
 #
-# Read after the tigerrc; only what differs from it.
+# Read after the tigris.conf; only what differs from it.
 #
-Tiger_Check_BOOT=N
-Tiger_Check_SINGLE=N
-Tiger_Check_RCUMASK=N
-Tiger_Check_NETWORKCONFIG=N
-Tiger_Check_SYSCTL=N
-Tiger_Check_SYSTEMD=N
-Tiger_Check_FIREWALL=N
-Tiger_Check_SECUREBOOT=N
-Tiger_Check_MAC=N
-Tiger_Check_AUDIT=N
-Tiger_Check_TIMESYNC=N
-Tiger_Check_UNITS=N
-Tiger_Check_STORAGE=N
-Tiger_Check_CONTAINERS=N
-Tiger_Check_ROOTKIT=N
+Tigris_Check_BOOT=N
+Tigris_Check_SINGLE=N
+Tigris_Check_RCUMASK=N
+Tigris_Check_NETWORKCONFIG=N
+Tigris_Check_SYSCTL=N
+Tigris_Check_SYSTEMD=N
+Tigris_Check_FIREWALL=N
+Tigris_Check_SECUREBOOT=N
+Tigris_Check_MAC=N
+Tigris_Check_AUDIT=N
+Tigris_Check_TIMESYNC=N
+Tigris_Check_UNITS=N
+Tigris_Check_STORAGE=N
+Tigris_Check_CONTAINERS=N
+Tigris_Check_ROOTKIT=N

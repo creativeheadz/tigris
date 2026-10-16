@@ -7,7 +7,7 @@ arch=('x86_64' 'aarch64')
 url='https://github.com/creativeheadz/tigris'
 license=('GPL-2.0-or-later')
 makedepends=('gcc' 'make')
-backup=('etc/tigris/tigerrc' 'etc/tigris/cronrc')
+backup=('etc/tigris/tigris.conf' 'etc/tigris/cronrc')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/creativeheadz/tigris/archive/refs/tags/version_${pkgver//./_}.tar.gz")
 # SKIP until the tag exists: the sum of the tag's tarball is put here, and
 # .SRCINFO regenerated, in the commit after the release (packaging/README.md)

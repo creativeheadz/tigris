@@ -18,27 +18,27 @@
 # tripwire_run - 11/07/2001
 # Paul Telford <paul_telford@hp.com>
 #
-# Runs tripwire (either a predefined location based on tigerrc) or 
+# Runs tripwire (either a predefined location based on tigris.conf) or 
 # the version found in path to test filesystem integrity.
 #
 # tripwire_run - 08/13/2003 - jfs - Tripwire location is no longer hardcoded
 # tripwire_run - 08/08/2003 - jfs - Temporary file creation.
 # tripwire_run - 05/01/2003 - jfs - Fixed dependancies, awk -> $AWK
 # tripwire_run - 07/25/2002 - jfs
-#       Changed TigerInstallDir to .
+#       Changed TigrisInstallDir to .
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -64,7 +64,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK GREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME
@@ -85,14 +85,14 @@ safe_temp $tmplog
 trap 'delete $tmplog; exit 1' 1 2 3 15
 
 # Tripwire binary location|override + default check
-# Which, find, user-supplied var or tigexp's findcmd?:
+# Which, find, user-supplied var or tigris-explain's findcmd?:
 if [ -z "$TRIPWIRE" ]
 then
-if [ -z "${Tiger_TRIPW_LOC_OVERRIDE}" ]
+if [ -z "${Tigris_TRIPW_LOC_OVERRIDE}" ]
 then
         TRIPWIRE=`command -v tripwire`
 else
-        TRIPWIRE=${Tiger_TRIPW_LOC_OVERRIDE}
+        TRIPWIRE=${Tigris_TRIPW_LOC_OVERRIDE}
 fi
 fi
 

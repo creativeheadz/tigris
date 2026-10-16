@@ -81,20 +81,20 @@ fixture "$W/b.lsof" 37201 58861 39000 33333
 mkdir -p "$W/sys/proc/sys/net/ipv4"
 printf '32768\t60999\n' > "$W/sys/proc/sys/net/ipv4/ip_local_port_range"
 
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 go() {  # go SETTING JSON-OUT: SETTING names the tool and its fixture
-  cp "$W/tigerrc.base" "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
   {
     echo "$1"
-    echo "Tiger_Sysctl_Root='$W/sys'"
-    echo "Tiger_JSON_File='$2'"
-    echo "Tiger_Listening_ValidUsers='root'"
-    echo "Tiger_Listening_Every=Y"
-  } >> "$W/tigerrc"
+    echo "Tigris_Sysctl_Root='$W/sys'"
+    echo "Tigris_JSON_File='$2'"
+    echo "Tigris_Listening_ValidUsers='root'"
+    echo "Tigris_Listening_Every=Y"
+  } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_listeningprocs ) > "$W/out" 2>&1
 }
 
-go "Tiger_LSOF_Cmd='cat $W/a.lsof'" "$W/a.jsonl"
+go "Tigris_LSOF_Cmd='cat $W/a.lsof'" "$W/a.jsonl"
 A="$W/a.jsonl"
 has() { grep -F -q "$1" "$A"; }
 
@@ -114,7 +114,7 @@ has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The
 grep -q 'systemd-resolve\|:443\|56176' "$A" && bad "loopback or a connected socket was reported" || ok "loopback and connected sockets are left out"
 
 # The same processes on other ephemeral ports: nothing new, nothing resolved
-go "Tiger_LSOF_Cmd='cat $W/b.lsof'" "$W/b.jsonl"
+go "Tigris_LSOF_Cmd='cat $W/b.lsof'" "$W/b.jsonl"
 sh "$W/tigris-diff" "$W/a.jsonl" "$W/b.jsonl" > "$W/diff.txt"; st=$?
 [ $st -eq 0 ] && grep -q '^  new (0):' "$W/diff.txt" && grep -q '^  resolved (0):' "$W/diff.txt" &&
   ok "two runs that differ only in ephemeral ports compare unchanged" || bad "diff of the two runs: `cat "$W/diff.txt"`"
@@ -122,7 +122,7 @@ grep -q '"detail":"Ports 37201, 58861;' "$W/b.jsonl" && ok "the second run's det
 
 # The range comes from the kernel: narrower, and 56706 is a port of its own
 printf '40000\t50000\n' > "$W/sys/proc/sys/net/ipv4/ip_local_port_range"
-go "Tiger_LSOF_Cmd='cat $W/a.lsof'" "$W/c.jsonl"
+go "Tigris_LSOF_Cmd='cat $W/a.lsof'" "$W/c.jsonl"
 grep -F -q 'syncthing'"'"' is listening on ephemeral ports (UDP on every interface) is run by alice.","detail":"Port 41402; the kernel gives out 40000-50000' "$W/c.jsonl" &&
   grep -F -q 'syncthing'"'"' is listening on socket 56706 (UDP' "$W/c.jsonl" &&
   ok "the range is read from ip_local_port_range" || bad "range from the kernel: `grep syncthing "$W/c.jsonl"`"
@@ -173,7 +173,7 @@ tIPv6
 PTCP
 n[2001:db8::10]:8443->[2001:db8::20]:50000
 EOF
-go "Tiger_LSOF_Cmd='cat $W/v6.lsof'" "$W/v6.jsonl"
+go "Tigris_LSOF_Cmd='cat $W/v6.lsof'" "$W/v6.jsonl"
 A="$W/v6.jsonl"
 has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The process `sshd'"'"' is listening on socket 22 (TCP) on every interface."' &&
   [ "`grep -c 'sshd' "$A"`" = 1 ] && ok "lsof: sshd on 0.0.0.0 and on :: is one finding" || bad "lsof sshd: `grep sshd "$A"`"
@@ -214,7 +214,7 @@ tcp LISTEN 0 511 [2001:db8::10]:8443 [::]:* users:(("nginx",pid=702,fd=6),("ngin
 tcp LISTEN 0 128 *:5000 *:* users:(("Web Content",pid=950,fd=40)) uid:1000 ino:5000 sk:23 cgroup:/user.slice/user-1000.slice/session-c1.scope v6only:0 <->
 tcp LISTEN 0 128 0.0.0.0:7000 0.0.0.0:* users:(("ghost",pid=951,fd=3)) uid:4242421 ino:5001 sk:24 cgroup:/system.slice/ghost.service <->
 EOF
-go "Tiger_SS_Cmd='cat $W/ss.txt'" "$W/ss.jsonl"
+go "Tigris_SS_Cmd='cat $W/ss.txt'" "$W/ss.jsonl"
 A="$W/ss.jsonl"
 has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The process `sshd'"'"' is listening on socket 22 (TCP) on every interface."' &&
   [ "`grep -c 'sshd' "$A"`" = 1 ] && ok "ss: sshd on 0.0.0.0 and on :: is one finding, its owner root" || bad "ss sshd: `grep sshd "$A"`"
@@ -253,7 +253,7 @@ tcp6       0      0 :::22000                :::*                    LISTEN      
 udp6       0      0 :::21027                :::*                                alice     20753      1988/syncthing
 raw6       0      0 :::58                   :::*                    7           root       23567      994/NetworkManager
 EOF
-go "Tiger_Netstat_Cmd='cat $W/netstat.txt'" "$W/ns.jsonl"
+go "Tigris_Netstat_Cmd='cat $W/netstat.txt'" "$W/ns.jsonl"
 A="$W/ns.jsonl"
 has '"id":"lin004i"' && ok "netstat: says it is the fallback (lin004i)" || bad "netstat lin004i"
 has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The process `sshd'"'"' is listening on socket 22 (TCP) on every interface."' &&
@@ -294,7 +294,7 @@ proc() {  # proc PID COMM EUID INODE...
 proc 1239 sshd 0 7871 8654
 proc 1221 cupsd 0 15585 15584
 proc 1988 syncthing 1000 20752 14323 99001
-go "Tiger_Listening_Source=proc" "$W/proc.jsonl"
+go "Tigris_Listening_Source=proc" "$W/proc.jsonl"
 A="$W/proc.jsonl"
 has '"level":"WARN","id":"lin002i","check":"check_listeningprocs","message":"The process `sshd'"'"' is listening on socket 22 (TCP) on every interface."' &&
   [ "`grep -c 'sshd' "$A"`" = 1 ] && ok "/proc: sshd on 0.0.0.0 and on :: (hex, little-endian) is one finding" || { bad "proc sshd: `grep sshd "$A"`"; }

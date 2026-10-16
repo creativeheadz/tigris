@@ -8,5 +8,5 @@ Controls: NIST SI-4; ISO 8.16
 
 The listed file has an unusual filenames.  These include files with
 multiple leading '.', filenames with spaces, etc.  The variable
-FS_FILES can be set in the 'tigerrc' file to specify the filename
+FS_FILES can be set in the 'tigris.conf' file to specify the filename
 patterns which are reported.

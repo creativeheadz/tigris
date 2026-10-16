@@ -18,7 +18,7 @@
 # check_release: verifies that system meets minimum release requirements
 # 10.26.2001
 # Paul Telford <paul_telford@hp.com>
-# 07/25/2002 jfs       Changed TigerInstallDir to .
+# 07/25/2002 jfs       Changed TigrisInstallDir to .
 # 10/01/2003 jfs       Fixed message calls
 # 11/09/2003 jfs       Removed typeset bashism and updated RedHat versions so
 #            only 7.1 or greater are consider current (Debian Bug 219764)
@@ -51,16 +51,16 @@
 #   /sys/hypervisor describe the auditing host, never a root, so
 #   under --root it is skipped (a live-system section).
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -83,7 +83,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds CAT AWK SED TR DATE || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -157,8 +157,8 @@ if [ -n "$rel_id" ] && [ -n "$rel_ver" ] && [ -r "$EOL_LIST" ]; then
     END { for (i = 1; i <= 3; i++) if (i in hit) { print hit[i]; exit } }' "$EOL_LIST"`
   eol=$1; ext=$2
 fi
-# Tiger_Today (YYYYMMDD) stands in for the date, for the tests
-today=${Tiger_Today:-`$DATE +%Y%m%d`}
+# Tigris_Today (YYYYMMDD) stands in for the date, for the tests
+today=${Tigris_Today:-`$DATE +%Y%m%d`}
 ended=
 case "$eol" in
   past) ended=Y ;;
@@ -210,6 +210,6 @@ virt_guest()
 #   cpuinfo, DMI and /sys/hypervisor describe the auditing host, never
 #   a root under audit, so under --root there is nothing to say.
 if [ -z "$TIGRIS_ROOT" ]; then
-  guest=`virt_guest "${Tiger_Sysctl_Root:-}"`
+  guest=`virt_guest "${Tigris_Sysctl_Root:-}"`
   [ -n "$guest" ] && message INFO osv003i "" "This machine is a virtual guest ($guest): the findings below describe the guest, while host-level facts, like disk encryption or Secure Boot, describe the machine it runs on instead."
 fi

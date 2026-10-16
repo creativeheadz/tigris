@@ -42,8 +42,8 @@ mkdir -p "$S/etc"
 printf 'id:3:initdefault:\nsi::sysinit:/etc/init.d/rcS\n' > "$S/etc/inittab"
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  for c in BOOT SINGLE SYSTEM; do echo "Tiger_Check_$c=Y"; done
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  for c in BOOT SINGLE SYSTEM; do echo "Tigris_Check_$c=Y"; done
 } > "$W/profiles/boot"
 chmod 644 "$W/profiles/boot"
 

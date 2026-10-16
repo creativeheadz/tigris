@@ -49,8 +49,8 @@ ln -s /opt/handler "$R/linkprog"
 [ "$uid" = 0 ] && chown -R "$U:$G" "$R" && chown -h "$U:$G" "$R/linkprog"
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  for c in SERVICES ALIASES; do echo "Tiger_Check_$c=Y"; done
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  for c in SERVICES ALIASES; do echo "Tigris_Check_$c=Y"; done
 } > "$W/profiles/netsvc"
 chmod 644 "$W/profiles/netsvc"
 

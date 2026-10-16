@@ -14,7 +14,7 @@ carries the mechanics.
   example). `sh tests/explain_check.sh` fails on any id without one, and
   on a file that disagrees with the code.
 - No check ships without a test. Fixture-driven checks take the command
-  or the tree as a setting (`Tiger_Sysctl_Root`, `Tiger_SSHD_Cmd`),
+  or the tree as a setting (`Tigris_Sysctl_Root`, `Tigris_SSHD_Cmd`),
   package-manager checks plant their problems in a real container; see
   `tests/` and the roadmap's engineering section.
 - Tigris is read-only and offline by default: a check changes nothing

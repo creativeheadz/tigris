@@ -5,9 +5,9 @@
 # Copies this tree aside (so the build dirties no checkout), configures,
 # makes and installs it under a throwaway prefix, then runs the installed
 # sbin/tigris twice against a tiny offline root: once with -E (which
-# needs $BASEDIR/tigexp) and once with --since last (which needs
+# needs $BASEDIR/tigris-explain) and once with --since last (which needs
 # $BASEDIR/tigris-diff). Installing the entry points without the helpers
-# they call is the failure; sbin/tigris explain (which needs tigexp
+# they call is the failure; sbin/tigris explain (which needs tigris-explain
 # beside it) is checked too.
 #
 # Needs a C compiler and make; exits 2 (skip) without them.
@@ -46,7 +46,7 @@ expect "[ $? -eq 0 ]" "make install fills the prefix"
 SBIN="$W/pfx/sbin"
 STAGEHOME=`grep '^TIGERHOME=' "$W/src/Makefile" | sed 's/.*=//'`
 expect "[ -x $SBIN/tigris ]" "sbin/tigris is installed and executable"
-expect "[ -x $STAGEHOME/tigexp ]" "tigexp is where BASEDIR expects it"
+expect "[ -x $STAGEHOME/tigris-explain ]" "tigris-explain is where BASEDIR expects it"
 # what was copied from the checkout keeps nobody's write bit (the checkout's
 # modes are the cloner's umask); as root, all of it is root's
 expect "[ -z \"`find $STAGEHOME ! -type l -perm /go+w 2>/dev/null | head -1`\" ]" "nothing installed is writable by group or others"
@@ -54,7 +54,7 @@ expect "[ -z \"`find $STAGEHOME ! -type l -perm /go+w 2>/dev/null | head -1`\" ]
 expect "[ -x $STAGEHOME/tigris-diff ]" "tigris-diff is where BASEDIR expects it"
 
 $SBIN/tigris explain lin002i >"$W/explain.out" 2>&1
-expect "grep -q 'Severity:' $W/explain.out" "sbin/tigris explain finds tigexp"
+expect "grep -q 'Severity:' $W/explain.out" "sbin/tigris explain finds tigris-explain"
 
 # version.h is installed: a package once said "version undetermined"
 ver=`cat "$W/src/version.h"`

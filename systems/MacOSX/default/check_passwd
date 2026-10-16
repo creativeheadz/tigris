@@ -27,7 +27,7 @@
 #             judged: ShadowHash is not crypt, and there is no honest
 #             acceptable-hash list for it.
 #
-# 10/09/2026 - Initial version. Tiger_Dscl_Cmd points at another
+# 10/09/2026 - Initial version. Tigris_Dscl_Cmd points at another
 #             dscl, for the tests.
 #
 # References:
@@ -38,16 +38,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -72,7 +72,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT GREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -113,7 +113,7 @@ users_of()
       }' "$f" 2>/dev/null
     done
   else
-    dscl=${Tiger_Dscl_Cmd:-dscl}
+    dscl=${Tigris_Dscl_Cmd:-dscl}
     $dscl . -list /Users 2>/dev/null | $AWK '{ print $1 }' | while read -r u
     do
       [ -n "$u" ] || continue
@@ -131,10 +131,10 @@ users_of()
 echo
 echo "# Checking users..."
 
-# Tiger_Shells_File names the valid-shells file, for the tests: the
+# Tigris_Shells_File names the valid-shells file, for the tests: the
 # live leg reads users from the dscl stub but must not read this
 # host's /etc/shells, whose entries differ per system.
-shells=${Tiger_Shells_File:-`rootfile /etc/shells`}
+shells=${Tigris_Shells_File:-`rootfile /etc/shells`}
 users=`users_of`
 [ -n "$users" ] || exit 0
 

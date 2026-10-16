@@ -57,9 +57,11 @@ Settled, so they do not have to be argued again:
   macOS, then the BSDs (both done). Solaris is backlogged in favour
   of mainstream work (decided 16 October 2026); AIX is not planned.
   Linux parity comes first.
-- **Internal names stay for now.** `tigerrc`, the `Tiger_*` settings, the
-  `tiger` command and `/etc/tiger` keep working. They change at 4.0, with
-  compatibility shims, in one go. `./tigris` is the entry point today.
+- **Internal names renamed in 4.0.** `tigris.conf`, the `Tigris_*` settings,
+  `/etc/tigris` and `tigris explain` are the names; the old `tigerrc`,
+  `Tiger_*`, `/etc/tiger` and `tigexp` keep working through shims, an old
+  file beating a new file beside it and an explicit new setting beating
+  an old one. `./tigris` is the entry point.
 
 ## Where things stand
 
@@ -75,7 +77,7 @@ Settled, so they do not have to be argued again:
 | Change over time     | `tigris-diff` and `tigris-accept`; `tigercron`                  | Mostly point-in-time                     |
 | Package integrity    | dpkg, rpm, apk, pacman, one finding id per kind of problem      | Limited                                  |
 | Offline audit        | `tigris --root`: every check reads an image except the ten that need the running system, nothing in it is run; a container image with every distribution's package tools | None |
-| Tests                | 111 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
+| Tests                | 112 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
 | Lynis parity         | Linux groups covered in Phase A (see below); macOS, BSD done; Solaris backlogged, AIX not planned | 43 test groups across Linux, macOS, BSD, Solaris |
 
 Lynis is broad, maintained and popular (16k GitHub stars). Tigris
@@ -176,7 +178,7 @@ the JSON report and drift. The full list is in `CHANGES`.
 **Released: 3.2.4 (4 October 2026).** Finishes the 3.2.4 release candidate
 TIGER left in 2018 and folds in the five Debian non-maintainer uploads
 that never reached the repository. Debian bugs #1111306 (merged-/usr),
-#505906 (prelink, md5sum parsing), #610785 (`Tiger_FSScan_PruneDirs`),
+#505906 (prelink, md5sum parsing), #610785 (`Tigris_FSScan_PruneDirs`),
 #1105709 (parallel install), #1033743 (Romanian translation).
 
 **In 3.3.0** (on master since 3.2.4):
@@ -191,9 +193,9 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   per file (about a million processes before); the old path stays for
   busybox.
 - [x] Dangling symlinks and unusual file names are listed one by one only
-  under system directories (`Tiger_FSScan_DetailDirs`); elsewhere one line
+  under system directories (`Tigris_FSScan_DetailDirs`); elsewhere one line
   per directory. Image stores (Flatpak, Docker, containerd, snap) are
-  pruned by default (`Tiger_FSScan_PruneDirs`).
+  pruned by default (`Tigris_FSScan_PruneDirs`).
 - [x] Checks taught the modern world: PAM-era PATH and umask, systemd,
   merged-/usr, `nologin` service accounts, `/var/log/syslog` and the
   journal, `/dev` as udev builds it, `su` and `passwd` being setuid.
@@ -206,7 +208,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   (17 files). The boot check stays: despite its name it covers GRUB 2.
   So does `check_known`'s inetd backdoor test, which costs nothing when
   there is no inetd.
-- [x] `tigerrc-quick`: everything except the filesystem scan, about a
+- [x] `tigris-quick.conf`: everything except the filesystem scan, about a
   minute where the full run takes three (62 s on the reference desktop, 175 lines).
 
 *New checks.*
@@ -233,7 +235,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
 - [x] `tigris-diff`: new, resolved and unchanged between two runs, exit 1
   on anything new, `-j` for JSON. When either run skipped the filesystem
   scan (the quick profile) its `fsys*` findings are set aside on both
-  sides instead of showing as resolved, and different `tigerrc` files are
+  sides instead of showing as resolved, and different `tigris.conf` files are
   noted; the run record carries `filesystem_scan` for this.
 - [x] `tigris-accept`: acknowledge a finding with a reason and an expiry;
   out of the text report, marked in the JSON, back when it expires.
@@ -243,7 +245,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   permissions, root, rootkit, suid/sgid, crack, PATH); three
   placeholder ids replaced with real ones (`tigxxxx` to `tig001e`,
   `suidxxx` to `suid002`, `miscxxxx` to `pass022w`); the NIS+ check
-  that held the last four malformed ids retired. `tigexp` serves them
+  that held the last four malformed ids retired. `tigris-explain` serves them
   all and `tests/explain_check.sh` fails CI on any gap.
 
 *Engineering.*
@@ -279,7 +281,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   `--since` run on the reference desktop reported 9 of them as new. Also: a root
   listener on every interface was reported as a WARN and again as an
   INFO (`&& message || message`, and `message()` returns non-zero).
-  `tests/listening_check.sh` feeds `lsof -F` fixtures (`Tiger_LSOF_Cmd`).
+  `tests/listening_check.sh` feeds `lsof -F` fixtures (`Tigris_LSOF_Cmd`).
 - [x] **`check_firewall`**: is incoming traffic denied unless something
   accepts it, for IPv4 and IPv6 separately. Reads the kernel's ruleset
   (`nft list ruleset`, and the legacy iptables tables when they are
@@ -331,12 +333,12 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   `lin038w` for dpkg, which records no other modes. Silent on the reference desktop, whose
   six overrides all match; `tests/statoverride_check.sh` needs no root,
   and `tests/deb_checks.sh` plants a real override in Debian stable, sid
-  and Ubuntu 24.04. `Tiger_Deb_StatOverride` turns it off.
+  and Ubuntu 24.04. `Tigris_Deb_StatOverride` turns it off.
 - [x] **Finding metadata.** Each id the code can emit has `meta/ID`: its
   severity (the levels the code really uses: lin002i is also a WARN),
   one of 15 categories, the checks that report it, references, and the
   explanation, moved from `doc/*.txt`. `tigris explain ID` (still
-  `tigexp` underneath) reads it directly, so there is no index to
+  `tigris-explain` underneath) reads it directly, so there is no index to
   rebuild as root, and shows it as written instead of through `fmt`,
   which ran indented examples together. Every JSON finding carries its
   `category` (an added field, schema 1 unchanged). `make` builds one
@@ -416,7 +418,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   machine with a battery of its own (stor004w) and an INFO elsewhere
   (stor005i); swap unencrypted under an encrypted root (stor006w); core
   dumps written as files with no limit (stor007w); USB storage when
-  Tiger_Storage_NoUSB=Y says there should be none (stor008w). The reference desktop:
+  Tigris_Storage_NoUSB=Y says there should be none (stor008w). The reference desktop:
   /tmp on /, /dev/shm without noexec, nothing encrypted (its only
   battery is the mouse's).
 - [x] **`check_containers`**: the Docker or Podman socket usable by
@@ -458,16 +460,16 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   per finding, sticky ones as CIS allows them, except under `/etc`,
   `/usr` and the other trees root reads programs from. World-writable
   regular files (fsys020f) one per finding under those trees and the
-  others `Tiger_FSScan_DetailDirs` names, with what reads them there;
+  others `Tigris_FSScan_DetailDirs` names, with what reads them there;
   elsewhere counted per directory (fsys021w), a tool's lock or cache
   file as often as not. The setuid-copy
-  signatures (2003's) only with `Tiger_Check_SIGNATURES`, as for setgid:
+  signatures (2003's) only with `Tigris_Check_SIGNATURES`, as for setgid:
   without the hash helpers built every run printed an ERROR. Rootless
   Podman's image stores pruned like the system's.
 - [x] **Profiles as overlays**: `tigris --profile NAME` (or `-p`) reads
-  `profiles/NAME` after the tigerrc, beside it first, then Tigris's own,
+  `profiles/NAME` after the tigris.conf, beside it first, then Tigris's own,
   so a profile holds only what differs: `quick` (no filesystem scan, the
-  same as `tigerrc-quick`, which stays), `server` (USB storage
+  same as `tigris-quick.conf`, which stays), `server` (USB storage
   forbidden, every account's PATH, processes using deleted files),
   `desktop` (no checks for server-only services), `container` (none of
   the host's kernel, boot, firewall, systemd or disks). An unknown
@@ -491,7 +493,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   the last resort is the kernel's own tables (/proc/net/tcp, tcp6, udp,
   udp6) with the processes found through their fd links; in an Alpine
   container it now reports a busybox nc on port 2222. On the reference desktop, as root,
-  /proc and ss give the same 12 findings. Tiger_Listening_Source=proc
+  /proc and ss give the same 12 findings. Tigris_Listening_Source=proc
   forces it.
 
 ## 3.2.x: maintenance
@@ -529,7 +531,7 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   runs with `-b` (no blocking kernel calls; the output the checks read
   is the same, and it is faster). Every home directory, and every mount
   point before the scan, is asked first with `df -P` under a kill
-  timeout (`Tiger_Mount_Timeout`, 5 s, needs a `timeout` command); one
+  timeout (`Tigris_Mount_Timeout`, 5 s, needs a `timeout` command); one
   that does not answer is reported (`acc025w`, `path010w`, `con011c`)
   and left alone, and homes under the same parent are not asked again.
   A symlink elsewhere whose target is under a dead mount can still
@@ -545,8 +547,8 @@ that never reached the repository. Debian bugs #1111306 (merged-/usr),
   seconds (`security.report.HOST.YYMMDD-HH:MM:SS`); the byte sort in
   `tigris-diff` still orders a mix of old and new names by time, and
   `tigercron` was never affected (it rotates numbered `.1`/`.2` files).
-- [x] `tigerrc-quick` is a full copy of `tigerrc` with one line changed,
-  because an unset `Tiger_Check_*` means "run". Until profiles can be
+- [x] `tigris-quick.conf` is a full copy of `tigris.conf` with one line changed,
+  because an unset `Tigris_Check_*` means "run". Until profiles can be
   short overlays, `tests/profile_check.sh` fails unless the two differ
   only in that line.
 - [x] The legacy variants `tigerrc-all` and `tigerrc-dist` carried
@@ -576,7 +578,7 @@ what scripts and cron see.
 **Profiles** (also the answer to "lean")
 - [x] `quick`: leaves the filesystem scan out. 62 s on the reference desktop, where the
   full run takes about three minutes on a busy disk.
-- [x] `server`, `desktop` and `container`, each a short tigerrc selecting
+- [x] `server`, `desktop` and `container`, each a short tigris.conf selecting
   the checks and the prune list that make sense for that kind of machine
   (`--profile NAME`, files in `profiles/`; in 3.4.0).
 - [x] A non-root mode that reports "skipped: needs root" for the checks
@@ -697,12 +699,17 @@ what scripts and cron see.
   as check_repos (upd007w/008w/009w): apt's `Date:` and `Valid-Until`,
   dnf/zypper repomd timestamps, pacman/apk download times (gated on
   refreshes running, since they carry no publish date), newest suite
-  wins, refresh age per manager, `Tiger_Repos_MaxAge` configurable.
+  wins, refresh age per manager, `Tigris_Repos_MaxAge` configurable.
   Offline-capable: everything read is on disk.
-- [ ] **Rename the internals** in one release, with shims for old
+- [x] **Rename the internals** in one release, with shims for old
   configurations: `tigerrc` to `tigris.conf`, `Tiger_*` to `Tigris_*`,
-  `/etc/tiger` to `/etc/tigris`, `tigexp` to `tigris explain` (which
-  already exists; `tigexp` is what it runs).
+  `/etc/tiger` to `/etc/tigris`, `tigexp` to `tigris explain`. Done
+  2026-10-16: the old names keep working (an old file beats a new file
+  beside it, an explicit new setting beats an old one, `tigexp` is a
+  symlink to `tigris-explain`), covered by tests/compat_check.sh. The
+  `tiger` and `tigercron` commands, TIGERHOMEDIR/TIGERWORK and the
+  /var and /usr/lib paths keep their names: the rename is the settings
+  namespace, the config file and path, and the explain helper.
 - [ ] A JSON schema 2 only if something has to be removed or renamed.
 
 ## Parity with Lynis
@@ -795,8 +802,8 @@ stable, so it is built against a fixed contract.
 
 - **Tests:** plain `sh` fixtures with no framework. Checks that read
   `/proc`, `sshd -T`, `ss` or `systemd-analyze` take the command or the
-  tree as a setting (`Tiger_Sysctl_Root`, `Tiger_SSHD_Cmd`,
-  `Tiger_SS_Cmd`), so a test can feed them a fixture. Checks that depend
+  tree as a setting (`Tigris_Sysctl_Root`, `Tigris_SSHD_Cmd`,
+  `Tigris_SS_Cmd`), so a test can feed them a fixture. Checks that depend
   on a package manager run in a real container: each plants a modified
   file, a deleted one, a changed mode and a stray, and requires exactly
   those four new findings on top of the image's own baseline. Test

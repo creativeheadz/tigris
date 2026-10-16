@@ -2,8 +2,8 @@ Id: ptch004w
 Severity: WARN
 Category: packages
 Check: check_patches
-Fix: Install a supported package tool, or leave the check off (Tiger_Check_PATCHES=N).
-References: apt-get(8); tigerrc
+Fix: Install a supported package tool, or leave the check off (Tigris_Check_PATCHES=N).
+References: apt-get(8); tigris.conf
 Controls: CIS 7.3, 7.4; NIST SI-2; ISO 8.8; CE Security update management
 
 No supported patch management tool (apt, autorpm) was found, so the

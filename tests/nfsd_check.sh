@@ -2,9 +2,9 @@
 #
 # tests/nfsd_check.sh - check_nfsd against fixtures of its own
 #
-# rpcinfo output and nfsd threads are fixture files (Tiger_RPCInfo_Cmd
-# and Tiger_ProcDir), /etc/exports comes from a root of its own
-# (Tiger_Sysctl_Root, as tigris --root sets it): a daemon serving with
+# rpcinfo output and nfsd threads are fixture files (Tigris_RPCInfo_Cmd
+# and Tigris_ProcDir), /etc/exports comes from a root of its own
+# (Tigris_Sysctl_Root, as tigris --root sets it): a daemon serving with
 # nothing exported (nfs015w), serving with exports (nothing), nothing
 # serving with exports and idle threads (nfs016i), the same with
 # running threads (an NFSv4-only server: nothing), and an rpcinfo that
@@ -17,13 +17,13 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 run() {  # run CMD THREADS: check_nfsd with this rpcinfo command and threads
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$W/root'"; echo "Tiger_RPCInfo_Cmd='$1'"; echo "Tiger_ProcDir='$W/proc'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$W/root'"; echo "Tigris_RPCInfo_Cmd='$1'"; echo "Tigris_ProcDir='$W/proc'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   printf '%s' "$2" > "$W/proc/fs/nfsd/threads"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./scripts/check_nfsd ) 2>&1 |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
@@ -64,11 +64,11 @@ run false 0
 
 grep -q "$W" "$W/out" 2>/dev/null && bad "a finding names where a fixture is on this host" || ok "findings name no fixture paths"
 
-# Without Tiger_RPCInfo_Cmd the check looks for rpcinfo itself. It once
+# Without Tigris_RPCInfo_Cmd the check looks for rpcinfo itself. It once
 # called a helper it did not define, so on a live system it never ran;
 # the "not found" went to /dev/null. The lookup must work now.
-cp "$W/tigerrc.base" "$W/tigerrc"
-{ echo "Tiger_Sysctl_Root='$W/root'"; echo "Tiger_ProcDir='$W/proc'"; } >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+{ echo "Tigris_Sysctl_Root='$W/root'"; echo "Tigris_ProcDir='$W/proc'"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./scripts/check_nfsd ) > /dev/null 2> "$W/err"
 grep -q 'not found' "$W/err" && { bad "check_nfsd's own rpcinfo lookup fails:"; cat "$W/err"; } ||
   ok "check_nfsd looks for rpcinfo itself without an error"

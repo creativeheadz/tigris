@@ -30,9 +30,9 @@ done
 grep -q '^STRINGS=$' "$W/systems/Linux/2/config" || { echo "FAIL could not take strings away"; exit 1; }
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
-  for c in SYSTEM OS SYSCTL EMBEDDED; do echo "Tiger_Check_$c=Y"; done
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Deb_CheckMD5Sums=N'; echo 'Tigris_Deb_NoPackFiles=N'; echo 'Tigris_Deb_StatOverride=N'
+  for c in SYSTEM OS SYSCTL EMBEDDED; do echo "Tigris_Check_$c=Y"; done
 } > "$W/profiles/notools"
 chmod 644 "$W/profiles/notools"
 ( cd "$W" && sh ./tigris --profile notools ) > "$W/out" 2>&1

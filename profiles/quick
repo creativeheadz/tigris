@@ -1,13 +1,13 @@
 #
-# Profile "quick": everything the tigerrc runs but the filesystem scan,
+# Profile "quick": everything the tigris.conf runs but the filesystem scan,
 # the only check that takes minutes (it walks every disk). About a
 # minute where a full run takes three.
 #
 #   sudo ./tigris --profile quick
 #
-# A profile is read after the tigerrc and its settings win; it holds only
-# what differs. This file is preprocessed like the tigerrc: assignments
-# and comments only. (tigerrc-quick, from 3.3.0, is the same as the
-# tigerrc with this profile.)
+# A profile is read after the tigris.conf and its settings win; it holds only
+# what differs. This file is preprocessed like the tigris.conf: assignments
+# and comments only. (tigris-quick.conf, the tigerrc-quick of 3.3.0, is
+# the same as the tigris.conf with this profile.)
 #
-Tiger_Check_FILESYSTEM=N
+Tigris_Check_FILESYSTEM=N

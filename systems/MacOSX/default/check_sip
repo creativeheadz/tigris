@@ -23,7 +23,7 @@
 #             status lives in NVRAM, not in a file, so an offline root
 #             has nothing to read and the check stays silent there.
 #
-# 10/09/2026 - Initial version. Tiger_Csrutil_Cmd points at another
+# 10/09/2026 - Initial version. Tigris_Csrutil_Cmd points at another
 #             `csrutil status', for the tests.
 #
 # References:
@@ -36,16 +36,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -70,7 +70,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -88,7 +88,7 @@ haveallcmds AWK || exit 1
 echo
 echo "# Checking System Integrity Protection..."
 
-csrutil=${Tiger_Csrutil_Cmd:-csrutil}
+csrutil=${Tigris_Csrutil_Cmd:-csrutil}
 status=`$csrutil status 2>/dev/null`
 [ -n "$status" ] || exit 0
 

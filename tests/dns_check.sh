@@ -17,7 +17,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -26,8 +26,8 @@ join() {
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--'
 }
 run() {  # run ROOT OUTFILE: check_dns against ROOT
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$1'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$1'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_dns ) 2>&1 | join > "$2"
 }
 
@@ -122,7 +122,7 @@ grep -q 'dns008f' "$W/pdnsclosed.out" && { bad "pdnsclosed"; cat "$W/pdnsclosed.
 R=$W/img
 mkdir -p "$R/etc"
 printf 'nameserver 192.0.2.9\n' > "$R/etc/resolv.conf"
-cp "$W/tigerrc.base" "$W/tigerrc"; echo "Tiger_Show_INFO_Msgs=Y" >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"; echo "Tigris_Show_INFO_Msgs=Y" >> "$W/tigris.conf"
 ( cd "$W" && TIGRIS_ROOT=$R TIGERHOMEDIR=$W sh ./systems/Linux/2/check_dns ) 2>&1 | join > "$W/off"
 grep -F -q '[dns004i] A single nameserver (192.0.2.9)' "$W/off" &&
   ok "offline root: the single nameserver" || { bad "offline"; cat "$W/off"; }

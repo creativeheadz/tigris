@@ -50,8 +50,8 @@
 # bug #136991)
 #
 # To avoid these false positives you can either:
-#   1.- add these processes to the list of valid processes in the tigerrc
-#       configuration file (Tiger_Listening_ValidProcs)
+#   1.- add these processes to the list of valid processes in the tigris.conf
+#       configuration file (Tigris_Listening_ValidProcs)
 #
 #   2.- use the ignore mechanism (new in 3.2), for example, if you get reports
 #        like  this one:
@@ -61,7 +61,7 @@
 # 'The process `X' is listening on socket [0-9]+ (UDP) on every interface.'
 #
 #-----------------------------------------------------------------------------
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 
 #
@@ -69,9 +69,9 @@ TigerInstallDir='.'
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -97,7 +97,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds CAT CUT GREP AWK SORT UNIQ LSOF || exit 1
 # Lsof is needed for this program since netstat does not work
 # the same across all Unix platforms
@@ -115,8 +115,8 @@ echo "# Checking listening processes "
 haveallcmds CAT LSOF GREP CUT AWK SORT UNIQ || exit 1
 haveallfiles BASEDIR WORKDIR || exit 1
 
-okprocessusers=${Tiger_Listening_ValidUsers-"root"}
-okprocess=${Tiger_Listening_ValidProcs-""}
+okprocessusers=${Tigris_Listening_ValidUsers-"root"}
+okprocess=${Tigris_Listening_ValidProcs-""}
 
 safe_temp "$WORKDIR/procs.$$" "$WORKDIR/openprocs.$$"
 trap 'delete $WORKDIR/procs.$$ $WORKDIR/openprocs.$$  ; exit 1' 1 2 3 15
@@ -140,7 +140,7 @@ check_socket()
 	*)
 		case $user in
 		$okprocessuser) 
-		if [ "$address" = "every" -a "$Tiger_Listening_Every" != "N" ]; then
+		if [ "$address" = "every" -a "$Tigris_Listening_Every" != "N" ]; then
 		  message WARN lin002i "" "The process \`$proc' is listening on socket $socket ($type) on $address interface."
 		else
 		  message INFO lin002i "" "The process \`$proc' is listening on socket $socket ($type) on $address interface."

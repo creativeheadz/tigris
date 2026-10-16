@@ -99,9 +99,9 @@ printf 'root:x:0:\n' > "$E/etc/group"
 [ "$uid" = 0 ] && { chown -R "$U:$G" "$R"; chown -R 0:10 "$T"; chown -R 0:0 "$E"; }
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
-  for c in NEVERLOG SYSTEM; do echo "Tiger_Check_$c=Y"; done
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Deb_CheckMD5Sums=N'; echo 'Tigris_Deb_NoPackFiles=N'; echo 'Tigris_Deb_StatOverride=N'
+  for c in NEVERLOG SYSTEM; do echo "Tigris_Check_$c=Y"; done
 } > "$W/profiles/never"
 chmod 644 "$W/profiles/never"
 

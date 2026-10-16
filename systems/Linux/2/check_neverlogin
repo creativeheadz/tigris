@@ -29,7 +29,7 @@
 # 17/08/2006 jfs  Handle users prepended with domains (DOMAIN\user) properly
 #                 (Debian bug #344890)
 # 10/01/2003 jfs  Modified to do better error checking on the use of 
-#                 Tiger_PasswdFiles. Also added code to remove temporary
+#                 Tigris_PasswdFiles. Also added code to remove temporary
 #                 files created by the script.
 # 10/09/2002 jfs  Adapted for Tiger
 #
@@ -42,16 +42,16 @@
 #   the root's passwd, shells and lastlog; the host's lastlog
 #   cannot query the image, so its database is read directly.
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -74,7 +74,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
 	haveallcmds SED AWK GREP TEST GEN_PASSWD_SETS OD LS || exit 1
 	[ -z "$TIGRIS_ROOT" ] && { haveallcmds LASTLOG || exit 1; }
 	[ -n "$TIGRIS_ROOT" ] && { haveallcmds DATE || exit 1; }

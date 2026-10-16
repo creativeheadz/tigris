@@ -26,13 +26,13 @@
 #                 synchronised only with rtcsync, so timedatectl could say
 #                 no), and from timedatectl show otherwise. A container
 #                 runs on its host's clock and is left alone.
-#                 Tiger_Sysctl_Root prefixes /proc and the container
-#                 markers; Tiger_Timedatectl_Cmd and Tiger_Chronyc_Cmd
+#                 Tigris_Sysctl_Root prefixes /proc and the container
+#                 markers; Tigris_Timedatectl_Cmd and Tigris_Chronyc_Cmd
 #                 replace the two commands, for the tests.
 # 10/16/2026 - Protocol depth for chronyd and ntpd: too few sources
 #                 (time005w), falsetickers (time006w), and the stratum
-#                 in time003i. Tiger_Chronyc_Sources_Cmd and
-#                 Tiger_Ntpq_Cmd replace 'chronyc -n sources' and
+#                 in time003i. Tigris_Chronyc_Sources_Cmd and
+#                 Tigris_Ntpq_Cmd replace 'chronyc -n sources' and
 #                 'ntpq -pn', for the tests.
 #
 # References:
@@ -43,16 +43,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -78,7 +78,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT SED SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -90,7 +90,7 @@ done
 
 haveallcmds AWK CAT SED SORT || exit 1
 
-root=${Tiger_Sysctl_Root:-}
+root=${Tigris_Sysctl_Root:-}
 
 # A container keeps its host's time
 [ -f "$root/.dockerenv" ] || [ -f "$root/run/.containerenv" ] || [ -f "$root/run/systemd/container" ] && exit 0
@@ -163,7 +163,7 @@ judge_sources()
 stratum_n=
 case " $daemons " in
   *" chronyd "*)
-    srccmd=${Tiger_Chronyc_Sources_Cmd:-}
+    srccmd=${Tigris_Chronyc_Sources_Cmd:-}
     [ -z "$srccmd" ] && c=`findtool chronyc` && srccmd="$c -n sources"
     if [ -n "$srccmd" ]; then
       srcout=`$srccmd 2>/dev/null | $AWK '
@@ -181,7 +181,7 @@ case " $daemons " in
 esac
 case " $daemons " in
   *" ntpd "*)
-    ntpqcmd=${Tiger_Ntpq_Cmd:-}
+    ntpqcmd=${Tigris_Ntpq_Cmd:-}
     [ -z "$ntpqcmd" ] && c=`findtool ntpq` && ntpqcmd="$c -pn"
     if [ -n "$ntpqcmd" ]; then
       ntpqout=`$ntpqcmd 2>/dev/null | $AWK '
@@ -212,7 +212,7 @@ esac
 synced= source= stratum=
 case " $daemons " in
   *" chronyd "*)
-    cmd=${Tiger_Chronyc_Cmd:-}
+    cmd=${Tigris_Chronyc_Cmd:-}
     [ -z "$cmd" ] && c=`findtool chronyc` && cmd="$c -n tracking"
     if [ -n "$cmd" ]; then
       out=`$cmd 2>/dev/null`
@@ -226,7 +226,7 @@ case " $daemons " in
     by=chronyd
     ;;
   *)
-    cmd=${Tiger_Timedatectl_Cmd:-}
+    cmd=${Tigris_Timedatectl_Cmd:-}
     [ -z "$cmd" ] && c=`findtool timedatectl` && cmd="$c show"
     if [ -n "$cmd" ]; then
       case "`$cmd 2>/dev/null | $SED -n 's/^NTPSynchronized=//p'`" in

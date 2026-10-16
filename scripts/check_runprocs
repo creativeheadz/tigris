@@ -16,7 +16,7 @@
 #     Please see the file `COPYING' for the complete copyright notice.
 #
 # check_runprocs jfs 12/06/2002
-#        This module will check if the processes configured in tigerrc
+#        This module will check if the processes configured in tigris.conf
 #        are running currently in the system. If any of the processes
 #        is not running  a FAIL: will be issued. 
 #        This is a lightweight software watchdog, I know :)
@@ -31,7 +31,7 @@
 #   Under --root it is skipped: it reads the running processes.
 #
 #-----------------------------------------------------------------------------
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 
 #
@@ -39,9 +39,9 @@ TigerInstallDir='.'
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -67,7 +67,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds PS GREP || exit 1
   
   message CONFIG init003c "" "$0: Configuration ok..."
@@ -80,9 +80,9 @@ echo "# Checking running processes "
 
 haveallcmds PS GREP || exit 1
 
-processes=$Tiger_Running_Procs
+processes=$Tigris_Running_Procs
 [ -z "$processes" ] && {
-	message ERROR con009e "" "There are no running process configured. Please add the Tiger_Running_Procs variable to tigerrc."
+	message ERROR con009e "" "There are no running process configured. Please add the Tigris_Running_Procs variable to tigris.conf."
 	exit 1
 }
 

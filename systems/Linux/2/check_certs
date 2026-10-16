@@ -30,7 +30,7 @@
 #                 server's. Relative paths in the web configuration are
 #                 skipped: they resolve against the compiled-in prefix,
 #                 which cannot be known without running the server.
-#                 Tiger_Openssl_Cmd replaces openssl, for the tests; set but
+#                 Tigris_Openssl_Cmd replaces openssl, for the tests; set but
 #                 empty, there is no openssl.
 #
 # References:
@@ -40,16 +40,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -75,7 +75,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK GREP SED SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -164,8 +164,8 @@ $SORT -u -o $cands $cands
 echo
 echo "# Checking the server's certificates..."
 
-if [ "${Tiger_Openssl_Cmd+x}" = x ]; then
-  ossl=$Tiger_Openssl_Cmd
+if [ "${Tigris_Openssl_Cmd+x}" = x ]; then
+  ossl=$Tigris_Openssl_Cmd
 else
   ossl=
   for d in /usr/bin /bin /usr/sbin /sbin

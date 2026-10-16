@@ -18,7 +18,7 @@
 # tiger - 06/14/93
 #
 # The UN*X security check system. This is the main program that will run
-# all the checks configured for your system in the tigerrc configuration 
+# all the checks configured for your system in the tigris.conf configuration 
 # file.
 #
 # 05/14/2005 jfs Patch from Nicolas Fran�ois which fixes aide output handling
@@ -41,26 +41,26 @@
 # 04/27/93 dls check_passwd is now check_accounts
 # 04/15/2003 jfs Added new year
 # 05/26/2002 jfs Added check_tcpd test
-# 04/29/93 dls Added support for 'tigerrc' file.
+# 04/29/93 dls Added support for 'tigris.conf' file.
 #
 #-----------------------------------------------------------------------------
 #
-# tigris explain ID...: what a finding means (meta/ID), through tigexp
+# tigris explain ID...: what a finding means (meta/ID), through tigris-explain
 case "$1" in
-  explain) shift; exec sh "`dirname "$0"`/tigexp" "$@" ;;
+  explain) shift; exec sh "`dirname "$0"`/tigris-explain" "$@" ;;
 esac
 
 # The credits are in tigris -v and the man page; a run starts with one
 # line saying what it audits, once the options are read (below)
-TigerInstallDir="."
+TigrisInstallDir="."
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -80,7 +80,7 @@ done
 
 # config pins the locale to C for deterministic tools; remember what the
 # terminal had, for the spinner frames
-Tiger_Orig_Locale="${LC_ALL:-${LANG:-}}"
+Tigris_Orig_Locale="${LC_ALL:-${LANG:-}}"
 
 # config and initdefs are run from $basedir as whoever runs Tigris, root
 # as a rule, before any other check: so $basedir must be root's, the
@@ -111,17 +111,17 @@ tigercleanup()
 {
   spin_stop
   [ -n "$fspid" ] && kill -1 $fspid 2>/dev/null
-  [ -f "$Tiger_PasswdFiles" ] && {
+  [ -f "$Tigris_PasswdFiles" ] && {
     while read __file
     do
       delete $__file $__file.src
-    done < $Tiger_PasswdFiles
+    done < $Tigris_PasswdFiles
   }
-  [ -n "$TigerCheckEmbedded" ] && delete $TigerCheckEmbedded
-  delete $WORKDIR/fsscan.log$$ $Tiger_PasswdFiles
+  [ -n "$TigrisCheckEmbedded" ] && delete $TigrisCheckEmbedded
+  delete $WORKDIR/fsscan.log$$ $Tigris_PasswdFiles
 
-  [ -n "$TigerCleanup" ] && {
-    delete $TigerCleanup
+  [ -n "$TigrisCleanup" ] && {
+    delete $TigrisCleanup
   }  
 }
 
@@ -131,7 +131,7 @@ trap 'tigercleanup; exit 1' 1 2 3 15
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds CAT DATE DATECMD GEN_PASSWD_SETS GREP MV RM TIMECMD || exit 1
   haveallfiles BASEDIR SCRIPTDIR WORKDIR CONFIG_DIR LOGDIR || exit 1
   haveallvars HOSTNAME OS REL REV ARCH || exit 1
@@ -168,8 +168,8 @@ haveallvars HOSTNAME OS REL REV ARCH || exit 1
 #
 since_file=
 [ -n "$SINCE_RUN" ] && {
-  [ "$Tiger_Output_JSON" = 'N' ] && {
-    echo "--ERROR-- [init011e] --since compares JSON reports, and Tiger_Output_JSON is N in $RCFILE."
+  [ "$Tigris_Output_JSON" = 'N' ] && {
+    echo "--ERROR-- [init011e] --since compares JSON reports, and Tigris_Output_JSON is N in $RCFILE."
     exit 1
   }
   if [ "$SINCE_RUN" = 'last' ]; then
@@ -193,13 +193,13 @@ version="$TIGERVERSION"
 # One line for what is audited: the version without its build stamp, the
 # host and its system, and the profile and the root when there are any
 sep=' - '
-case "$Tiger_Orig_Locale" in *UTF-8*|*UTF8*|*utf8*) sep=`printf ' \302\267 '`;; esac
+case "$Tigris_Orig_Locale" in *UTF-8*|*UTF8*|*utf8*) sep=`printf ' \302\267 '`;; esac
 banner="Tigris ${version%%,*}$sep$HOSTNAME$sep$OS $REV $ARCH"
 [ -n "$PROFILE" ] && banner="$banner${sep}profile $PROFILE"
 [ -n "$TIGRIS_ROOT" ] && banner="$banner${sep}auditing $TIGRIS_ROOT"
 if use_colour; then printf '\033[1m%s\033[0m\n' "$banner"; else printf '%s\n' "$banner"; fi
 
-[ "$Tiger_TESTMODE" != 'Y' ] && {
+[ "$Tigris_TESTMODE" != 'Y' ] && {
   # Seconds in the stamp, so two runs started in the same minute get
   # different report names instead of overwriting each other.
   datestamp="`$DATECMD`-`$TIMECMD`"
@@ -212,7 +212,7 @@ if use_colour; then printf '\033[1m%s\033[0m\n' "$banner"; else printf '%s\n' "$
 
 > $logtmp
 
-[ "$Tiger_TESTMODE" != 'Y' ] && {
+[ "$Tigris_TESTMODE" != 'Y' ] && {
 
   echo "Tigris $version" >> $logtmp
   [ "$HTML" = "Y" ] && {
@@ -232,18 +232,18 @@ if use_colour; then printf '\033[1m%s\033[0m\n' "$banner"; else printf '%s\n' "$
     echo "# Auditing the system in $TIGRIS_ROOT, which is not running: its files are read from ${HOSTNAME}, with ${HOSTNAME}'s tools, and checks of a running system are skipped." >> $logtmp
   }
   # The same findings as JSON Lines, next to the text report
-  [ "$Tiger_Output_JSON" != 'N' ] && {
-    Tiger_JSON_File="${LOGDIR%/}/security.report.${HOSTNAME}.$datestamp.jsonl"
-    export Tiger_JSON_File
+  [ "$Tigris_Output_JSON" != 'N' ] && {
+    Tigris_JSON_File="${LOGDIR%/}/security.report.${HOSTNAME}.$datestamp.jsonl"
+    export Tigris_JSON_File
     # An id for this run, so its records can be told from another run's
-    Tiger_Run_Id=`$CAT /proc/sys/kernel/random/uuid 2>/dev/null`
-    [ -n "$Tiger_Run_Id" ] || Tiger_Run_Id=`printf '%s' "${HOSTNAME}-${datestamp}-$$" | json_escape`
-    export Tiger_Run_Id
+    Tigris_Run_Id=`$CAT /proc/sys/kernel/random/uuid 2>/dev/null`
+    [ -n "$Tigris_Run_Id" ] || Tigris_Run_Id=`printf '%s' "${HOSTNAME}-${datestamp}-$$" | json_escape`
+    export Tigris_Run_Id
     # Whether the filesystem scan runs: a run without it has no fsys*
     # findings, which tigris-diff must not read as "resolved"
     fsscan=true
-    [ "$Tiger_Check_FILESYSTEM" = 'N' ] && fsscan=false
-    # the profile (--profile) applied on top of the tigerrc, when one was
+    [ "$Tigris_Check_FILESYSTEM" = 'N' ] && fsscan=false
+    # the profile (--profile) applied on top of the tigris.conf, when one was
     profile=
     [ -n "$PROFILE" ] && profile=",\"profile\":\"$PROFILE\""
     # the directory audited instead of the running system (--root)
@@ -256,36 +256,36 @@ if use_colour; then printf '\033[1m%s\033[0m\n' "$banner"; else printf '%s\n' "$
     jrel=`printf '%s' "$REV" | json_escape`
     jarch=`printf '%s' "$ARCH" | json_escape`
     jconfig=`printf '%s' "$RCFILE" | json_escape`
-    echo "{\"type\":\"run\",\"schema\":1,\"id\":\"$Tiger_Run_Id\",\"tool\":\"tigris\",\"version\":\"$jversion\",\"host\":\"$jhost\",\"os\":\"$jos\",\"release\":\"$jrel\",\"arch\":\"$jarch\",\"config\":\"$jconfig\"$profile,\"filesystem_scan\":$fsscan,\"start\":\"`$DATE -u +%Y-%m-%dT%H:%M:%SZ`\"}" > $Tiger_JSON_File
+    echo "{\"type\":\"run\",\"schema\":1,\"id\":\"$Tigris_Run_Id\",\"tool\":\"tigris\",\"version\":\"$jversion\",\"host\":\"$jhost\",\"os\":\"$jos\",\"release\":\"$jrel\",\"arch\":\"$jarch\",\"config\":\"$jconfig\"$profile,\"filesystem_scan\":$fsscan,\"start\":\"`$DATE -u +%Y-%m-%dT%H:%M:%SZ`\"}" > $Tigris_JSON_File
   }
 }
 
 _TIGER_RUN=Y
 export _TIGER_RUN
-Tiger_Accepted_Log=$WORKDIR/accepted.$$
-export Tiger_Accepted_Log
-: > $Tiger_Accepted_Log
+Tigris_Accepted_Log=$WORKDIR/accepted.$$
+export Tigris_Accepted_Log
+: > $Tigris_Accepted_Log
 OUTPUTMETHOD="$CAT"
 
-Tiger_PasswdFiles=$WORKDIR/passwd.list.$$
-export Tiger_PasswdFiles
+Tigris_PasswdFiles=$WORKDIR/passwd.list.$$
+export Tigris_PasswdFiles
 
-[ "$Tiger_Check_EMBEDDED" != 'N' ] && {
-  TigerCheckEmbedded="$WORKDIR/embed.list.$$"
-  > $TigerCheckEmbedded
+[ "$Tigris_Check_EMBEDDED" != 'N' ] && {
+  TigrisCheckEmbedded="$WORKDIR/embed.list.$$"
+  > $TigrisCheckEmbedded
 }
-export TigerCheckEmbedded
+export TigrisCheckEmbedded
 
-[ "$Tiger_TESTMODE" != 'Y' ] && {
-  delete $Tiger_PasswdFiles
-  $GEN_PASSWD_SETS $Tiger_PasswdFiles
+[ "$Tigris_TESTMODE" != 'Y' ] && {
+  delete $Tigris_PasswdFiles
+  $GEN_PASSWD_SETS $Tigris_PasswdFiles
 }
 
 # Say so when the scan is off, so that no fsys* findings is not read as a
 # clean file system (the quick profile turns it off)
-[ "$Tiger_Check_FILESYSTEM" = 'N' ] && [ "$Tiger_TESTMODE" != 'Y' ] && {
-  echo "`$TIMECMD`> Filesystem scan not run (Tiger_Check_FILESYSTEM=N in $RCFILE)."
-  echo "# Filesystem scan not run (Tiger_Check_FILESYSTEM=N in $RCFILE): setuid, device, symlink, unowned and odd-name findings (fsys*) are absent because they were not looked for, not because there are none." >> $logtmp
+[ "$Tigris_Check_FILESYSTEM" = 'N' ] && [ "$Tigris_TESTMODE" != 'Y' ] && {
+  echo "`$TIMECMD`> Filesystem scan not run (Tigris_Check_FILESYSTEM=N in $RCFILE)."
+  echo "# Filesystem scan not run (Tigris_Check_FILESYSTEM=N in $RCFILE): setuid, device, symlink, unowned and odd-name findings (fsys*) are absent because they were not looked for, not because there are none." >> $logtmp
 }
 
 # Auditing an offline root: its symbolic links, listed once for every
@@ -294,7 +294,7 @@ export TigerCheckEmbedded
 # with them; otherwise here)
 [ -n "$TIGRIS_ROOT" ] && {
   TIGRIS_LINKS=${TIGRIS_LINKS:-$WORKDIR/rootlinks.$$}
-  TigerCleanup="$TigerCleanup $TIGRIS_LINKS"
+  TigrisCleanup="$TigrisCleanup $TIGRIS_LINKS"
   [ -s "$TIGRIS_LINKS" ] || {
     safe_temp $TIGRIS_LINKS
     sh $BASEDIR/util/rootpath "$TIGRIS_ROOT" "$TIGRIS_LINKS" < /dev/null
@@ -302,8 +302,8 @@ export TigerCheckEmbedded
   export TIGRIS_LINKS
 }
 
-[ "$Tiger_Check_FILESYSTEM" != 'N' ] && {
-  if [ "$Tiger_TESTMODE" = 'Y' ]; then
+[ "$Tigris_Check_FILESYSTEM" != 'N' ] && {
+  if [ "$Tigris_TESTMODE" = 'Y' ]; then
     progress_start "Performing file systems scans..."
     run_script find_files >> $logtmp
     progress_end
@@ -317,8 +317,8 @@ export TigerCheckEmbedded
 }
 
 crackpid=
-[ "$Tiger_Run_CRACK" != 'N' ] && {
-  if [ "$Tiger_TESTMODE" = 'Y' ]; then
+[ "$Tigris_Run_CRACK" != 'N' ] && {
+  if [ "$Tigris_TESTMODE" = 'Y' ]; then
     progress_start "Running Crack (password cracker)..."
     run_script crack_run
     progress_end
@@ -333,8 +333,8 @@ crackpid=
 }
 
 trippid=
-[ "$Tiger_Run_TRIPW" != 'N' ] && {
-  if [ "$Tiger_TESTMODE" = 'Y' ]; then
+[ "$Tigris_Run_TRIPW" != 'N' ] && {
+  if [ "$Tigris_TESTMODE" = 'Y' ]; then
     progress_start "Running Tripwire..."
     run_script tripwire_run
     progress_end
@@ -349,8 +349,8 @@ trippid=
 }
 
 aidepid=
-[ "$Tiger_Run_AIDE" != 'N' ] && {
-  if [ "$Tiger_TESTMODE" = 'Y' ]; then
+[ "$Tigris_Run_AIDE" != 'N' ] && {
+  if [ "$Tigris_TESTMODE" = 'Y' ]; then
     progress_start "Running Aide..."
     run_script aide_run
     progress_end
@@ -365,7 +365,7 @@ aidepid=
 }
 
 
-[ "$Tiger_Check_PASSWD" != 'N' ] && {
+[ "$Tigris_Check_PASSWD" != 'N' ] && {
   progress_start "Checking password files..."
   run_script check_passwd >> $logtmp
   progress_end
@@ -374,133 +374,133 @@ aidepid=
 # The password files' format: off by default, since pwck says the same;
 # on an offline root pwck is not run (it would read this host's files),
 # so it comes on with the passwd check
-[ "$Tiger_Check_PASSWD_FORMAT" != 'N' ] || { [ -n "$TIGRIS_ROOT" ] && [ "$Tiger_Check_PASSWD" != 'N' ]; } && {
+[ "$Tigris_Check_PASSWD_FORMAT" != 'N' ] || { [ -n "$TIGRIS_ROOT" ] && [ "$Tigris_Check_PASSWD" != 'N' ]; } && {
   progress_start "Checking password format..."
   run_script check_passwdformat >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_GROUP" != 'N' ] && {
+[ "$Tigris_Check_GROUP" != 'N' ] && {
   progress_start "Checking group files..."
   run_script check_group >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_ACCOUNTS" != 'N' ] && {
+[ "$Tigris_Check_ACCOUNTS" != 'N' ] && {
   progress_start "Checking user accounts..."
   run_script check_accounts >> $logtmp
   progress_end
 }
 
-# Note: TARA calls this script with Tiger_Check_ROOT so we keep it
+# Note: TARA calls this script with Tigris_Check_ROOT so we keep it
 # there for compatibility purposes
-[ \( "$Tiger_Check_ROOT" != 'N' -a -n "$Tiger_Check_ROOT" \) -o "$Tiger_Check_ROOT_ACCESS" != 'N' ] && {
+[ \( "$Tigris_Check_ROOT" != 'N' -a -n "$Tigris_Check_ROOT" \) -o "$Tigris_Check_ROOT_ACCESS" != 'N' ] && {
   progress_start "Checking ttytab, securetty, and login configuration files..."
   run_script check_root >> $logtmp
   progress_end
 }
 
 
-[ "$Tiger_Check_PATH" != 'N' ] && {
+[ "$Tigris_Check_PATH" != 'N' ] && {
   progress_start "Checking PATH settings..."
   run_script check_path >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_ALIASES" != 'N' ] && {
+[ "$Tigris_Check_ALIASES" != 'N' ] && {
   progress_start "Checking mail aliases..."
   run_script check_aliases >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_CRON" != 'N' ] && {
+[ "$Tigris_Check_CRON" != 'N' ] && {
   progress_start "Checking cron entries..."
   run_script check_crontabs >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_SERVICES" != 'N' ] && {
+[ "$Tigris_Check_SERVICES" != 'N' ] && {
   progress_start "Checking 'services' configuration..."
   run_script check_services >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_EXPORTS" != 'N' ] && {
+[ "$Tigris_Check_EXPORTS" != 'N' ] && {
   progress_start "Checking NFS export entries..."
   run_script check_exports >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_NFSD" != 'N' ] && {
+[ "$Tigris_Check_NFSD" != 'N' ] && {
   progress_start "Checking NFS daemons against exports..."
   run_script check_nfsd >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_PERMS" != 'N' ] && {
+[ "$Tigris_Check_PERMS" != 'N' ] && {
   progress_start "Checking permissions and ownership of system files..."
   run_script check_perms >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_SIGNATURES" != 'N' ] && {
+[ "$Tigris_Check_SIGNATURES" != 'N' ] && {
   progress_start "Checking for altered or out of date binaries..."
   run_script check_signatures >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_KNOWN" != 'N' ] && {
+[ "$Tigris_Check_KNOWN" != 'N' ] && {
   progress_start "Checking for indications of break-in..."
   run_script check_known >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_ROOTKIT" != 'N' ] && {
+[ "$Tigris_Check_ROOTKIT" != 'N' ] && {
   progress_start "Performing rootkit checks..."
   run_script check_rootkit >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_SYSTEM" != 'N' ] && {
+[ "$Tigris_Check_SYSTEM" != 'N' ] && {
   progress_start "Performing system specific checks..."
   run_script check_system >> $logtmp
   progress_end
 }
 
 
-[ "$Tiger_Check_ROOTDIR" != 'N' ] && {
+[ "$Tigris_Check_ROOTDIR" != 'N' ] && {
   progress_start "Performing root directory checks..."
   run_script check_rootdir >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_ETCISSUE" != 'N' ] && {
+[ "$Tigris_Check_ETCISSUE" != 'N' ] && {
   progress_start "Performing /etc/issue login banner checks..."
   run_script check_issue >> $logtmp
   progress_end
 }
 
 
-[ "$Tiger_Check_BACKUPS" != 'N' ] && {
+[ "$Tigris_Check_BACKUPS" != 'N' ] && {
   progress_start "Checking for secure backup devices..."
   run_script check_devices >> $logtmp
   progress_end
 }
 
 
-[ "$Tiger_Check_LOGFILES" != 'N' ] && {
+[ "$Tigris_Check_LOGFILES" != 'N' ] && {
   progress_start "Checking for the presence of log files..."
   run_script check_logfiles >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_USERUMASK" != 'N' ] && {
+[ "$Tigris_Check_USERUMASK" != 'N' ] && {
   progress_start "Checking for the setting of user's umask..."
   run_script check_umask >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_SHELLS" != 'N' ] && {
+[ "$Tigris_Check_SHELLS" != 'N' ] && {
   progress_start "Checking shell idle timeouts..."
   run_script check_shells >> $logtmp
   progress_end
@@ -510,44 +510,44 @@ aidepid=
 # The following check has been "promoted" from Linux to
 # any system since it is pretty general
 #
-[ "$Tiger_Check_LISTENING" != 'N' ] && {
+[ "$Tigris_Check_LISTENING" != 'N' ] && {
   progress_start "Checking for listening processes..."
   run_script check_listeningprocs >> $logtmp
   progress_end
 }
 
 # A general watchdog for system processes
-[ "$Tiger_Check_RUNPROC" != 'N' ] && {
+[ "$Tigris_Check_RUNPROC" != 'N' ] && {
   progress_start "Checking for running processes..."
   run_script check_runprocs >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_DELETED" != 'N' ] && {
+[ "$Tigris_Check_DELETED" != 'N' ] && {
   progress_start "Checking for processes using deleted files..."
   run_script check_finddeleted >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_APACHE" != 'N' ] && {
+[ "$Tigris_Check_APACHE" != 'N' ] && {
   progress_start "Checking Apache's configuration..."
   run_script check_apache >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_SSH" != 'N' ] && {
+[ "$Tigris_Check_SSH" != 'N' ] && {
   progress_start "Checking SSHD's configuration..."
   run_script check_ssh >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_SENDMAIL" != 'N' ] && {
+[ "$Tigris_Check_SENDMAIL" != 'N' ] && {
   progress_start "Checking Sendmail's configuration..."
   run_script check_sendmail >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_EXRC" != 'N' ] && {
+[ "$Tigris_Check_EXRC" != 'N' ] && {
   progress_start "Checking for exrc files..."
   run_script check_exrc >> $logtmp
   progress_end
@@ -555,12 +555,12 @@ aidepid=
 
 # This test should be changed from Perl to shell script, also there
 # is repeated functionality from check_listeningprocs (jfs)
-#[ "$Tiger_Check_STRICTNW" != 'N' ] && {
+#[ "$Tigris_Check_STRICTNW" != 'N' ] && {
 #  echo "`$TIMECMD`> Checking for network configuration..."
 #  run_script check_network >> $logtmp
 #}
 
-[ "$Tiger_Check_NTP" != 'N' ] && {
+[ "$Tigris_Check_NTP" != 'N' ] && {
   progress_start "Checking NTP configuration..."
   run_script check_ntp >> $logtmp
   progress_end
@@ -570,31 +570,31 @@ aidepid=
 # macOS-only checks: run_script finds nothing for them anywhere else,
 # so they are gated on the OS as well as their toggle.
 #
-[ "$Tiger_Check_SIP" != 'N' ] && [ "$OS" = MacOSX ] && {
+[ "$Tigris_Check_SIP" != 'N' ] && [ "$OS" = MacOSX ] && {
   progress_start "Checking System Integrity Protection..."
   run_script check_sip >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_FILEVAULT" != 'N' ] && [ "$OS" = MacOSX ] && {
+[ "$Tigris_Check_FILEVAULT" != 'N' ] && [ "$OS" = MacOSX ] && {
   progress_start "Checking FileVault..."
   run_script check_filevault >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_DOAS" != 'N' ] && [ "$OS" = MacOSX ] && {
+[ "$Tigris_Check_DOAS" != 'N' ] && [ "$OS" = MacOSX ] && {
   progress_start "Checking the doas configuration..."
   run_script check_doas >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_SOFTWARE" != 'N' ] && [ "$OS" = MacOSX ] && {
+[ "$Tigris_Check_SOFTWARE" != 'N' ] && [ "$OS" = MacOSX ] && {
   progress_start "Checking installed software..."
   run_script check_software >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_LAUNCHD" != 'N' ] && [ "$OS" = MacOSX ] && {
+[ "$Tigris_Check_LAUNCHD" != 'N' ] && [ "$OS" = MacOSX ] && {
   progress_start "Checking boot daemons and agents..."
   run_script check_launchd >> $logtmp
   progress_end
@@ -604,13 +604,13 @@ aidepid=
 # When not doing checks of all setuid executables, we can do
 # embedded checks while the file system scans are running.
 #
-[ "$Tiger_Check_EMBEDDED" != 'N' -a "x$Tiger_Embed_Check_SUID" != 'xY' ] && {
+[ "$Tigris_Check_EMBEDDED" != 'N' -a "x$Tigris_Embed_Check_SUID" != 'xY' ] && {
   progress_start "Performing check of embedded pathnames..."
   run_script check_embedded >> $logtmp
   progress_end
 }
 
-[ "$Tiger_Check_FILESYSTEM" != 'N' -a "$Tiger_TESTMODE" != 'Y' ] && {
+[ "$Tigris_Check_FILESYSTEM" != 'N' -a "$Tigris_TESTMODE" != 'Y' ] && {
   progress_start "Waiting for filesystems scans to complete..."
   wait $fspid
   progress_end
@@ -624,7 +624,7 @@ aidepid=
 # When checking SUID executables, wait until after file system scans
 # have completed.
 #
-[ "$Tiger_Check_EMBEDDED" != 'N' -a "x$Tiger_Embed_Check_SUID" = 'xY' ] && {
+[ "$Tigris_Check_EMBEDDED" != 'N' -a "x$Tigris_Embed_Check_SUID" = 'xY' ] && {
   progress_start "Performing check of embedded pathnames..."
   run_script check_embedded >> $logtmp
   progress_end
@@ -632,7 +632,7 @@ aidepid=
 
 [ -n "$crackpid" ] && {
   if /bin/kill -0 $crackpid 2>/dev/null; then
-    if [ "$Tiger_Collect_CRACK" = 'Y' ]; then
+    if [ "$Tigris_Collect_CRACK" = 'Y' ]; then
       wait $crackpid
       $CAT $crackout >> $logtmp
       delete $crackout
@@ -675,12 +675,12 @@ aidepid=
       message WARN acpt001w "" "The acceptance of $aid expired on $auntil (reason given: $areason); it is reported again. Renew or remove it with tigris-accept." >> $logtmp
   done < "$ACCEPT_FILE"
 }
-naccepted=`$GREP -c . $Tiger_Accepted_Log 2>/dev/null`
+naccepted=`$GREP -c . $Tigris_Accepted_Log 2>/dev/null`
 [ "$naccepted" -gt 0 ] 2>/dev/null && {
   echo "" >> $logtmp
   echo "# $naccepted accepted findings were left out of this report (tigris-accept -l lists them; they are in the JSON report marked accepted)." >> $logtmp
 }
-delete $Tiger_Accepted_Log
+delete $Tigris_Accepted_Log
 
 # The exit status is the worst finding in the report, so cron and CI can
 # act on it: 0 nothing at WARN or above, 2 a check could not run (ERROR),
@@ -698,31 +698,31 @@ skipped=`$GREP -c '^# Skipped ' $logtmp 2>/dev/null`
 noroot=`$GREP -c '^# Skipped [^:]*: it needs root' $logtmp 2>/dev/null`
 [ "${noroot:-0}" -gt 0 ] && [ $tiger_status -lt 2 ] && tiger_status=2
 
-[ "$Tiger_TESTMODE" != 'Y' ] && {
+[ "$Tigris_TESTMODE" != 'Y' ] && {
   # The run in a few lines, counted from the JSON: per-level counts,
   # distinct ids, per-category counts, and the score with its formula.
-  # Without a JSON report (Tiger_Output_JSON=N) there is nothing to
+  # Without a JSON report (Tigris_Output_JSON=N) there is nothing to
   # count from, so the report ends as it always has.
-  [ -n "$Tiger_JSON_File" ] && sh $BASEDIR/util/summary "$Tiger_JSON_File" >>$logtmp
+  [ -n "$Tigris_JSON_File" ] && sh $BASEDIR/util/summary "$Tigris_JSON_File" >>$logtmp
   echo "`$TIMECMD`> Security report completed for ${HOSTNAME}."
   echo "`$TIMECMD`> Security report completed for ${HOSTNAME}." >>$logtmp
-  [ -n "$Tiger_JSON_File" ] && {
+  [ -n "$Tigris_JSON_File" ] && {
     counts=
     for level in ALERT FAIL WARN INFO ERROR
     do
-      n=`$GREP -c "\"type\":\"finding\",\"level\":\"$level\"" $Tiger_JSON_File`
+      n=`$GREP -c "\"type\":\"finding\",\"level\":\"$level\"" $Tigris_JSON_File`
       counts="$counts${counts:+,}\"$level\":$n"
     done
     # distinct ids, per-category counts and the score, after the counts
-    summary_extra=`sh $BASEDIR/util/summary -j "$Tiger_JSON_File" 2>/dev/null`
-    echo "{\"type\":\"summary\",\"id\":\"$Tiger_Run_Id\",\"end\":\"`$DATE -u +%Y-%m-%dT%H:%M:%SZ`\",\"counts\":{$counts}$summary_extra,\"skipped\":${skipped:-0}}" >> $Tiger_JSON_File
+    summary_extra=`sh $BASEDIR/util/summary -j "$Tigris_JSON_File" 2>/dev/null`
+    echo "{\"type\":\"summary\",\"id\":\"$Tigris_Run_Id\",\"end\":\"`$DATE -u +%Y-%m-%dT%H:%M:%SZ`\",\"counts\":{$counts}$summary_extra,\"skipped\":${skipped:-0}}" >> $Tigris_JSON_File
   }
 
   if [ "$EXPLAINREPORT" = "Y" ]; then
-    $BASEDIR/tigexp -f $logtmp > $expreport
+    $BASEDIR/tigris-explain -f $logtmp > $expreport
     $MV $logtmp $logfile
   elif [ "$EXPLAINREPORT" = "I" ]; then
-    $BASEDIR/tigexp -F $logtmp > $logfile
+    $BASEDIR/tigris-explain -F $logtmp > $logfile
     delete $logtmp
   else
     $MV $logtmp $logfile
@@ -736,16 +736,16 @@ noroot=`$GREP -c '^# Skipped [^:]*: it needs root' $logtmp 2>/dev/null`
   }
   # The run on the terminal: the counts, the score and the ids it went to,
   # coloured on a terminal (util/summary -c), then where the reports are
-  [ -n "$Tiger_JSON_File" ] && [ "$QUIET" != 'Y' ] && {
+  [ -n "$Tigris_JSON_File" ] && [ "$QUIET" != 'Y' ] && {
     echo
-    if use_colour; then sh $BASEDIR/util/summary -c -C "$Tiger_JSON_File"
-    else sh $BASEDIR/util/summary -c "$Tiger_JSON_File"; fi
+    if use_colour; then sh $BASEDIR/util/summary -c -C "$Tigris_JSON_File"
+    else sh $BASEDIR/util/summary -c "$Tigris_JSON_File"; fi
   }
   echo
   echo "  Report  $reportfile"
-  [ -n "$Tiger_JSON_File" ] && echo "  JSON    $Tiger_JSON_File"
+  [ -n "$Tigris_JSON_File" ] && echo "  JSON    $Tigris_JSON_File"
   # what was skipped: in the summary above when there is one, else here
-  [ -z "$Tiger_JSON_File" ] && {
+  [ -z "$Tigris_JSON_File" ] && {
     [ "${noroot:-0}" -gt 0 ] && echo "$noroot checks need root and were skipped; run Tigris as root to include them."
     [ -n "$TIGRIS_ROOT" ] && [ "$skipped" -gt "${noroot:-0}" ] && echo "`expr $skipped - ${noroot:-0}` checks cannot read an offline root and were skipped; the report lists them."
   }
@@ -753,14 +753,14 @@ noroot=`$GREP -c '^# Skipped [^:]*: it needs root' $logtmp 2>/dev/null`
   # --since: what changed since that run. The exit status then counts the
   # new findings only; with -q, nothing is printed unless something
   # changed, so cron mails only then.
-  [ -n "$SINCE_RUN" ] && [ -n "$Tiger_JSON_File" ] && {
+  [ -n "$SINCE_RUN" ] && [ -n "$Tigris_JSON_File" ] && {
     [ "$QUIET" = 'Y' ] && exec 1>&3 3>&-
     if [ -z "$since_file" ]; then
       echo "No earlier run of $HOSTNAME in $LOGDIR to compare with: every finding of this run is new. The report is in \`$logfile'."
     else
       # one line: the status from the new findings that are not accepted,
       # then how many are new and how many were resolved
-      set -- `$BASEDIR/tigris-diff -j "$since_file" "$Tiger_JSON_File" | $AWK '
+      set -- `$BASEDIR/tigris-diff -j "$since_file" "$Tigris_JSON_File" | $AWK '
       {
         s = $0
         i = index(s, "\"new\":["); j = index(s, "],\"resolved\":[")
@@ -784,7 +784,7 @@ noroot=`$GREP -c '^# Skipped [^:]*: it needs root' $logtmp 2>/dev/null`
       # a run with skipped checks is still one where checks could not run
       [ "${noroot:-0}" -gt 0 ] && [ "$tiger_status" -lt 2 ] && tiger_status=2
       [ "$QUIET" != 'Y' ] || [ "${2:-0}" -gt 0 ] || [ "${3:-0}" -gt 0 ] &&
-        $BASEDIR/tigris-diff "$since_file" "$Tiger_JSON_File"
+        $BASEDIR/tigris-diff "$since_file" "$Tigris_JSON_File"
     fi
   }
 }

@@ -97,8 +97,8 @@ printf 'PasswordAuthentication `>pwned.ssh`\nPermitRootLogin yes\n' > "$R/etc/ss
 # it (only five were, and check_passwd's own eval went unseen until the
 # next day); the package database checks have no database here to read
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=Y/p' "$W/tigerrc"
-  echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=Y/p' "$W/tigris.conf"
+  echo 'Tigris_Deb_CheckMD5Sums=N'; echo 'Tigris_Deb_NoPackFiles=N'; echo 'Tigris_Deb_StatOverride=N'
 } > "$W/profiles/hostile"
 # an odd name (fsys005a, listed through lsline) holding a backslash-n,
 # in both spellings: read without -r folded the two backslashes into

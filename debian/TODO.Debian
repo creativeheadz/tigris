@@ -16,9 +16,9 @@ TODO stuff for Debian's tiger:
   CHANGES.ARSC details patches that have not (yet) been included in the
   package. I could derive some from the description but only a few.
 
-- Write a manpage for tigerrc
+- Write a manpage for tigris.conf
 
-- Make a transition from templates at /var/log/tiger to /etc/tiger/templates
+- Make a transition from templates at /var/log/tiger to /etc/tigris/templates
 
 - Provide templates for known false positives in tiger
 

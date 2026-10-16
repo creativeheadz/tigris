@@ -14,7 +14,7 @@
   <br>
   <img src="https://img.shields.io/badge/finding%20ids-543-e8833a?style=flat-square&labelColor=0f1822" alt="543 finding ids">
   <img src="https://img.shields.io/badge/categories-15-e8833a?style=flat-square&labelColor=0f1822" alt="15 categories">
-  <img src="https://img.shields.io/badge/test%20suites-111-e8833a?style=flat-square&labelColor=0f1822" alt="111 test suites">
+  <img src="https://img.shields.io/badge/test%20suites-112-e8833a?style=flat-square&labelColor=0f1822" alt="112 test suites">
   <img src="https://img.shields.io/badge/CI-Debian%20%C2%B7%20Ubuntu%20%C2%B7%20Fedora%20%C2%B7%20Rocky%20%C2%B7%20openSUSE%20%C2%B7%20Alpine%20%C2%B7%20Arch-c6d6e2?style=flat-square&labelColor=0f1822" alt="Tested on Debian, Ubuntu, Fedora, Rocky, openSUSE, Alpine and Arch">
 </p>
 
@@ -187,7 +187,7 @@ all into `doc/explanations.html`.
 ### Profiles
 
 A profile is a short file in [`profiles/`](profiles), read on top of
-`tigerrc`: `sudo ./tigris --profile NAME`.
+`tigris.conf`: `sudo ./tigris --profile NAME`.
 
 | Profile | For |
 |---|---|
@@ -196,7 +196,7 @@ A profile is a short file in [`profiles/`](profiles), read on top of
 | `desktop` | A desktop: without the checks for what only servers run |
 | `container` | An image or a container: without the host's kernel, boot, firewall, systemd and disks |
 
-Your own profiles go in a `profiles/` directory beside your `tigerrc`.
+Your own profiles go in a `profiles/` directory beside your `tigris.conf`.
 
 ## Audit a system that is not running
 
@@ -349,9 +349,9 @@ audit to macOS and FreeBSD, from fixture roots on any machine; 3.7.0
 finished the offline audit, so an image reads as fully as a running
 system, and brought the packages; 3.6.0 the compliance mapping, the
 transparent summary and five server-side checks; 3.5.0 the offline
-audit. Next is 4.0: the internals renamed in one go (`tigris.conf`,
-`Tigris_*`, `/etc/tigris`) with shims for old configurations, and later
-a PowerShell engine for Windows against the same contract. Every change
+audit. 4.0 renames the internals in one go (`tigris.conf`, `Tigris_*`,
+`/etc/tigris`), with shims for old configurations; later a PowerShell
+engine for Windows against the same contract. Every change
 is measured for wall time, CPU and memory.
 
 ## Lineage

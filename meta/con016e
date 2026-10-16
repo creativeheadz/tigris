@@ -3,7 +3,7 @@ Severity: ERROR
 Category: tigris
 Check: config
 Fix: chmod go-w the file and chown it to root, or name one that is; then run again.
-References: tigris(8); tigerrc
+References: tigris(8); tigris.conf
 
 The configuration file named with -c failed the check every
 configuration file gets before it is read: it is writable by its group

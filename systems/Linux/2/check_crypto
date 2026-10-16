@@ -30,7 +30,7 @@
 #             under the ssl, pki and ssh directories, judged with
 #             exposed() against the ssl-cert group, which legitimately
 #             reads keys on Debian; entropy_avail and poolsize are live
-#             state, read through Tiger_Sysctl_Root for the tests.
+#             state, read through Tigris_Sysctl_Root for the tests.
 #
 # References:
 #   rngd(8)
@@ -42,16 +42,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -76,7 +76,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT FIND GREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -127,7 +127,7 @@ do
   do
     $GREP -q 'PRIVATE KEY' "$kf" 2>/dev/null || continue
     case "$kf" in
-      "${TIGRIS_ROOT:-$Tiger_Sysctl_Root}"*) keyfiles="$keyfiles ${kf#"${TIGRIS_ROOT:-$Tiger_Sysctl_Root}"}" ;;
+      "${TIGRIS_ROOT:-$Tigris_Sysctl_Root}"*) keyfiles="$keyfiles ${kf#"${TIGRIS_ROOT:-$Tigris_Sysctl_Root}"}" ;;
       *) keyfiles="$keyfiles $kf" ;;
     esac
   done
@@ -137,7 +137,7 @@ done
 # No RNG configuration and no private keys, and no live view of the
 # pool: nothing to judge
 liveview=Y
-[ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Sysctl_Root" ] && liveview=
+[ -n "$TIGRIS_ROOT" ] && [ -z "$Tigris_Sysctl_Root" ] && liveview=
 [ -z "$rngconfs$keyfiles$liveview" ] && exit 0
 
 echo
@@ -163,7 +163,7 @@ done
 #   The pool level describes the auditing host (or the fixture /proc
 #   the tests point at), never a root under audit.
 if [ -n "$liveview" ]; then
-  procdir=${Tiger_Sysctl_Root:-}
+  procdir=${Tigris_Sysctl_Root:-}
   avail=`$CAT "$procdir/proc/sys/kernel/random/entropy_avail" 2>/dev/null`
   poolsize=`$CAT "$procdir/proc/sys/kernel/random/poolsize" 2>/dev/null`
   case "$avail" in *[!0-9]*) avail= ;; esac

@@ -26,8 +26,8 @@
 #                 journald.conf and its drop-ins, ordered as systemd orders
 #                 them (by file name, /etc over /run over /usr/lib). A
 #                 syslog daemon writing to disk keeps them too.
-#                 Tiger_Sysctl_Root prefixes /proc, /etc, /run, /usr and
-#                 /var, and Tiger_Auditctl_Cmd replaces auditctl -l, for
+#                 Tigris_Sysctl_Root prefixes /proc, /etc, /run, /usr and
+#                 /var, and Tigris_Auditctl_Cmd replaces auditctl -l, for
 #                 the tests.
 #
 # References:
@@ -41,16 +41,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -76,7 +76,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT GREP SED SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -88,7 +88,7 @@ done
 
 haveallcmds AWK CAT GREP SED SORT || exit 1
 
-root=${Tiger_Sysctl_Root:-}
+root=${Tigris_Sysctl_Root:-}
 
 echo
 echo "# Checking the audit trail (auditd, persistent logs)..."
@@ -108,7 +108,7 @@ running()
 if ! running auditd; then
   message WARN aud001w "Install the audit package (auditd on Debian and Ubuntu, audit on Fedora and RHEL), enable it with 'systemctl enable --now auditd', and load rules: the distribution's examples are in /usr/share/doc/audit*/rules." "auditd is not running: logins, changes to accounts and watched files, and the use of privileges are not recorded in an audit trail."
 else
-  ac_cmd=${Tiger_Auditctl_Cmd:-}
+  ac_cmd=${Tigris_Auditctl_Cmd:-}
   if [ -z "$ac_cmd" ]; then
     for d in /usr/sbin /sbin /usr/bin /bin
     do

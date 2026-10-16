@@ -76,8 +76,8 @@ AWK=`findcmd awk`
 #    Sun, Cray, AIX, HP-UX, IRIX, Linux, MacOSX and the BSDs
 #
 UNAME=`findcmd uname`
-# Tiger_Uname_Cmd points uname at a stub, for the tests.
-[ -n "$Tiger_Uname_Cmd" ] && UNAME="$Tiger_Uname_Cmd"
+# Tigris_Uname_Cmd points uname at a stub, for the tests.
+[ -n "$Tigris_Uname_Cmd" ] && UNAME="$Tigris_Uname_Cmd"
 
 # As suggested by Nicolas François, it is much fast / better to use uname -rms in Linux
 # as this is less error-pone

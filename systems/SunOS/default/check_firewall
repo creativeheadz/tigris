@@ -24,7 +24,7 @@
 #             silent there. Whether the ipfilter SMF service is
 #             enabled is the services check's business, not this file's.
 #
-# 10/09/2026 - Initial version. Tiger_Ipfstat_Cmd points at another
+# 10/09/2026 - Initial version. Tigris_Ipfstat_Cmd points at another
 #             ipfstat, for the tests.
 #
 # References:
@@ -36,16 +36,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -70,7 +70,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -88,7 +88,7 @@ haveallcmds AWK || exit 1
 echo
 echo "# Checking the packet filter..."
 
-ipfstat=${Tiger_Ipfstat_Cmd:-ipfstat}
+ipfstat=${Tigris_Ipfstat_Cmd:-ipfstat}
 rules=`$ipfstat -io 2>/dev/null | $AWK 'NF { n++ } END { print n + 0 }'`
 [ "$rules" -gt 0 ] && exit 0
 

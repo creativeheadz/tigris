@@ -31,8 +31,8 @@
 #             judged: macros and tables expand, so text comparison
 #             would lie; the empty ruleset is the enforced floor.
 #
-# 10/09/2026 - Initial version. Tiger_Pfctl_Cmd points at another
-#             pfctl, Tiger_Ipfw_Cmd at another ipfw, for the tests.
+# 10/09/2026 - Initial version. Tigris_Pfctl_Cmd points at another
+#             pfctl, Tigris_Ipfw_Cmd at another ipfw, for the tests.
 #
 # References:
 #   pfctl(8), pf.conf(5)
@@ -44,16 +44,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -78,7 +78,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -96,11 +96,11 @@ haveallcmds AWK || exit 1
 echo
 echo "# Checking the packet filter..."
 
-pfctl=${Tiger_Pfctl_Cmd:-pfctl}
+pfctl=${Tigris_Pfctl_Cmd:-pfctl}
 pf=`$pfctl -s info 2>/dev/null | $AWK '/^[Ss]tatus:/ { print tolower($2); exit }'`
 rules=`$pfctl -s rules 2>/dev/null | $AWK 'NF { n++ } END { print n + 0 }'`
 
-ipfw=${Tiger_Ipfw_Cmd:-ipfw}
+ipfw=${Tigris_Ipfw_Cmd:-ipfw}
 other=`$ipfw show 2>/dev/null | $AWK '$1 !~ /^65535$/ && NF { n++ } END { print n + 0 }'`
 
 # Filtered means either filter filters: pf on with rules, or ipfw

@@ -31,7 +31,7 @@
 #             so it cries wolf on stock machines. Writability is the
 #             plant path, and it is exact.
 #
-# 10/09/2026 - Initial version. Tiger_Brew_Cmd points at another
+# 10/09/2026 - Initial version. Tigris_Brew_Cmd points at another
 #             `brew --prefix', for the tests.
 #
 # References:
@@ -45,16 +45,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -79,7 +79,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK LS FIND GREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -128,7 +128,7 @@ done
 # The brew Cellar, wherever brew says it is: the prefix live, the two
 # stock locations on an offline root
 cellar=
-brew=${Tiger_Brew_Cmd:-brew}
+brew=${Tigris_Brew_Cmd:-brew}
 if [ -n "$TIGRIS_ROOT" ]; then
   for prefix in /opt/homebrew /usr/local
   do

@@ -12,7 +12,7 @@ One JSON object per line, UTF-8-safe plain ASCII, three kinds in this
 order:
 
 ```
-{"type":"run","schema":1,"id":"…","tool":"tigris","version":"3.2.4, 2026.10.04.15.40","host":"desk","os":"Linux","release":"7.0.0-38-generic","arch":"x86_64","config":"./tigerrc","start":"2026-10-05T07:12:03Z"}
+{"type":"run","schema":1,"id":"…","tool":"tigris","version":"3.2.4, 2026.10.04.15.40","host":"desk","os":"Linux","release":"7.0.0-38-generic","arch":"x86_64","config":"./tigris.conf","start":"2026-10-05T07:12:03Z"}
 {"type":"finding","level":"WARN","id":"ssh008w","check":"check_ssh","message":"sshd: x11forwarding is yes: X11 is forwarded, which exposes the client's display to this server","category":"ssh"}
 {"type":"finding","level":"WARN","id":"lin015w","check":"check_network_config","message":"The system has IP forwarding enabled","accepted":{"reason":"Docker needs IP forwarding","until":"-"},"category":"network"}
 {"type":"summary","id":"…","end":"2026-10-05T07:14:01Z","counts":{"ALERT":0,"FAIL":12,"WARN":52,"INFO":132,"ERROR":0}}
@@ -26,7 +26,7 @@ order:
 | `id` | Unique to the run; the `summary` repeats it. |
 | `tool`, `version` | `tigris` and the release that produced the file. |
 | `host`, `os`, `release`, `arch` | What was audited. `release` is the kernel on Linux. |
-| `config` | The `tigerrc` the run used, since that decides what was checked. |
+| `config` | The `tigris.conf` the run used, since that decides what was checked. |
 | `profile` | Optional. The profile applied on top of it (`--profile`): `quick`, `server`, `desktop`, `container`, or a site's own. A diff between runs with different configs or profiles says `configs_differ`. |
 | `root` | Optional. The directory audited instead of the running system (`--root`): a mounted disk, an image's root filesystem, a VM snapshot. A diff between runs of different roots says `configs_differ`. |
 | `filesystem_scan` | `false` when the filesystem scan was switched off (the quick profile). Such a run has no `fsys*` findings because it did not look for them, not because there are none. Absent in reports from before the field existed, which always scanned. |
@@ -104,7 +104,7 @@ the worst new finding that is not accepted.
 When either run skipped the filesystem scan, all `fsys*` findings are
 left out of both sides, so they show as neither new nor resolved, and the
 object carries `"set_aside":["fsys"]`. When the two runs used different
-`tigerrc` files (or profiles) it carries `"configs_differ":true`: a check
+`tigris.conf` files (or profiles) it carries `"configs_differ":true`: a check
 switched on in only one of them will show its findings as new or
 resolved, and a consumer should say so rather than raise an alarm. A
 check skipped in either run (it needs root) has its findings left out of

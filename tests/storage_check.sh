@@ -5,7 +5,7 @@
 # Mount tables, swap lists, block devices (dm-crypt under LVM, as
 # /sys/class/block shows them), batteries (a laptop's, and a wireless
 # mouse's, which must not count), core_pattern, limits and modprobe files,
-# all under Tiger_Sysctl_Root.
+# all under Tigris_Sysctl_Root.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -13,7 +13,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -34,9 +34,9 @@ battery() {  # battery TREE NAME [SCOPE]
   b="$W/$1/sys/class/power_supply/$2"; mkdir -p "$b"; echo Battery > "$b/type"; [ -n "$3" ] && echo "$3" > "$b/scope"; :
 }
 go() {  # go TREE setting...
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$W/$1'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
-  shift; for s; do echo "$s" >> "$W/tigerrc"; done
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$W/$1'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
+  shift; for s; do echo "$s" >> "$W/tigris.conf"; done
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_storage ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
@@ -94,23 +94,23 @@ go desk
 [ "`count stor007w`" = 0 ] && ok "'* hard core 0' in limits.d: nothing" || { bad "core limit"; cat "$W/out"; }
 
 # USB storage, when the policy says none
-go desk "Tiger_Storage_NoUSB=Y"
-has '--WARN-- [stor008w] USB storage can be used' && ok "Tiger_Storage_NoUSB=Y, nothing blocks it: stor008w" || { bad "usb"; cat "$W/out"; }
+go desk "Tigris_Storage_NoUSB=Y"
+has '--WARN-- [stor008w] USB storage can be used' && ok "Tigris_Storage_NoUSB=Y, nothing blocks it: stor008w" || { bad "usb"; cat "$W/out"; }
 mkdir -p "$W/desk/etc/modprobe.d"; printf 'install usb-storage /bin/false\nblacklist usb-storage\n' > "$W/desk/etc/modprobe.d/usb.conf"
-go desk "Tiger_Storage_NoUSB=Y"
+go desk "Tigris_Storage_NoUSB=Y"
 has '--WARN-- [stor008w] USB storage can be used' && ok "uas not blocked: stor008w still" || { bad "usb uas"; cat "$W/out"; }
 printf 'install uas /bin/false\nblacklist uas\n' >> "$W/desk/etc/modprobe.d/usb.conf"
-go desk "Tiger_Storage_NoUSB=Y"
+go desk "Tigris_Storage_NoUSB=Y"
 [ "`count stor008w`" = 0 ] && ok "usb-storage and uas blocked in modprobe.d: nothing" || { bad "usb blocked"; cat "$W/out"; }
 rm -f "$W/desk/etc/modprobe.d/usb.conf"; go desk
 [ "`count stor008w`" = 0 ] && ok "by default USB storage is not looked at" || { bad "usb default"; cat "$W/out"; }
 
 # New devices unauthorized by default counts as no-USB enforcement
 mkdir -p "$W/desk/sys/module/usbcore/parameters"; echo 0 > "$W/desk/sys/module/usbcore/parameters/authorized_default"
-go desk "Tiger_Storage_NoUSB=Y"
+go desk "Tigris_Storage_NoUSB=Y"
 [ "`count stor008w`" = 0 ] && ok "authorized_default=0, no modprobe: nothing" || { bad "usb authdefault"; cat "$W/out"; }
 echo 1 > "$W/desk/sys/module/usbcore/parameters/authorized_default"
-go desk "Tiger_Storage_NoUSB=Y"
+go desk "Tigris_Storage_NoUSB=Y"
 has '--WARN-- [stor008w] USB storage can be used' && ok "authorized_default=1: stor008w" || { bad "usb authdefault1"; cat "$W/out"; }
 rm -rf "$W/desk/sys/module"
 
@@ -119,7 +119,7 @@ mkdir -p "$W/desk/etc/modprobe.d" "$W/desk/sys/bus/usb/devices/1-2:1.0" "$W/desk
 printf 'blacklist usb-storage\nblacklist uas\n' > "$W/desk/etc/modprobe.d/usb.conf"
 echo 08 > "$W/desk/sys/bus/usb/devices/1-2:1.0/bInterfaceClass"; echo "Ultra Stick" > "$W/desk/sys/bus/usb/devices/1-2:1.0/product"
 echo 03 > "$W/desk/sys/bus/usb/devices/1-3:1.0/bInterfaceClass"
-go desk "Tiger_Storage_NoUSB=Y"
+go desk "Tigris_Storage_NoUSB=Y"
 has "--WARN-- [stor008w] A USB storage device ('Ultra Stick') is connected" && [ "`count stor008w`" = 1 ] &&
   ok "a connected stick, blocked on paper: stor008w names it; the keyboard is not storage" || { bad "usb connected"; cat "$W/out"; }
 go desk
@@ -155,10 +155,10 @@ has "--WARN-- [stor016w] USBGuard allows every USB device (a bare 'allow' in /et
   ok "RuleFile elsewhere: that file is judged" || { bad "rulefile"; cat "$W/out"; }
 
 # FireWire storage, when the policy says none
-go desk "Tiger_Storage_NoFireWire=Y"
-has '--WARN-- [stor010w] FireWire can be used' && ok "Tiger_Storage_NoFireWire=Y, nothing blocks it: stor010w" || { bad "firewire"; cat "$W/out"; }
+go desk "Tigris_Storage_NoFireWire=Y"
+has '--WARN-- [stor010w] FireWire can be used' && ok "Tigris_Storage_NoFireWire=Y, nothing blocks it: stor010w" || { bad "firewire"; cat "$W/out"; }
 printf 'blacklist firewire-core\nblacklist firewire-ohci\n' > "$W/desk/etc/modprobe.d/firewire.conf"
-go desk "Tiger_Storage_NoFireWire=Y"
+go desk "Tigris_Storage_NoFireWire=Y"
 [ "`count stor010w`" = 0 ] && ok "FireWire blacklisted in modprobe.d: nothing" || { bad "firewire blocked"; cat "$W/out"; }
 rm -f "$W/desk/etc/modprobe.d/firewire.conf"; go desk
 [ "`count stor010w`" = 0 ] && ok "by default FireWire storage is not looked at" || { bad "firewire default"; cat "$W/out"; }
@@ -176,8 +176,8 @@ go ctr
 # crypttab and a swap partition outside it, a core_pattern piped to a
 # handler, usb-storage blacklisted.
 offline() {
-  cp "$W/tigerrc.base" "$W/tigerrc" 2>/dev/null || true
-  { echo "Tiger_Show_INFO_Msgs=Y"; echo "Tiger_Storage_NoUSB=Y"; echo "Tiger_Storage_NoFireWire=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf" 2>/dev/null || true
+  { echo "Tigris_Show_INFO_Msgs=Y"; echo "Tigris_Storage_NoUSB=Y"; echo "Tigris_Storage_NoFireWire=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGRIS_ROOT=$1 TIGERHOMEDIR=$W sh ./systems/Linux/2/check_storage ) 2>&1 < /dev/null |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
@@ -273,8 +273,8 @@ case "$f" in
 esac
 EOF
 chmod 755 "$W/fakebin/getfacl"
-cp "$W/tigerrc.base" "$W/tigerrc"
-{ echo "Tiger_Show_INFO_Msgs=Y"; echo "Tiger_Storage_NoUSB=Y"; echo "Tiger_Storage_NoFireWire=Y"; echo "Tiger_Getfacl='$W/fakebin/getfacl'"; } >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+{ echo "Tigris_Show_INFO_Msgs=Y"; echo "Tigris_Storage_NoUSB=Y"; echo "Tigris_Storage_NoFireWire=Y"; echo "Tigris_Getfacl='$W/fakebin/getfacl'"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGRIS_ROOT="$L" TIGERHOMEDIR=$W sh ./systems/Linux/2/check_storage ) 2>&1 < /dev/null |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"

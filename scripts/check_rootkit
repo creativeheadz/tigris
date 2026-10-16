@@ -32,7 +32,7 @@
 #                               messages that netstat might output (See Debian
 #                               Bug 223847)
 # 08/31/2006            jfs     Fix typo in script
-# 08/30/2006            jfs     Introduce Tiger_CHKROOTKIT_ARGS so that 
+# 08/30/2006            jfs     Introduce Tigris_CHKROOTKIT_ARGS so that 
 #                               admins can ajust the behaviour of CHKROOTKIT
 #                               Output the lines of infected errors
 # 01/13/2004            jfs     Avoid which error on stdout if it's not found
@@ -52,16 +52,16 @@
 #   binaries for lies, which is meaningless off-image.
 #
 # This is the directory Tiger is installed on
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -86,7 +86,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds RM || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   
@@ -145,18 +145,18 @@ if [ -n "$BADFIND" ]; then
 fi
 
 # Chkrookit binary location|override + default check
-if [ -z "${Tiger_CHKROOTKIT_LOC_OVERRIDE}" ]
+if [ -z "${Tigris_CHKROOTKIT_LOC_OVERRIDE}" ]
 then
         CHKROOTKIT=`command -v chkrootkit`
 else
-        CHKROOTKIT=${Tiger_CHKROOTKIT_LOC_OVERRIDE}
+        CHKROOTKIT=${Tigris_CHKROOTKIT_LOC_OVERRIDE}
 fi
 # Chkrootkit arguments
-if [ -z "${Tiger_CHKROOTKIT_ARGS}" ]
+if [ -z "${Tigris_CHKROOTKIT_ARGS}" ]
 then
 # Note: we use the quiet mode to avoid parsing all the lines of 
 # "Searching for..." things
-	Tiger_CHKROOTKIT_ARGS="-q"
+	Tigris_CHKROOTKIT_ARGS="-q"
 fi
 
 # Redirect to /dev/null to make it silent 
@@ -169,7 +169,7 @@ haveallcmds CHKROOTKIT >/dev/null && {
 # Send stderr output to /dev/null to avoid the
 # 'warning, got bogus unix line' messages that netstat might output 
 # (See Debian Bug 223847)
-	$CHKROOTKIT $Tiger_CHKROOTKIT_ARGS 2>/dev/null|
+	$CHKROOTKIT $Tigris_CHKROOTKIT_ARGS 2>/dev/null|
 	while read line
 	do
 		case "$line" in 

@@ -22,7 +22,7 @@
 # 08/14/2003 - jfs - Preserve, for backwards compatibility the definition
 #                    of CRACK, REPORTER and CRACKDIR if available
 #                    (exported through the site configuration)
-# 08/13/2003 - jfs - Use Location overrides in the tigerrc configuration file
+# 08/13/2003 - jfs - Use Location overrides in the tigris.conf configuration file
 # 08/09/2003 - jfs - Added RM to dependancies.
 # 08/08/2003 - jfs - Improved temporary file creation.
 # 05/01/2003 - jfs - Fixed dependancies.
@@ -36,16 +36,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -71,7 +71,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT GEN_PASSWD_SETS RM WAIT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME
@@ -86,34 +86,34 @@ echo "# Running Crack on password files..."
 
 
 # Crack binary location|override + default check
-# Which, find, user-supplied var or tigexp's findcmd?:
+# Which, find, user-supplied var or tigris-explain's findcmd?:
 if [ -z "$CRACK" ] 
 then
-  if [ -z "${Tiger_CRACK_LOC_OVERRIDE}" ]
+  if [ -z "${Tigris_CRACK_LOC_OVERRIDE}" ]
   then
     CRACK=`command -v crack`
   else
-    CRACK=${Tiger_CRACK_LOC_OVERRIDE}
+    CRACK=${Tigris_CRACK_LOC_OVERRIDE}
   fi
 fi
 # Reporter binary location|override + default check
 if [ -z "$REPORTER" ] 
 then
-if [ -z "${Tiger_CRACKREPORTER_LOC_OVERRIDE}" ]
+if [ -z "${Tigris_CRACKREPORTER_LOC_OVERRIDE}" ]
 then
    REPORTER=`command -v crack-reporter`
 else
-   REPORTER=${Tiger_CRACKREPORTER_LOC_OVERRIDE}
+   REPORTER=${Tigris_CRACKREPORTER_LOC_OVERRIDE}
 fi
 fi
 # Crack directory location
 if [ -z "$CRACKDIR" ]
 then
-if [ -z "${Tiger_CRACKDIR_LOC_OVERRIDE}" ]
+if [ -z "${Tigris_CRACKDIR_LOC_OVERRIDE}" ]
 then
    CRACKDIR=/usr/lib/crack
 else
-   CRACKDIR=${Tiger_CRACKDIR_LOC_OVERRIDE}
+   CRACKDIR=${Tigris_CRACKDIR_LOC_OVERRIDE}
 fi
 fi
 
@@ -142,7 +142,7 @@ fi
 haveallcmds CRACK GEN_PASSWD_SETS CAT EXPR WAIT || exit 1
 
 localflag=
-[ "$Tiger_Crack_Local" = 'Y' ] && localflag="-l"
+[ "$Tigris_Crack_Local" = 'Y' ] && localflag="-l"
 
 count=1
 pid=$$
@@ -184,7 +184,7 @@ do
 done < $WORKDIR/file.list.$$
 
 # Cleanup temporary files
-[ ! -n "$Tiger_PasswdFiles" ] && {
+[ ! -n "$Tigris_PasswdFiles" ] && {
 while read pass_set
 do
   delete $pass_set $pass_set.src

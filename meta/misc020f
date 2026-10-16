@@ -2,12 +2,12 @@ Id: misc020f
 Severity: FAIL
 Category: services
 Check: check_runprocs
-Fix: Start the process, or take it out of Tiger_Running_Procs.
-References: ps(1); tigerrc
+Fix: Start the process, or take it out of Tigris_Running_Procs.
+References: ps(1); tigris.conf
 Controls: CIS 4.8; NIST CM-7; ISO 8.9; CE Secure configuration
 
 Tiger checked the process table and was not able to find a process
 which it was configured to look for.
 
 If the process is not part of the system processes consider adjusting
-the Tiger_Running_Procs definition in your tigerrc configuration file.
+the Tigris_Running_Procs definition in your tigris.conf configuration file.

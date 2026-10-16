@@ -3,7 +3,7 @@
 # tests/statoverride_check.sh - deb_statoverride against a list of overrides
 #
 # Feeds the check a "dpkg-statoverride --list" of its own through
-# Tiger_Deb_StatOverride_Cmd, for files this test creates, owned by whoever
+# Tigris_Deb_StatOverride_Cmd, for files this test creates, owned by whoever
 # runs it: one that matches, one whose setgid bit is gone, one whose group
 # is not the one set (written "#N"), one listed with a leading zero, one
 # with a space in its name, and one that does not exist. Needs no root and
@@ -33,9 +33,9 @@ $u $g 4755 $W/f/missing
 EOF
 
 {
-  echo "Tiger_Deb_StatOverride_Cmd='cat $W/list'"
-  echo "Tiger_JSON_File='$W/out.jsonl'"
-} >> "$W/tigerrc"
+  echo "Tigris_Deb_StatOverride_Cmd='cat $W/list'"
+  echo "Tigris_JSON_File='$W/out.jsonl'"
+} >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/deb_statoverride ) > "$W/out" 2>&1
 A="$W/out.jsonl"
 has() { grep -F -q -- "$1" "$A"; }

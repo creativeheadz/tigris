@@ -41,8 +41,8 @@ to some servers opening UDP listeners to receive DNS queries (usually
 servers that use a lot of DNS resolution like proxies -squid-, mail servers 
 -qmail- and the like). In this case you can either use a mechanism in
 the check to filter these messages out, if some is available
-(in the check_listeningprocs you can use the Tiger_Listening_ValidProcs
-or Tiger_Listening_ValidUsers variable) or you can add a proper regular
+(in the check_listeningprocs you can use the Tigris_Listening_ValidProcs
+or Tigris_Listening_ValidUsers variable) or you can add a proper regular
 expression in the ignore file to remove this (but not other) messages.
 
 -- Javier Fernández-Sanguino Peña <jfs@computer.org>

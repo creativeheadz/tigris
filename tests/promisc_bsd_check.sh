@@ -18,7 +18,7 @@ fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 run() {  # run FIXTURE OUTFILE [ROOT]: check_promisc with the stub
-  echo "Tiger_Ifconfig_Cmd='$W/tests/fixtures/bsd/$1'" >> "$W/tigerrc"
+  echo "Tigris_Ifconfig_Cmd='$W/tests/fixtures/bsd/$1'" >> "$W/tigris.conf"
   if [ -n "$3" ]; then
     ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$3" sh ./systems/FreeBSD/default/check_promisc ) 2>&1
   else
@@ -26,7 +26,7 @@ run() {  # run FIXTURE OUTFILE [ROOT]: check_promisc with the stub
   fi |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$2" || true
-  sed -i '$d' "$W/tigerrc"
+  sed -i '$d' "$W/tigris.conf"
 }
 has() { grep -F -q -- "$1" "$2"; }
 empty() { [ ! -s "$1" ]; }

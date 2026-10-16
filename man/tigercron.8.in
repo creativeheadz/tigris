@@ -23,15 +23,15 @@ based on them (as described in \fBtiger (8)\fR).
 
 \fBTigercron\fR runs the specified checks and compares their reports 
 with previous stored reports (under @tigerlogdir@). It will then
-mail the user defined in '@tigerconfigdir@/tigerrc' 
-(\fITiger_Mail_RCPT\fR) the results.
+mail the user defined in '@tigerconfigdir@/tigris.conf' 
+(\fITigris_Mail_RCPT\fR) the results.
 
 When a module is run, \fBtigercron\fR checks:
 .IP \(bu 4
-If \fITiger_Cron_Template\fR is set to Y in tigerrc. If it is, it checks
+If \fITigris_Cron_Template\fR is set to Y in tigris.conf. If it is, it checks
 if there is a template stating which are the expected results.
 .IP \(bu 4
-If \fITiger_Cron_CheckPrev\fR is set to Y in tigerrc. If it is, it checks
+If \fITigris_Cron_CheckPrev\fR is set to Y in tigris.conf. If it is, it checks
 if there is a previous run of the module it can check against.
 .PP
 A differential report is generated depending on the module reports
@@ -51,7 +51,7 @@ from normal behaviour.
 can be defined also to override the default.
 .SH FILES
 .TP
-.I @tigerconfigdir@/tigerrc
+.I @tigerconfigdir@/tigris.conf
 Configuration file for the
 .B Tiger
 tool.
@@ -72,7 +72,7 @@ Working directory used by
 .B Tiger
 scripts to create temporary files.
 .SH SEE ALSO
-.BR tigexp (8), tiger (8), cron (8), crontab (5)
+.BR tigris-explain (8), tiger (8), cron (8), crontab (5)
 
 The deficiencies of using \fBtigercron\fR as a HIDS are described in the
 file README.hostids which is provided with the package. In Debian

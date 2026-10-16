@@ -7,10 +7,10 @@
 # configuration with a certificate expiring soon, a letsencrypt leaf
 # reached through an absolute link, a fine certificate, a bare key and
 # a CA certificate (both skipped). openssl is a script
-# (Tiger_Openssl_Cmd) that answers -text and -checkend from the file
+# (Tigris_Openssl_Cmd) that answers -text and -checkend from the file
 # name, so the logic is tested with or without the real one; when the
 # real openssl exists it also reads two certificates it made itself.
-# Tiger_Openssl_Cmd set but empty means no openssl (crt003i).
+# Tigris_Openssl_Cmd set but empty means no openssl (crt003i).
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -18,7 +18,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -65,8 +65,8 @@ esac
 EOF
 chmod 755 "$W/ossl"
 
-cp "$W/tigerrc.base" "$W/tigerrc"
-{ echo "Tiger_Sysctl_Root='$r'"; echo "Tiger_Openssl_Cmd='$W/ossl'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+{ echo "Tigris_Sysctl_Root='$r'"; echo "Tigris_Openssl_Cmd='$W/ossl'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_certs ) 2>&1 |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
@@ -85,8 +85,8 @@ has "--WARN-- [crt002w] The certificate in \`/etc/apache2/ssl/soon.pem' expires 
 grep -q "$r" "$W/out" && bad "a finding names where the root is on this host" || ok "findings name the root's own paths"
 
 # no openssl: the files are listed, their expiry unknown
-cp "$W/tigerrc.base" "$W/tigerrc"
-{ echo "Tiger_Sysctl_Root='$r'"; echo "Tiger_Openssl_Cmd="; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+{ echo "Tigris_Sysctl_Root='$r'"; echo "Tigris_Openssl_Cmd="; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_certs ) 2>&1 |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' > "$W/noossl"
@@ -96,8 +96,8 @@ grep -F -q -- '--INFO-- [crt003i] 6 certificate files found, but openssl is not 
 
 # nothing to read: silent, not even the header
 mkdir -p "$W/empty/etc"
-cp "$W/tigerrc.base" "$W/tigerrc"
-{ echo "Tiger_Sysctl_Root='$W/empty'"; echo "Tiger_Openssl_Cmd='$W/ossl'"; } >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+{ echo "Tigris_Sysctl_Root='$W/empty'"; echo "Tigris_Openssl_Cmd='$W/ossl'"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_certs ) 2>&1 | grep '^--' | grep -v '^--CONFIG--' > "$W/empty.out"
 if [ -s "$W/empty.out" ]; then bad "empty root"; cat "$W/empty.out"; else ok "no certificates anywhere: silent"; fi
 
@@ -107,7 +107,7 @@ mkdir -p "$R/etc/nginx/sites-enabled" "$R/etc/nginx/ssl"
 printf 'events {}\nhttp {\n  include sites-enabled/*;\n}\n' > "$R/etc/nginx/nginx.conf"
 printf 'server {\n  listen 443 ssl;\n  ssl_certificate /etc/nginx/ssl/old.pem;\n}\n' > "$R/etc/nginx/sites-enabled/site"
 : > "$R/etc/nginx/ssl/old.pem"
-cp "$W/tigerrc.base" "$W/tigerrc"; echo "Tiger_Openssl_Cmd='$W/ossl'" >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"; echo "Tigris_Openssl_Cmd='$W/ossl'" >> "$W/tigris.conf"
 ( cd "$W" && TIGRIS_ROOT=$R TIGERHOMEDIR=$W sh ./systems/Linux/2/check_certs ) 2>&1 |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' > "$W/off"
@@ -123,8 +123,8 @@ if command -v openssl >/dev/null 2>&1; then
   openssl req -x509 -newkey rsa:2048 -keyout "$G/etc/nginx/ssl/k.key" -out "$G/etc/nginx/ssl/good.pem" \
     -days 3650 -nodes -subj '/CN=example.com' >/dev/null 2>&1
   echo "not a certificate" > "$G/etc/nginx/ssl/garbage.pem"
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$G'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$G'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_certs ) 2>&1 | grep '^--' | grep -v '^--CONFIG--' > "$W/real.out"
   if [ -s "$W/real.out" ]; then bad "real openssl"; cat "$W/real.out"; else ok "real openssl: a ten-year certificate and a non-certificate are silent"; fi
 else

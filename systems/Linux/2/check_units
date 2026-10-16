@@ -30,8 +30,8 @@
 #                 User= (root when there is none; sysd004, sysd005). Units
 #                 defined in /etc or /run, and vendor units replaced or
 #                 extended there, are listed (sysd007i, sysd008i).
-#                 Tiger_Sysctl_Root prefixes the *.wants directories and
-#                 Tiger_Systemctl_Cmd replaces systemctl, for the tests.
+#                 Tigris_Sysctl_Root prefixes the *.wants directories and
+#                 Tigris_Systemctl_Cmd replaces systemctl, for the tests.
 # 10/07/2026 atrimbitas - An offline root (--root): its units are read with
 #                 systemd-analyze --root cat-config (systemctl cat refuses
 #                 --root), which gives the unit file and its drop-ins as
@@ -52,16 +52,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -87,7 +87,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK LS SED SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -99,8 +99,8 @@ done
 
 haveallcmds AWK LS SED SORT || exit 1
 
-root=${Tiger_Sysctl_Root:-}
-sc=${Tiger_Systemctl_Cmd:-}
+root=${Tigris_Sysctl_Root:-}
+sc=${Tigris_Systemctl_Cmd:-}
 offline=
 if [ -n "$TIGRIS_ROOT" ] && [ -z "$sc" ]; then
   # an offline root with systemd's units, read here (unitread)

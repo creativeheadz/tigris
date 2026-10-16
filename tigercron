@@ -24,11 +24,11 @@
 #                the $OS/$REL/$ARCH
 #                Safer creation of the temporary file which includes the
 #                scripts' results.
-# 04/23/2003 jfs Sanity check for the existance of ctrfile, use TigerConfigDir
+# 04/23/2003 jfs Sanity check for the existance of ctrfile, use TigrisConfigDir
 #               instead of CONFIGDIR
 # 10/28/2002 jfs Added check of non-comments in output (only available if
 #                egrep is installed)
-# 07/25/2002 jfs Changed TigerInstallDir to .
+# 07/25/2002 jfs Changed TigrisInstallDir to .
 # 12/26/2001 jfs Modified to provide new ways to compare against previous
 #                runs: per policy (template) or per run.
 # 12/02/2001 jfs Fixed script to properly send out mails with valid
@@ -46,7 +46,7 @@
 #   or not
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir="."
+TigrisInstallDir="."
 
 [ "$1" != "" ] && {
   case "$1" in
@@ -60,9 +60,9 @@ TigerInstallDir="."
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -81,7 +81,7 @@ done
 }
 
 . $basedir/config
-TEMPLATEDIR="$TigerConfigDir/templates"
+TEMPLATEDIR="$TigrisConfigDir/templates"
 
 . $BASEDIR/initdefs
 
@@ -89,7 +89,7 @@ TEMPLATEDIR="$TigerConfigDir/templates"
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds DATE SED EXPR DIFF MAILER GREP BASENAME || exit 1
   haveallfiles BASEDIR SCRIPTDIR WORKDIR LOGDIR || exit 1
   
@@ -99,7 +99,7 @@ TEMPLATEDIR="$TigerConfigDir/templates"
 
 #------------------------------------------------------------------------
 # The control file first: what it names runs as root
-[ ! -n "$ctrlfile" ] && ctrlfile=$TigerConfigDir/cronrc
+[ ! -n "$ctrlfile" ] && ctrlfile=$TigrisConfigDir/cronrc
 [ ! -r "$ctrlfile" ]  &&  {
 	    message ERROR tig001e "" "Cannot read \`$ctrlfile', tigercron cannot proceed."
 	    exit 1
@@ -115,8 +115,8 @@ haveallfiles BASEDIR SCRIPTDIR WORKDIR LOGDIR || exit 1
 
 umask 077
 
-[ -n "$Tiger_CRON_Output_Width" ] && {
-  Tiger_Output_Width="$Tiger_CRON_Output_Width"
+[ -n "$Tigris_CRON_Output_Width" ] && {
+  Tigris_Output_Width="$Tigris_CRON_Output_Width"
 }
 
 
@@ -217,7 +217,7 @@ do
       do
 	outprefix="$LOGDIR/`$BASENAME $script`.out"
 	safe_temp $outprefix.$$.tmp
-	suffix=${TigerCron_Log_Keep_Max:=10}
+	suffix=${TigrisCron_Log_Keep_Max:=10}
 	{
 	  run_script $script
 # TODO: Consider if including absolute references is considered
@@ -253,19 +253,19 @@ do
 #  etctemplatefile=`echo $templatefile | $SED 's/\/var\/log\/tiger\///'`
   etctemplatefile=`$BASENAME $templatefile`
 
-  if [ "$Tiger_Cron_Template" = "Y" -a -s "$TEMPLATEDIR/$etctemplatefile" ]; then 
+  if [ "$Tigris_Cron_Template" = "Y" -a -s "$TEMPLATEDIR/$etctemplatefile" ]; then 
     $BASEDIR/util/difflogs $TEMPLATEDIR/$etctemplatefile $newfile
-  elif [ "$Tiger_Cron_Template" = "Y" -a -s "$templatefile" ]; then 
+  elif [ "$Tigris_Cron_Template" = "Y" -a -s "$templatefile" ]; then 
     $BASEDIR/util/difflogs $templatefile $newfile
-  elif [ "$Tiger_Cron_CheckPrev" = "Y" -a -s "$previousfile" ]; then 
+  elif [ "$Tigris_Cron_CheckPrev" = "Y" -a -s "$previousfile" ]; then 
     $BASEDIR/util/difflogs $previousfile $newfile
   else
     $CAT $newfile
   fi
 done >> $WORKDIR/tigcron.diff.$$
 
-[ ! -n "$Tiger_Mail_RCPT" ] && Tiger_Mail_RCPT="root"
-[ ! -n "$Tiger_Mail_FROM" ] && Tiger_Mail_FROM="root@$(hostname)"
+[ ! -n "$Tigris_Mail_RCPT" ] && Tigris_Mail_RCPT="root"
+[ ! -n "$Tigris_Mail_FROM" ] && Tigris_Mail_FROM="root@$(hostname)"
   
 length=1
 if [ ! -n "$EGREP" ] ; then
@@ -274,7 +274,7 @@ if [ ! -n "$EGREP" ] ; then
 fi
 [ -s "$WORKDIR/tigcron.diff.$$" -a $length -gt 0 ] && {
   send="Y"
-  [ "$Tiger_Cron_SendOKReports" = "N" ] &&
+  [ "$Tigris_Cron_SendOKReports" = "N" ] &&
   [ -z "`grep ERR $WORKDIR/tigcron.diff.$$`" ] &&
   [ -z "`grep WARN $WORKDIR/tigcron.diff.$$`" ] && { 
   	send="N"
@@ -285,17 +285,17 @@ fi
   case "$MAILER" in *sendmail) mailopts=-oi ;; esac
   haveallcmds MAILER && [ "$send" = "Y" ] &&  {
 	# Mail header (so it does not just say it's root
-	echo "From: \"Tiger automatic auditor at $(hostname)\" <$Tiger_Mail_FROM>"
-	echo "To: $Tiger_Mail_RCPT"
+	echo "From: \"Tiger automatic auditor at $(hostname)\" <$Tigris_Mail_FROM>"
+	echo "To: $Tigris_Mail_RCPT"
 	echo "Subject: Tiger Auditing Report for $(hostname)"
 	echo 
 	cat  $WORKDIR/tigcron.diff.$$ 
-    } | $MAILER $mailopts $Tiger_Mail_RCPT 
+    } | $MAILER $mailopts $Tigris_Mail_RCPT 
     # Note1: This could also be 
-    # } | $MAILER -s "TIGER Output" $Tiger_Mail_RCPT < $WORKDIR/tigcron.diff.$$
+    # } | $MAILER -s "TIGER Output" $Tigris_Mail_RCPT < $WORKDIR/tigcron.diff.$$
     # Alas, it's not completely portable (no -s option on some mailers)
     # Note2: It could even be
-    # } | $GPG -e -a | $MAILER -s "TIGER Output" $Tiger_Mail_RCPT < $WORKDIR/tigcron.diff.$$
+    # } | $GPG -e -a | $MAILER -s "TIGER Output" $Tigris_Mail_RCPT < $WORKDIR/tigcron.diff.$$
     # But it should then use passwordless keys for GPG
 
 }

@@ -18,8 +18,8 @@ fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 run() {  # run PF APPFW OUTFILE [ROOT]: check_firewall with the stubs
-  echo "Tiger_Pfctl_Cmd='$W/tests/fixtures/macos/$1'" >> "$W/tigerrc"
-  echo "Tiger_Appfw_Cmd='$W/tests/fixtures/macos/$2'" >> "$W/tigerrc"
+  echo "Tigris_Pfctl_Cmd='$W/tests/fixtures/macos/$1'" >> "$W/tigris.conf"
+  echo "Tigris_Appfw_Cmd='$W/tests/fixtures/macos/$2'" >> "$W/tigris.conf"
   if [ -n "$4" ]; then
     ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$4" sh ./systems/MacOSX/default/check_firewall ) 2>&1
   else
@@ -27,7 +27,7 @@ run() {  # run PF APPFW OUTFILE [ROOT]: check_firewall with the stubs
   fi |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$3" || true
-  sed -i '$d;$d' "$W/tigerrc"
+  sed -i '$d;$d' "$W/tigris.conf"
 }
 has() { grep -F -q -- "$1" "$2"; }
 empty() { [ ! -s "$1" ]; }

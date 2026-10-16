@@ -24,12 +24,12 @@ bad() { echo "FAIL $1"; fail=1; }
 uid=`id -u`
 [ "$uid" = 0 ] && chown -R 0:0 "$W"
 
-# Every Tiger_Check_* off but four, and the Debian ones off
+# Every Tigris_Check_* off but four, and the Debian ones off
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
-  echo 'Tiger_Check_SYSTEM=Y'; echo 'Tiger_Check_SSH=Y'; echo 'Tiger_Check_SUDO=Y'
-  echo 'Tiger_Check_SECUREBOOT=Y'; echo 'Tiger_Check_TIMESYNC=Y'
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Deb_CheckMD5Sums=N'; echo 'Tigris_Deb_NoPackFiles=N'; echo 'Tigris_Deb_StatOverride=N'
+  echo 'Tigris_Check_SYSTEM=Y'; echo 'Tigris_Check_SSH=Y'; echo 'Tigris_Check_SUDO=Y'
+  echo 'Tigris_Check_SECUREBOOT=Y'; echo 'Tigris_Check_TIMESYNC=Y'
 } > "$W/profiles/fourchecks"
 chmod 644 "$W/profiles/fourchecks"
 
@@ -59,6 +59,7 @@ case $? in
 esac
 
 # tigris-diff: a check skipped in one run is left out of both sides
+# (the config name is opaque to the diff; ./tigerrc is an old report's)
 cat > "$W/a.jsonl" <<'EOF'
 {"type":"run","schema":1,"id":"a","tool":"tigris","version":"x","host":"h","os":"Linux","release":"r","arch":"x86_64","config":"./tigerrc","start":"2026-10-07T10:00:00Z"}
 {"type":"finding","level":"WARN","id":"sudo001w","check":"check_sudo","message":"alice may run any command as root with sudo, without a password: whoever gets that account's session gets root."}

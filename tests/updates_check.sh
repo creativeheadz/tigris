@@ -8,7 +8,7 @@
 # updateinfo list --security on Fedora 44 (dnf 5) and Rocky 9 (dnf 4),
 # zypper --xmlout list-patches on Leap 16 (one patch's category made
 # security), rpm -q --last kernel-core in its usual shape. Files come
-# from a tree under Tiger_Sysctl_Root; Tiger_Updates_Manager picks the
+# from a tree under Tigris_Sysctl_Root; Tigris_Updates_Manager picks the
 # manager. A yumgpg tree carries repo files with gpgcheck off and on,
 # and a dnf.conf with [main] on then off (upd005w).
 #
@@ -18,7 +18,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -87,17 +87,17 @@ tree() {
   : > "$r/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_InRelease"
 }
 go() {  # go NAME MANAGER setting...
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$W/$1'"; echo "Tiger_Updates_Manager='$2'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
-  shift 2; for s; do echo "$s" >> "$W/tigerrc"; done
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$W/$1'"; echo "Tigris_Updates_Manager='$2'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
+  shift 2; for s; do echo "$s" >> "$W/tigris.conf"; done
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_updates ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
 }
 has()   { grep -F -q -- "$1" "$W/out"; }
 count() { grep -c -- "$1" "$W/out"; }
-apt() { echo "Tiger_Apt_Simulate_Cmd='sh $W/$1'"; echo "Tiger_AptConfig_Cmd='sh $W/$2'"; }
-dnf() { echo "Tiger_Dnf_Security_Cmd='sh $W/$1'"; echo "Tiger_Rpm_Kernel_Cmd='sh $W/$2'"; }
+apt() { echo "Tigris_Apt_Simulate_Cmd='sh $W/$1'"; echo "Tigris_AptConfig_Cmd='sh $W/$2'"; }
+dnf() { echo "Tigris_Dnf_Security_Cmd='sh $W/$1'"; echo "Tigris_Rpm_Kernel_Cmd='sh $W/$2'"; }
 
 # apt
 tree deb 6.8.0-85-generic
@@ -170,7 +170,7 @@ go yumgpg dnf "`dnf dnf5 rpmnew`"
 has 'The [main] default in /etc/dnf/dnf.conf turns package signing off' && [ "`count upd005w`" = 2 ] &&
   ok "[main] gpgcheck=0: the default finding plus the repo one" || { bad "gpgcheck main"; cat "$W/out"; }
 tree suse 6.4.0-150600.23.25-default
-go suse zypper "Tiger_Zypper_Security_Cmd='sh $W/zypper'"
+go suse zypper "Tigris_Zypper_Security_Cmd='sh $W/zypper'"
 has '--FAIL-- [upd003f] 1 security updates are waiting to be installed (zypper). openSUSE-Leap-16.0-500.' && [ "`count upd002w`" = 0 ] &&
   ok "zypper: needed security patches only; nothing said about automatic updates" || { bad "zypper"; cat "$W/out"; }
 

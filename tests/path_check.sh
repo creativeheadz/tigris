@@ -40,9 +40,9 @@ dave:x:1004:1004:Dave:$H/dave:/bin/sh
 FX
 echo "the test's passwd file" > "$W/fx/passwd.src"
 echo "$W/fx/passwd" > "$W/fx/pass.list"
-cat >> "$W/tigerrc" <<FX
-Tiger_PasswdFiles='$W/fx/pass.list'
-Tiger_Check_PATHALL=Y
+cat >> "$W/tigris.conf" <<FX
+Tigris_PasswdFiles='$W/fx/pass.list'
+Tigris_Check_PATHALL=Y
 FX
 
 ( cd "$W" && TIGERHOMEDIR=$W sh scripts/check_path ) 2>&1 |

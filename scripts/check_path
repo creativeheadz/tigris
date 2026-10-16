@@ -44,16 +44,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir="."
+TigrisInstallDir="."
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -78,7 +78,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK GEN_PASSWD_SETS GREP JOIN RM SED TR OUTPUTMETHOD || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars HOSTNAME || exit 1
@@ -104,12 +104,12 @@ checkcmds()
   _dir="$2"
   _srcfile="$3"
 
-  okown=$Tiger_ROOT_PATH_OK_Owners
-  [ "$_user" != 'root' ] && okown=$Tiger_PATH_OK_Owners
+  okown=$Tigris_ROOT_PATH_OK_Owners
+  [ "$_user" != 'root' ] && okown=$Tigris_PATH_OK_Owners
   [ ! -n "$okown" ] && okown='root'
 
-  okgroup=$Tiger_ROOT_PATH_OK_Group_Write
-  [ "$_user" != 'root' ] && okgroup=$Tiger_PATH_OK_Group_Write
+  okgroup=$Tigris_ROOT_PATH_OK_Group_Write
+  [ "$_user" != 'root' ] && okgroup=$Tigris_PATH_OK_Group_Write
 
   [ -d "`__here "$_dir"`" ] &&
   if [ -n "$TIGRIS_ROOT" ]; then rootls "$_dir"; else $LS -Ld $_dir/* 2>/dev/null; fi |
@@ -117,8 +117,8 @@ checkcmds()
   while read _execfile _owner _group ur uw ux gr gw gx or ow ox suid sgid stk
   do
     [ "$ux$gx$ox" != '000' ] && {
-      [ -n "$TigerCheckEmbedded" -a "$_user" = 'root' ] && {
-	echo "$_execfile /$_srcfile(PATH)" >> $TigerCheckEmbedded
+      [ -n "$TigrisCheckEmbedded" -a "$_user" = 'root' ] && {
+	echo "$_execfile /$_srcfile(PATH)" >> $TigrisCheckEmbedded
       }
       
       [ "$gw" = '1' ] && matchlist "$_group" "$okgroup" && gw=0
@@ -371,7 +371,7 @@ check_user()
 
   # A home on a filesystem that does not answer would hang here
   mount_alive "$dir" || {
-    message WARN path010w "" "Login ID $user home directory ($dir) is on a filesystem that did not answer within ${Tiger_Mount_Timeout:-5} seconds; its PATH was not checked."
+    message WARN path010w "" "Login ID $user home directory ($dir) is on a filesystem that did not answer within ${Tigris_Mount_Timeout:-5} seconds; its PATH was not checked."
     return
   }
 
@@ -404,8 +404,8 @@ environment=`__here /etc/environment` pamlogin=`__here /etc/pam.d/login`
 [ -r "$environment" ] && [ -r "$pamlogin" ] &&
   $GREP -q '^PATH=' "$environment" &&
   $GREP -q '^[^#]*pam_env\.so' "$pamlogin" && pamenvpath=Y
-[ -n "$Tiger_Global_PATH" ] && {
-  for file in $Tiger_Global_PATH
+[ -n "$Tigris_Global_PATH" ] && {
+  for file in $Tigris_Global_PATH
     do
       fh=`__here $file`
       [ -r "$fh" ] && {
@@ -434,12 +434,12 @@ environment=`__here /etc/environment` pamlogin=`__here /etc/pam.d/login`
 }
 
 {
-  if [ "$Tiger_Check_PATHALL" = 'Y' ]; then
+  if [ "$Tigris_Check_PATHALL" = 'Y' ]; then
     haveallcmds GEN_PASSWD_SETS &&
     haveallvars HOSTNAME && {
       {
-	if [ -n "$Tiger_PasswdFiles" ]; then
-	  [ -f "$Tiger_PasswdFiles" ] && $CAT "$Tiger_PasswdFiles" > $WORKDIR/pass.list.$$
+	if [ -n "$Tigris_PasswdFiles" ]; then
+	  [ -f "$Tigris_PasswdFiles" ] && $CAT "$Tigris_PasswdFiles" > $WORKDIR/pass.list.$$
 	else
 	  $GEN_PASSWD_SETS $WORKDIR/pass.list.$$
 	fi
@@ -465,7 +465,7 @@ environment=`__here /etc/environment` pamlogin=`__here /etc/pam.d/login`
 	    check_user $user $homedir
 	  }
 	done
-	[ ! -n "$Tiger_PasswdFiles" ] && delete $passwd_set $passwd_set.src
+	[ ! -n "$Tigris_PasswdFiles" ] && delete $passwd_set $passwd_set.src
 	delete $WORKDIR/home.hosts.$$
       done < $WORKDIR/pass.list.$$
 	delete $WORKDIR/pass.list.$$

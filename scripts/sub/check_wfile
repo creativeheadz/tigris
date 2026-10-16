@@ -20,7 +20,7 @@
 #
 # World-writable regular files, from the list the filesystem scan made
 # (find -type f -perm -o+w, or flogit). Under the system directories
-# Tiger_FSScan_DetailDirs names, one finding per file with its mode and
+# Tigris_FSScan_DetailDirs names, one finding per file with its mode and
 # owner and what reads it there: whoever can write a program or a
 # configuration file root reads, a page a web server serves or a queue a
 # daemon works decides what they do, and the sticky bit, which makes a
@@ -45,7 +45,7 @@ file="$1"
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK SORT LS || exit 1
   haveallfiles WORKDIR || exit 1
 
@@ -62,9 +62,9 @@ haveallvars WORKDIR || exit 1
 
 [ -s "$file" ] && {
   # The same split as find_files's dangling links and check_names's odd
-  # names: listed under the prefixes Tiger_FSScan_DetailDirs names,
+  # names: listed under the prefixes Tigris_FSScan_DetailDirs names,
   # counted per directory (two levels deep) elsewhere
-  $AWK -v detail="${Tiger_FSScan_DetailDirs-/etc|/bin|/sbin|/lib|/usr/bin|/usr/sbin|/usr/lib|/usr/local|/opt|/boot|/root|/var/lib|/var/spool|/srv}" '
+  $AWK -v detail="${Tigris_FSScan_DetailDirs-/etc|/bin|/sbin|/lib|/usr/bin|/usr/sbin|/usr/lib|/usr/local|/opt|/boot|/root|/var/lib|/var/spool|/srv}" '
     BEGIN { n = split(detail, prefix, "|") }
     {
       listed = (detail == "*")
@@ -101,7 +101,7 @@ haveallvars WORKDIR || exit 1
 	message FAIL fsys020f "$detail" "File $f is world writable (${1:-?}, owner ${2:-?})." ;;
       S)
 	n=${rest%% *}; dir=${rest#* }
-	message WARN fsys021w "" "$n world-writable files under $dir are not listed (see Tiger_FSScan_DetailDirs)." ;;
+	message WARN fsys021w "" "$n world-writable files under $dir are not listed (see Tigris_FSScan_DetailDirs)." ;;
     esac
   done
 }

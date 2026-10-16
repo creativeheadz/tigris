@@ -3,7 +3,7 @@
 # tests/report_text_check.sh - how a finding reads in the text report
 #
 # Calls message() itself, as a check does, and looks at the lines it
-# writes: wrapped at Tiger_Output_Width with every line after the first
+# writes: wrapped at Tigris_Output_Width with every line after the first
 # indented under the id, no line ending in a blank, a word too long for
 # a line kept beside the tag (it used to leave the tag alone on its line),
 # the detail on a line of its own, and backslashes in a file name written
@@ -25,7 +25,7 @@ TIGERHOMEDIR=$1; export TIGERHOMEDIR
 set --                      # config parses the command line; give it none
 . ./config >/dev/null 2>&1
 . ./initdefs
-Tiger_JSON_File=; Tiger_Output_Width=79
+Tigris_JSON_File=; Tigris_Output_Width=79
 long=/usr/lib/x86_64-linux-gnu/qt-default/qtchooser/a-very-long-directory-name-indeed/default.conf
 message WARN test001w "" "$long is a dangling symlink."
 message FAIL test002f "Detail on a line of its own, wrapped the same way when it is long enough to need it." "A message of several words that is long enough to wrap onto a second line of the report."
@@ -49,7 +49,7 @@ grep -q '^--FAIL-- \[test002f\] A message of several words' "$W/out" && grep -q 
   ok "the detail starts a line of its own" || bad "detail placement"
 grep -qF '/tmp/a\cb\nc and that is all.' "$W/out" && ok "backslashes in a name are written as they are" || bad "backslashes: `grep test003w -A1 "$W/out"`"
 
-# tigexp -f (tigris -E) takes the id from the first [...] after the level:
+# tigris-explain -f (tigris -E) takes the id from the first [...] after the level:
 # it took the last one, so a message holding brackets had no explanation
 printf -- '--ALERT-- [suid001a] The file /usr/bin/x [setuid] is new\n' > "$W/br.txt"
 # The HTML report: the text is data from the audited system, so a name
@@ -60,7 +60,7 @@ TIGERHOMEDIR=$1; export TIGERHOMEDIR
 set --
 . ./config >/dev/null 2>&1
 . ./initdefs
-Tiger_JSON_File=; HTML=Y
+Tigris_JSON_File=; HTML=Y
 message WARN test001w "" '/tmp/d<script>alert(1)</script>&"x" </PRE><LI><B><I>ALERT</I></B>'
 EOF
 sh "$W/html.sh" "$W" > "$W/html.out" 2>&1
@@ -77,25 +77,25 @@ TIGERHOMEDIR=$1; export TIGERHOMEDIR
 set --
 . ./config >/dev/null 2>&1
 . ./initdefs
-Tiger_JSON_File=; Tiger_Output_Width=0
+Tigris_JSON_File=; Tigris_Output_Width=0
 message WARN test001w "" "`printf '/tmp/b\r--ALERT-- [x] forged and /tmp/c\033[2K--ALERT-- [y] forged'` is odd."
 EOF
 sh "$W/ctl.sh" "$W" > "$W/ctl.out" 2>&1
 grep -q '/tmp/b?--ALERT-- \[x\] forged and /tmp/c?\[2K--ALERT--' "$W/ctl.out" &&
   ok "CR and ESC in a name are shown as ?" || { bad "control bytes"; cat -A "$W/ctl.out"; }
 
-# tigexp -F re-emits the report: a backslash-n in a name stays text
+# tigris-explain -F re-emits the report: a backslash-n in a name stays text
 # (read without -r folded the two backslashes, echo expanded the one)
 cat > "$W/forge.txt" <<'EOF'
 --WARN-- [fsys013w] /tmp/g\\n--ALERT-- [fsys005a] FORGED is a dangling symlink.
 EOF
-( cd "$W" && sh ./tigexp -F "$W/forge.txt" ) > "$W/forge.out" 2>&1
+( cd "$W" && sh ./tigris-explain -F "$W/forge.txt" ) > "$W/forge.out" 2>&1
 grep -q '^--ALERT-- \[fsys005a\] FORGED' "$W/forge.out" &&
-  bad "tigexp -F: a forged finding line" || ok "tigexp -F keeps a backslash-n in a name as text"
+  bad "tigris-explain -F: a forged finding line" || ok "tigris-explain -F keeps a backslash-n in a name as text"
 
-( cd "$W" && sh ./tigexp -f "$W/br.txt" ) > "$W/br.out" 2>&1
+( cd "$W" && sh ./tigris-explain -f "$W/br.txt" ) > "$W/br.out" 2>&1
 grep -q '^Message ID: suid001a$' "$W/br.out" && ! grep -q 'Can not find' "$W/br.out" &&
-  ok "an explanation is found for a message holding brackets" || { bad "tigexp -f with brackets"; cat "$W/br.out"; }
+  ok "an explanation is found for a message holding brackets" || { bad "tigris-explain -f with brackets"; cat "$W/br.out"; }
 
 [ $fail -eq 0 ] && echo "PASS" || { echo "--- out"; cat "$W/out"; }
 exit $fail

@@ -51,7 +51,7 @@ Description: Security auditor for Linux, descended from TIGER
  running, and per-finding compliance controls. It installs beside
  Debian's tiger under its own name and paths.
 EOF
-printf '/etc/tigris/tigerrc\n/etc/tigris/cronrc\n' > "$W/stage/DEBIAN/conffiles"
+printf '/etc/tigris/tigris.conf\n/etc/tigris/cronrc\n' > "$W/stage/DEBIAN/conffiles"
 
 DEB="$OUT/tigris_${VERSION}-1_${ARCH}.deb"
 dpkg-deb --root-owner-group -b "$W/stage" "$DEB" || exit 1

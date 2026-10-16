@@ -29,7 +29,7 @@ plain text, wrapped at about 72 columns. Lines indented in the text
 | `Category`   | yes      | One of the categories below.                                             |
 | `Check`      | yes      | The scripts that report it, separated by spaces, or `any` for the start-up messages every check carries (init002e). |
 | `Fix`        | no       | One line: what to do about it. Every ALERT, FAIL, WARN and ERROR id has one (`tests/explain_check.sh` insists); an INFO or CONFIG id that only confirms an arrangement has none. |
-| `References` | no       | Sources, separated by `; `: man pages, standards, books, a Tigris file (tigerrc, site-sample). Every id has some. |
+| `References` | no       | Sources, separated by `; `: man pages, standards, books, a Tigris file (tigris.conf, site-sample). Every id has some. |
 | `Controls`   | no       | The compliance controls the finding is evidence about: `CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5; CE Secure configuration` (CIS Controls v8 safeguards, NIST SP 800-53 Rev. 5, ISO/IEC 27001:2022 Annex A, UK Cyber Essentials themes; a framework with nothing is left out). Written by `util/mkcontrols` from [controls.map](controls.map); edit the map, not this line. ERROR and CONFIG ids have none. |
 
 Unknown keys are an error, so a typo does not go unnoticed.

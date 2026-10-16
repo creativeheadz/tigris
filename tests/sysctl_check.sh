@@ -59,10 +59,10 @@ build()
 
 run()
 {
-  # $1 = tree. The setting goes in the copy's tigerrc, which config exports
-  echo "Tiger_Sysctl_Root='$1'" >> "$W/tigerrc"
+  # $1 = tree. The setting goes in the copy's tigris.conf, which config exports
+  echo "Tigris_Sysctl_Root='$1'" >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh systems/Linux/2/check_sysctl 2>&1 )
-  sed -i '$d' "$W/tigerrc"
+  sed -i '$d' "$W/tigris.conf"
 }
 
 fail=0
@@ -105,7 +105,7 @@ printf 'net.ipv4.ip_forward = 1\nkernel/sysrq=1\n' > "$R/usr/lib/sysctl.d/50-ven
 printf 'net.ipv4.ip_forward=0\n' > "$R/etc/sysctl.d/50-vendor.conf"
 printf -- '-net.ipv4.conf.*.accept_redirects = 1\n; a comment\nkernel.randomize_va_space = 1\n' > "$R/etc/sysctl.d/60-local.conf"
 printf 'kernel.dmesg_restrict = 0\n' > "$R/etc/sysctl.conf"
-echo "Tiger_Show_INFO_Msgs=Y" >> "$W/tigerrc"
+echo "Tigris_Show_INFO_Msgs=Y" >> "$W/tigris.conf"
 for c in check_sysctl check_network_config
 do
   ( cd "$W" && TIGRIS_ROOT=$R TIGERHOMEDIR=$W sh systems/Linux/2/$c 2>&1 )

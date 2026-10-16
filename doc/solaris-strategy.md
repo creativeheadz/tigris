@@ -35,9 +35,9 @@ with the export rule from `doc/macos-strategy.md` unchanged
    `/etc/security/audit_control`, `/etc/default/passwd`,
    `/etc/ssh/sshd_config`, `/etc/ipf/ipf.conf`, SMF
    manifests where they are files, crontabs, `/var/adm/messages`.
-2. Live commands go through `Tiger_<Tool>_Cmd` overrides,
-   documented in both tigerrcs: `Tiger_Svcs_Cmd` for `svcs`
-   (service states), `Tiger_Pkg_Cmd` for `pkg list`
+2. Live commands go through `Tigris_<Tool>_Cmd` overrides,
+   documented in both tigris.confs: `Tigris_Svcs_Cmd` for `svcs`
+   (service states), `Tigris_Pkg_Cmd` for `pkg list`
    (inventory only). PATH shadowing stays forbidden.
 
 Candidate checks, in order: users and roles (uid 0 past root,

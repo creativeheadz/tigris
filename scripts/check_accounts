@@ -23,7 +23,7 @@
 # and .hushlogin files)
 #
 # 08/19/2019 jfs  Only complain for dormant accounts when the account
-#                 is not a system (uid greater than Tiger_Accounts_Trust)
+#                 is not a system (uid greater than Tigris_Accounts_Trust)
 #                 as proposed by Richard Laager in Ubuntu Bug 248858
 # 04/02/2018 jfs  Include suggestion provided by Arran Schlosberg to use
 #                 HEAD when checking for dormant accounts. This prevents
@@ -38,7 +38,7 @@
 #                 (Debian bug #312080)
 # 17/11/2004 jfs  Fixed eval in check_accounts so that find is _only_ 
 #                 executed for users which are not part of
-#                 Tiger_Admin_Accounts, this prevents Tiger from accesing
+#                 Tigris_Admin_Accounts, this prevents Tiger from accesing
 #                 filesystems when not needed  (Debian bug #280653)
 #                 It also should speed this check by removing unnecesary
 #                 filesystem checks.
@@ -57,7 +57,7 @@
 #            massaged it to work again (changed while read in function
 #            to explicit parameter calling). Also added a check to
 #            avoid going through all the filesystem if $home is not defined.
-# 09/19/2003 jfs  Add root to Tiger_Admin_Accounts if already defined.
+# 09/19/2003 jfs  Add root to Tigris_Admin_Accounts if already defined.
 #                 Also permit empty USERDOTFILES and fix dependancies.
 # 08/15/2003 jfs  ETCSHELLS is not indispensable to running this script.
 # 08/14/2003 jfs  Included ARSC changes including an update for Linux
@@ -85,7 +85,7 @@
 #
 # 07/25/2002 jfs Added a sanity check for password files
 #
-# 12/26/2001 jfs  Added Tiger_Accounts_Trust to define valid users which will
+# 12/26/2001 jfs  Added Tigris_Accounts_Trust to define valid users which will
 #		not be so thoroughly checked. Useful for UN*X systems that
 #		ship with a default number of administrative (but disabled) users 
 #		for services/files (like Debian GNU/Linux)
@@ -109,16 +109,16 @@
 #  cases or provide a way to define $NOSHELL in order to exclude these.
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -146,7 +146,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT CHECK_CRON FIND GEN_PASSWD_SETS GREP JOIN SORT MV LS TR HEAD WC RM || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars HOSTNAME TESTEXEC || exit 1
@@ -168,16 +168,16 @@ trap 'delete $WORKDIR/pass.list.$$ $WORKDIR/home.hosts.$$ ; exit 1' 1 2 3 15
 
 
 # Just in case: sanity check
-# If Not defined Tiger_Accounts_Trust then it's the lowest
+# If Not defined Tigris_Accounts_Trust then it's the lowest
 # possible to assure that -lt checks will be always false
-[ -z "$Tiger_Accounts_Trust" ] && Tiger_Accounts_Trust=-1
+[ -z "$Tigris_Accounts_Trust" ] && Tigris_Accounts_Trust=-1
 # If not defined we disable this check
-[ -z "$Tiger_Dormant_Limit" ] && Tiger_Dormant_Limit=0
-if [ -z "$Tiger_Admin_Accounts" ] 
+[ -z "$Tigris_Dormant_Limit" ] && Tigris_Dormant_Limit=0
+if [ -z "$Tigris_Admin_Accounts" ] 
 then
-	Tiger_Admin_Accounts="root"
+	Tigris_Admin_Accounts="root"
 else
-	Tiger_Admin_Accounts="$Tiger_Admin_Accounts|root"
+	Tigris_Admin_Accounts="$Tigris_Admin_Accounts|root"
 fi
 
 #
@@ -220,7 +220,7 @@ check_users()
      # mount whose server is down) would hang every test below. Ask
      # first, say so once, and move on.
      mount_alive "$home" || {
-       message WARN acc025w "" "Login ID $user home directory ($home) is on a filesystem that did not answer within ${Tiger_Mount_Timeout:-5} seconds; its checks were skipped."
+       message WARN acc025w "" "Login ID $user home directory ($home) is on a filesystem that did not answer within ${Tigris_Mount_Timeout:-5} seconds; its checks were skipped."
        continue
      }
 
@@ -241,7 +241,7 @@ check_users()
      # it is in that root.)
      h=`__here "$home"`
      [ ! -d "$h/" ] && {
-       [ -n "$uid" ] && [ $Tiger_Accounts_Trust -lt $uid ] && [ "$host" = "$HOSTNAME" ] && {
+       [ -n "$uid" ] && [ $Tigris_Accounts_Trust -lt $uid ] && [ "$host" = "$HOSTNAME" ] && {
          message WARN acc022w "" "Login ID $user home directory ($home) is not accessible."
        }
        continue
@@ -283,11 +283,11 @@ check_users()
      }
 
      # Check permissions on the parent home directory
-     [ -n "$uid" ] && [ $uid -gt $Tiger_Accounts_Trust ] && {
+     [ -n "$uid" ] && [ $uid -gt $Tigris_Accounts_Trust ] && {
        getpermit ${home%/*}/ | {
          read _f owner group ur uw ux gr gw gx or ow ox suid sgid sticky
 
-	 matchlist "$owner" "$Tiger_Admin_Accounts" ||
+	 matchlist "$owner" "$Tigris_Admin_Accounts" ||
 	   message WARN acc023w "" "Login ID $user's parent directory (${home%/*}) has non-administrative \`$owner' ownership."
 
          [ "${gw}${ow}" != '00' ] && {
@@ -306,9 +306,9 @@ check_users()
      }
 
      # Dormant account check.
-     [ "$home" != / -a -n "$home" -a "$Tiger_Dormant_Limit" != 0 -a $uid -gt $Tiger_Accounts_Trust ] && {
-       if ! matchlist "$user" "$Tiger_Admin_Accounts"; then
-         [ `$FIND "$h/" -mtime -$Tiger_Dormant_Limit 2>/dev/null | $HEAD -n 1 | $WC -l` -eq 0 ] &&
+     [ "$home" != / -a -n "$home" -a "$Tigris_Dormant_Limit" != 0 -a $uid -gt $Tigris_Accounts_Trust ] && {
+       if ! matchlist "$user" "$Tigris_Admin_Accounts"; then
+         [ `$FIND "$h/" -mtime -$Tigris_Dormant_Limit 2>/dev/null | $HEAD -n 1 | $WC -l` -eq 0 ] &&
            message WARN acc021w "" "Login ID $user appears to be a dormant account."
        fi
      }
@@ -325,7 +325,7 @@ check_users()
      # A secure approach has to be determined for this to work properly.
 
      [ -z "$shell" ] && shell=/bin/sh
-     test $TESTEXEC "`__here $shell`" && [ -n "$uid" ] && [ $uid -gt $Tiger_Accounts_Trust ] && {
+     test $TESTEXEC "`__here $shell`" && [ -n "$uid" ] && [ $uid -gt $Tigris_Accounts_Trust ] && {
        rc=`__here "${home}/.${shell##*/}rc"`
        # a shell /etc/shells lists is expected to have its rc file; invalid
        # shells are check_passwd's. Compared line for line as text: the
@@ -384,8 +384,8 @@ shells="/bin/sh$__nl/bin/csh$__nl/bin/bash$__nl/bin/tcsh$__nl/bin/ksh"
   shells=`$AWK '/^[ \t]*#/ { next } NF { print $1 }' "\`__here $ETCSHELLS\`"`
 }
 
-if [ -n "$Tiger_PasswdFiles" ]; then
-  [ -f $Tiger_PasswdFiles ] && $CAT "$Tiger_PasswdFiles" > $WORKDIR/pass.list.$$
+if [ -n "$Tigris_PasswdFiles" ]; then
+  [ -f $Tigris_PasswdFiles ] && $CAT "$Tigris_PasswdFiles" > $WORKDIR/pass.list.$$
 else
   $GEN_PASSWD_SETS $WORKDIR/pass.list.$$
 fi
@@ -410,7 +410,7 @@ do
   $JOIN -t: -o 1.1 1.6 2.3 1.7 1.3 1.2 $WORKDIR/passwd.set.$$ $WORKDIR/home.hosts.$$ |
   check_users
 
-  [ ! -n "$Tiger_PasswdFiles" ] && delete $passwd_set $passwd_set.src
+  [ ! -n "$Tigris_PasswdFiles" ] && delete $passwd_set $passwd_set.src
   delete "$WORKDIR/home.hosts.$$" "$WORKDIR/passwd.set.$$"
 done < $WORKDIR/pass.list.$$
 

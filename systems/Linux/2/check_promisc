@@ -22,7 +22,7 @@
 #
 # 10/09/2026 - Initial version. The flag comes from
 #             /sys/class/net/IFACE/flags (bit 0x100), read as hex so no
-#             tool beyond cat is needed; Tiger_Sysctl_Root prefixes /sys
+#             tool beyond cat is needed; Tigris_Sysctl_Root prefixes /sys
 #             for the tests.
 #
 # References:
@@ -34,16 +34,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -68,7 +68,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT LS || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -80,7 +80,7 @@ done
 
 haveallcmds AWK CAT LS || exit 1
 
-net="${Tiger_Sysctl_Root:-}/sys/class/net"
+net="${Tigris_Sysctl_Root:-}/sys/class/net"
 # Without sysfs (a bare container) there are no interfaces to judge
 [ -d "$net" ] || exit 0
 

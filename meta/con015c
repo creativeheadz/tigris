@@ -8,6 +8,6 @@ References: tigris(8)
 The configuration file listed was not read because someone other than
 root, the user running Tigris or the owner of Tigris's own files owns
 it. Tigris runs its configuration files as shell code, as the user
-running it, so a ./site or ./tigerrc that another user left in the
+running it, so a ./site or ./tigris.conf that another user left in the
 directory Tigris was started from would otherwise run their commands
 as root.

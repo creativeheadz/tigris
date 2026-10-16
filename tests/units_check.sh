@@ -3,7 +3,7 @@
 # tests/units_check.sh - check_units against enabled units of its own
 #
 # The enabled units are links in *.wants directories under
-# Tiger_Sysctl_Root; systemctl is a script (Tiger_Systemctl_Cmd) that
+# Tigris_Sysctl_Root; systemctl is a script (Tigris_Systemctl_Cmd) that
 # answers "cat" with prepared text, laid out as systemctl cat lays it out.
 # Units whose permissions are tested name files under the test's own
 # directory; the ones that test where a unit comes from name the usual
@@ -16,7 +16,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -115,8 +115,8 @@ ExecStart=/bin/true
 EOF
 printf '#!/bin/sh\n[ "$1" = cat ] && [ "$2" = --no-pager ] && [ -f "%s/$3" ] && exec cat "%s/$3"\nexit 1\n' "$C" "$C" > "$W/sc"
 
-cp "$W/tigerrc.base" "$W/tigerrc"
-{ echo "Tiger_Sysctl_Root='$r'"; echo "Tiger_Systemctl_Cmd='sh $W/sc'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+{ echo "Tigris_Sysctl_Root='$r'"; echo "Tigris_Systemctl_Cmd='sh $W/sc'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_units ) 2>&1 |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
@@ -165,7 +165,7 @@ if :; then
   mkdir -p "$W/hostunit"; printf '[Service]\nExecStart=/opt/foo/run --host\n' > "$W/hostunit/bar.service"
   ln -s "$W/hostunit/bar.service" "$R/etc/systemd/system/bar.service"
   ln -s /etc/systemd/system/bar.service "$R/etc/systemd/system/multi-user.target.wants/bar.service"
-  cp "$W/tigerrc.base" "$W/tigerrc"; echo "Tiger_Show_INFO_Msgs=Y" >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"; echo "Tigris_Show_INFO_Msgs=Y" >> "$W/tigris.conf"
   ( cd "$W" && TIGRIS_ROOT=$R TIGERHOMEDIR=$W sh ./systems/Linux/2/check_units ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"

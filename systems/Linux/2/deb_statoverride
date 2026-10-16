@@ -25,7 +25,7 @@
 #                 (crontab, dbus-daemon-launch-helper, /etc/ssl/private)
 #                 and administrators set: those entries are compared with
 #                 the files. An entry whose file is gone is left alone.
-#                 Tiger_Deb_StatOverride_Cmd replaces the dpkg-statoverride
+#                 Tigris_Deb_StatOverride_Cmd replaces the dpkg-statoverride
 #                 call, so the tests can feed a list of their own.
 # 10/07/2026 atrimbitas - An offline root (--root): its own list, through
 #                 --admindir, its files through rootfile, and the names of
@@ -35,16 +35,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -70,7 +70,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK SED || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -82,7 +82,7 @@ done
 
 haveallcmds AWK GREP SED || exit 1
 
-so_cmd=${Tiger_Deb_StatOverride_Cmd:-}
+so_cmd=${Tigris_Deb_StatOverride_Cmd:-}
 if [ -z "$so_cmd" ]; then
   # dpkg-statoverride sits next to dpkg; without it there is nothing to read
   so=${DPKG%/*}/dpkg-statoverride
@@ -94,7 +94,7 @@ fi
 # went into the command line unquoted, so a link's target could add
 # options, and dpkg-statoverride followed the root's links onto this host)
 sofile=
-[ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Deb_StatOverride_Cmd" ] && {
+[ -n "$TIGRIS_ROOT" ] && [ -z "$Tigris_Deb_StatOverride_Cmd" ] && {
   sofile=`rootfile /var/lib/dpkg/statoverride`
   [ -f "$sofile" ] || exit 0
 }

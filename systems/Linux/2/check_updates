@@ -35,8 +35,8 @@
 #                 kernel's modules are gone, or (dnf) the newest kernel-core
 #                 installed is not the one running. In a container there is
 #                 no kernel to reboot.
-#                 Tiger_Sysctl_Root prefixes the files; Tiger_Updates_Manager
-#                 and the Tiger_*_Cmd settings below replace the commands,
+#                 Tigris_Sysctl_Root prefixes the files; Tigris_Updates_Manager
+#                 and the Tigris_*_Cmd settings below replace the commands,
 #                 for the tests.
 # 10/07/2026 atrimbitas - An offline root (--root): the package manager is
 #                 pointed at its databases and configuration (dnf
@@ -52,16 +52,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -87,7 +87,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT GREP LS SED SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -99,7 +99,7 @@ done
 
 haveallcmds AWK CAT GREP LS SED SORT || exit 1
 
-root=${Tiger_Sysctl_Root:-}
+root=${Tigris_Sysctl_Root:-}
 
 findtool()
 {
@@ -111,7 +111,7 @@ findtool()
 }
 
 # Which package manager to ask
-mgr=${Tiger_Updates_Manager:-}
+mgr=${Tigris_Updates_Manager:-}
 if [ -z "$mgr" ]; then
   case "$LXPKGMGR" in
     dpkg) findtool apt-get >/dev/null && mgr=apt ;;
@@ -153,7 +153,7 @@ if [ "$container" = N ] && [ -z "$TIGRIS_ROOT" ]; then
        [ -n "`$LS "$root/lib/modules" 2>/dev/null`" ]; then
     why="the running kernel, $running, has no modules in /lib/modules any more: its package was upgraded"
   elif [ "$mgr" = dnf ] && [ -n "$running" ]; then
-    cmd=${Tiger_Rpm_Kernel_Cmd:-}
+    cmd=${Tigris_Rpm_Kernel_Cmd:-}
     [ -z "$cmd" ] && r=`findtool rpm` && cmd="$r -q --last kernel-core"
     newest=`$cmd 2>/dev/null | $AWK 'NR == 1 && $1 ~ /^kernel-core-/ { sub(/^kernel-core-/, "", $1); print $1 }'`
     [ -n "$newest" ] && [ "$newest" != "$running" ] && why="kernel $newest was installed last, and $running is running"
@@ -188,9 +188,9 @@ rootlinks()
 case "$mgr" in
   apt)
     lists=`rootfile /var/lib/apt/lists`
-    cmd=${Tiger_Apt_Simulate_Cmd:-}
+    cmd=${Tigris_Apt_Simulate_Cmd:-}
     [ -z "$cmd" ] && a=`findtool apt-get` && cmd="$a -s -o Debug::NoLocking=1 dist-upgrade"
-    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Apt_Simulate_Cmd" ]; then
+    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tigris_Apt_Simulate_Cmd" ]; then
       # apt reads none of the root's configuration: an apt.conf.d can name
       # programs apt runs (a compressor for its lists, a hook), and they
       # ran on this host, as root, until October 2026. Nor this host's.
@@ -258,16 +258,16 @@ APTCONF
   dnf)
     # what dnf writes in an offline root (rpm's lock; dnf 4's logs and
     # cache lock) must stay in it
-    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Dnf_Security_Cmd" ] &&
+    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tigris_Dnf_Security_Cmd" ] &&
        ! rootnolinks /var/lib/rpm /usr/lib/sysimage/rpm /var/cache/dnf /var/cache/libdnf5 /var/log; then
       unknown="dnf was not asked: it writes in the root, and a symbolic link where it writes could take that onto this host"
     else
-      cmd=${Tiger_Dnf_Security_Cmd:-}
+      cmd=${Tigris_Dnf_Security_Cmd:-}
       [ -z "$cmd" ] && d=`findtool dnf` && cmd="$d -C -q${TIGRIS_ROOT:+ --installroot=$TIGRIS_ROOT} updateinfo list --security"
       # dnf5 writes its log where it is told, outside the root; dnf 4 would
       # put that directory inside the root, so it keeps its own (and cannot
       # answer when the root is mounted read-only)
-      if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Dnf_Security_Cmd" ] && $d --version 2>/dev/null | $GREP -q '^dnf5'; then
+      if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tigris_Dnf_Security_Cmd" ] && $d --version 2>/dev/null | $GREP -q '^dnf5'; then
         tooldir=$WORKDIR/updtool.$$
         mkdir -m 700 "$tooldir" && cmd="$cmd --setopt=logdir=$tooldir"
       fi
@@ -317,14 +317,14 @@ APTCONF
   zypper)
     # what libzypp writes in an offline root (its caches, rpm's lock) must
     # stay in it; its own lock and log are kept out below
-    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Zypper_Security_Cmd" ] &&
+    if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tigris_Zypper_Security_Cmd" ] &&
        ! rootnolinks /var/lib/rpm /usr/lib/sysimage/rpm /var/cache/zypp /var/lib/zypp; then
       unknown="zypper was not asked: it writes in the root, and a symbolic link where it writes could take that onto this host"
     else
-      cmd=${Tiger_Zypper_Security_Cmd:-}
+      cmd=${Tigris_Zypper_Security_Cmd:-}
       [ -z "$cmd" ] && z=`findtool zypper` && cmd="$z --non-interactive --no-refresh${TIGRIS_ROOT:+ --root $TIGRIS_ROOT} --xmlout list-patches --category security"
       # libzypp's lock and log, which it would write in the root, kept out
-      if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_Zypper_Security_Cmd" ]; then
+      if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tigris_Zypper_Security_Cmd" ]; then
         tooldir=$WORKDIR/updtool.$$
         mkdir -m 700 "$tooldir" && {
           ZYPP_LOCKFILE_ROOT=$tooldir ZYPP_LOGFILE=$tooldir/zypper.log
@@ -369,9 +369,9 @@ case "$mgr" in
   apt)
     auto=N
     if [ -f "`rootfile /usr/bin/unattended-upgrade`" ] && timer_on apt-daily-upgrade; then
-      cmd=${Tiger_AptConfig_Cmd:-}
+      cmd=${Tigris_AptConfig_Cmd:-}
       [ -z "$cmd" ] && c=`findtool apt-config` && cmd="$c dump"
-      if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_AptConfig_Cmd" ]; then
+      if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tigris_AptConfig_Cmd" ]; then
         # the root's apt.conf.d, read as text, in apt's order (its own
         # apt-config would parse it here, #include and all)
         v=`{ rootls /etc/apt/apt.conf.d 2>/dev/null | $AWK -F/ '$NF ~ /^[A-Za-z0-9_.-]+$/ && $NF !~ /\.(dpkg-[a-z]+|ucf-[a-z]+|disabled|bak|orig|save)$/' | $SORT

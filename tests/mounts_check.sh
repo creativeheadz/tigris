@@ -6,7 +6,7 @@
 # touches it. Feeds gen_mounts a mount table and a probe that hangs on one
 # mount point, and checks that the scan list leaves that mount and the
 # network filesystems out, says so, and does not wait for it. Then runs
-# check_accounts and check_path (every user, Tiger_Check_PATHALL=Y) over a
+# check_accounts and check_path (every user, Tigris_Check_PATHALL=Y) over a
 # passwd file with one home on the hanging mount and checks that only that
 # account is skipped, with a message. Then runs the file system scan over
 # mount points whose names eval would misread. Needs no root and touches
@@ -53,7 +53,7 @@ chmod +x "$W/fx/mount" "$W/fx/probe"
 # 1. gen_mounts, as the filesystem scan calls it
 start=`date +%s`
 GETFS="$W/fx/mount" TIMEOUT="$TIMEOUT" DF=/bin/df \
-  Tiger_Mount_Probe_Cmd="$W/fx/probe" Tiger_Mount_Timeout=1 Tiger_FSScan_WarnUnknown=Y \
+  Tigris_Mount_Probe_Cmd="$W/fx/probe" Tigris_Mount_Timeout=1 Tigris_FSScan_WarnUnknown=Y \
   sh "$W/systems/Linux/2/gen_mounts" local all > "$W/mounts.out" 2> "$W/mounts.err"
 took=`expr \`date +%s\` - $start`
 
@@ -75,11 +75,11 @@ bob:x:1002:1002:Bob:$W/fx/home/bob:/bin/sh
 FX
 echo "the test's passwd file" > "$W/fx/passwd.src"
 echo "$W/fx/passwd" > "$W/fx/pass.list"
-cat >> "$W/tigerrc" <<FX
-Tiger_PasswdFiles='$W/fx/pass.list'
-Tiger_Mount_Probe_Cmd='$W/fx/probe'
-Tiger_Mount_Timeout=1
-Tiger_Check_PATHALL=Y
+cat >> "$W/tigris.conf" <<FX
+Tigris_PasswdFiles='$W/fx/pass.list'
+Tigris_Mount_Probe_Cmd='$W/fx/probe'
+Tigris_Mount_Timeout=1
+Tigris_Check_PATHALL=Y
 FX
 
 for check in check_accounts check_path
@@ -109,12 +109,12 @@ mkdir -p "$W/fx/it's/..." "$W/fx/cost\$HOME/..."
   echo TABLE
 } > "$W/fx/mount2"
 chmod +x "$W/fx/mount2"
-cp "$W/tigerrc" "$W/tigerrc.scan"
-cat >> "$W/tigerrc" <<FX
-Tiger_Mounts_Cmd='$W/fx/mount2'
-Tiger_FSScan_ofNote=Y
-Tiger_FSScan_DetailDirs='*'
-Tiger_FSScan_PruneDirs=''
+cp "$W/tigris.conf" "$W/tigris.conf.scan"
+cat >> "$W/tigris.conf" <<FX
+Tigris_Mounts_Cmd='$W/fx/mount2'
+Tigris_FSScan_ofNote=Y
+Tigris_FSScan_DetailDirs='*'
+Tigris_FSScan_PruneDirs=''
 FX
 # (_TIGER_RUN as tiger sets it: else each sub/ check's cleanup deletes the
 # others' messages)
@@ -123,7 +123,7 @@ grep -qF "$W/fx/it's/..." "$W/scan.out" &&
   ok "a mount point with a quote in its name is scanned" || { bad "the quoted mount point was not scanned"; sed 's/^/     /' "$W/scan.out"; }
 grep -qF "$W/fx/cost\$HOME/..." "$W/scan.out" &&
   ok "a mount point with \$HOME in its name is scanned as named" || { bad "the \$HOME mount point was not scanned"; sed 's/^/     /' "$W/scan.out"; }
-cp "$W/tigerrc.scan" "$W/tigerrc"
+cp "$W/tigris.conf.scan" "$W/tigris.conf"
 else
   echo "ok   (no GNU find here: the scan of odd mount point names is not tested)"
 fi

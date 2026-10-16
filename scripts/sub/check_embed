@@ -30,9 +30,9 @@
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -56,7 +56,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT FMT GEN_PASSWD_SETS JOIN LS RM || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME
@@ -96,7 +96,7 @@ check_file()
   l='w'
   [ "x$__level" = "xINFO" ] && l='i'
 
-  okowner=$Tiger_Embedded_OK_Owners
+  okowner=$Tigris_Embedded_OK_Owners
   [ ! -n "$okowner" ] && okowner='root'
 
   lgetpermit "$__fcmd" |
@@ -111,7 +111,7 @@ check_file()
       showwhere "$__where"
     }
 
-    [ "$gw" = '1' ] && matchlist "$__group" "$Tiger_Embedded_OK_Group_Write" && gw=0
+    [ "$gw" = '1' ] && matchlist "$__group" "$Tigris_Embedded_OK_Group_Write" && gw=0
       
     case "$gw$ow" in
       00) __what="";;
@@ -142,15 +142,15 @@ $AWK '{print $1}' $oldfile > $record
 depth=1
 maxdepth=9999
 
-[ -n "$Tiger_Embed_Max_Depth" -a $Tiger_Embed_Max_Depth -gt 0 ] && {
-  maxdepth=$Tiger_Embed_Max_Depth
+[ -n "$Tigris_Embed_Max_Depth" -a $Tigris_Embed_Max_Depth -gt 0 ] && {
+  maxdepth=$Tigris_Embed_Max_Depth
 }
 
 [ ! -n "$EXPR" ] && maxdepth=0
 
 info=Y
 
-[ "x$Tiger_Embed_Report_Exec_Only" = 'xY' ] && {
+[ "x$Tigris_Embed_Report_Exec_Only" = 'xY' ] && {
   info=N
 }
 
@@ -201,7 +201,7 @@ do
     elif [ -f "$herepath" ]; then
       if [ ! -s "$herepath" ]; then
 	:  # Zero length file... the only reason for this is to skip sockets
-      elif [ "x$Tiger_Embed_Check_Exec_Only" != 'xN' ]; then
+      elif [ "x$Tigris_Embed_Check_Exec_Only" != 'xN' ]; then
 	getpermit "$pathname" | {
 	  read _f owner grp ur uw ux gr gw gx or ow ox suid sgid stk
 	  if [ "$ux$gx$ox" != '000' ]; then

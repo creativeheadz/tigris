@@ -31,11 +31,11 @@
 # 08/13/2003 - jfs - Respect the AIDE override (if done) in the site
 #              configuration file.
 # 08/09/2003 - jfs - Minor fixes and removed bashisms. Renamed messages to
-#               either 'info', 'warn' or 'fail' and moved from Tiger_Run_AIDE
-#               to Tiger_AIDE namespace.
+#               either 'info', 'warn' or 'fail' and moved from Tigris_Run_AIDE
+#               to Tigris_AIDE namespace.
 # 05/05/2003 - jfs
 #	Fixed integrity checks (commands)
-#	Moved namespace of variables to Tiger_Aide
+#	Moved namespace of variables to Tigris_Aide
 #	Added some more TODOs
 #	Converted direct calls to grep, cut, tr to $GREP...
 #
@@ -45,16 +45,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -80,7 +80,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds CUT GREP TR RM || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME
@@ -96,27 +96,27 @@ haveallcmds CUT GREP TR RM || exit 1
 haveallfiles BASEDIR WORKDIR || exit 1
 
 # TODO
-# - Toggle verbose reporting using Tiger_AIDE_VERBOSE=1
+# - Toggle verbose reporting using Tigris_AIDE_VERBOSE=1
 # - User input custom aide location (pref from read-only media)
-#   Proposed user input var (tigerrc): Tiger_AIDE_LOC_OVERRIDE
+#   Proposed user input var (tigris.conf): Tigris_AIDE_LOC_OVERRIDE
 # - User input custom aide config(s) (pref from read-only media)
-#   Proposed user input var (tigerrc): Tiger_AIDE_CFG_OVERRIDE
+#   Proposed user input var (tigris.conf): Tigris_AIDE_CFG_OVERRIDE
 # - User input custom db (pref from read-only media)
-#   Proposed user input var (tigerrc): Tiger_AIDE_DB_OVERRIDE
+#   Proposed user input var (tigris.conf): Tigris_AIDE_DB_OVERRIDE
 # - Expand with Integrit, Osiris and Prelude.
 
 # For all of the below commands to fill in the gaps I'm thinking 
 # "how portable is this?"...
 
 # Aide binary location|override + default check
-# Which, find, user-supplied var or tigexp's findcmd?:
+# Which, find, user-supplied var or tigris-explain's findcmd?:
 if [ -z "$AIDE" ]
 then
-if [ -z "${Tiger_AIDE_LOC_OVERRIDE}" ]
+if [ -z "${Tigris_AIDE_LOC_OVERRIDE}" ]
 then 
 	AIDE=`command -v aide`
 else 
-	AIDE=${Tiger_AIDE_LOC_OVERRIDE}
+	AIDE=${Tigris_AIDE_LOC_OVERRIDE}
 fi
 fi
 
@@ -127,17 +127,17 @@ case "${#AIDE}" in 0) AIDE="/usr/local/bin/aide";; esac
 haveallcmds AIDE || exit 1
 
 # Aide configuration file location|override + default check
-if [ -z "${Tiger_AIDE_CFG_OVERRIDE}" ]; 
+if [ -z "${Tigris_AIDE_CFG_OVERRIDE}" ]; 
 then AIDE_CFG=`$AIDE -v 2>&1| $GREP -e "^CONFIG_FILE" | $CUT -d " " -f 3| $TR -d "\""`
-else AIDE_CFG=${Tiger_AIDE_CFG_OVERRIDE}
+else AIDE_CFG=${Tigris_AIDE_CFG_OVERRIDE}
 fi
 
 # Aide default configuration file, not using "eval" or "[ -z|-f":
 case "${#AIDE_CFG}" in 0) AIDE_CFG="/usr/local/etc/aide.conf";; esac
 
 # Aide database override, else this variable is taken from the configuration file of course
-if [ ! -z "${Tiger_AIDE_DB_OVERRIDE}" ]; 
-then AIDE_DB="--after=database=file:${Tiger_AIDE_DB_OVERRIDE}"
+if [ ! -z "${Tigris_AIDE_DB_OVERRIDE}" ]; 
+then AIDE_DB="--after=database=file:${Tigris_AIDE_DB_OVERRIDE}"
 fi
 
 # Run Aide using std conf, report to stdout

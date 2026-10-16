@@ -62,16 +62,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -96,7 +96,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK BASENAME CAT GEN_CRON_FILES LS MV RM TR SED GREP OUTPUTMETHOD || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   
@@ -203,8 +203,8 @@ lowner=
         cmd="`echo \"$run\" | $AWK '{print $2}'`" ;;
     esac
 
-    [ -n "$TigerCheckEmbedded" ] && [ -f "`__here \"$cmd\"`" ] && [ "$owner" = 'root' ] && {
-      echo "$cmd root.crontab" >> $TigerCheckEmbedded
+    [ -n "$TigrisCheckEmbedded" ] && [ -f "`__here \"$cmd\"`" ] && [ "$owner" = 'root' ] && {
+      echo "$cmd root.crontab" >> $TigrisCheckEmbedded
     }
     # cron runs each job with /bin/sh: its builtins and keywords need no path
     # (command -v X, which sysstat's entry starts with, only looks X up)

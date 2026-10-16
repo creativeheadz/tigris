@@ -37,7 +37,7 @@
 #     Modified script so that it does not FAIL on services which are 
 #     already duplicated in the OS service file.
 # check_inetd - 05/27/2002 - jfs
-#     Changed TigerInstallDir to .
+#     Changed TigrisInstallDir to .
 # check_inetd - 12/13/01 - jfs
 #     Fixes to avoid false positives 
 # check_inetd - 04/20/99
@@ -48,16 +48,16 @@
 # Tigris: offline
 #   the root's /etc/services against the reference list.
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -80,7 +80,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds SED AWK CAT GEN_SERVICES_SETS GREP JOIN SORT RM OUTPUTMETHOD || exit 1
   haveallfiles BASEDIR WORKDIR SERVICESFILE || exit 1
   

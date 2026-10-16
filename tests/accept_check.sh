@@ -31,10 +31,10 @@ A="$W/tigris-accept"
 [ `grep -vc '^#' "$W/tigris.accepted"` -eq 3 ] && ok "three entries in tigris.accepted" || bad "entries: `cat "$W/tigris.accepted"`"
 
 {
-  echo "Tiger_Sysctl_Root='$W/bad'"
-  echo "Tiger_JSON_File='$W/out.jsonl'"
-  echo "Tiger_Accepted_Log='$W/accepted.log'"
-} >> "$W/tigerrc"
+  echo "Tigris_Sysctl_Root='$W/bad'"
+  echo "Tigris_JSON_File='$W/out.jsonl'"
+  echo "Tigris_Accepted_Log='$W/accepted.log'"
+} >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh systems/Linux/2/check_sysctl 2>&1 ) > "$W/out.txt"
 
 grep -q 'lin020w' "$W/out.txt" && bad "accepted lin020w still in the text" || ok "accepted finding left out of the text"

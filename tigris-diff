@@ -156,7 +156,7 @@ END {
     for (i = 1; i <= nold; i++) if (substr(oldorder[i], index(oldorder[i], "\t") + 1, 4) == "fsys") { delete old[oldorder[i]]; oldorder[i] = "" }
     for (i = 1; i <= nnew; i++) if (substr(neworder[i], index(neworder[i], "\t") + 1, 4) == "fsys") { delete new[neworder[i]]; neworder[i] = "" }
   }
-  # a profile on top of the tigerrc counts as part of the configuration
+  # a profile on top of the tigris.conf counts as part of the configuration
   for (r = 1; r <= 2; r++) {
     c = jtext(run[r], "config"); p = jtext(run[r], "profile"); o = jtext(run[r], "root")
     cfg[r] = c "|" p "|" o; show[r] = (c == "" ? "?" : c) (p == "" ? "" : " with profile " p) (o == "" ? "" : " of " o)

@@ -17,7 +17,7 @@ the OS name), release from `$3`, architecture from `$NF`:
         printf("FreeBSD %s %s\n", $3, $NF);
     }
 
-`Tiger_Uname_Cmd` points `uname` at a stub, the way every other
+`Tigris_Uname_Cmd` points `uname` at a stub, the way every other
 tool override does; the BSD suites prove recognition through it.
 Without this, no BSD tree resolves and every BSD check is dead.
 
@@ -37,12 +37,12 @@ Linux-shape one with the portable tools located and exported
 1. Files go through `TIGRIS_ROOT` unchanged: `/etc/rc.conf`
    (`KEY=value`, the whole rc model in one file),
    `/etc/newsyslog.conf`, `/etc/pf.conf`, crontabs, periodic.
-2. Live commands go through `Tiger_<Tool>_Cmd` overrides,
-   documented in both tigerrcs: `Tiger_Service_Cmd` for
-   `service -e` (what is enabled), `Tiger_Pfctl_Cmd` for pf
+2. Live commands go through `Tigris_<Tool>_Cmd` overrides,
+   documented in both tigris.confs: `Tigris_Service_Cmd` for
+   `service -e` (what is enabled), `Tigris_Pfctl_Cmd` for pf
    (the SAME variable the macOS check uses: one stub shape,
-   two platforms), `Tiger_Ipfw_Cmd` for `ipfw show`,
-   `Tiger_Pkg_Cmd` for `pkg info`. PATH shadowing stays
+   two platforms), `Tigris_Ipfw_Cmd` for `ipfw show`,
+   `Tigris_Pkg_Cmd` for `pkg info`. PATH shadowing stays
    forbidden: `config` resets PATH on BSD too.
 
 ## Deliberate cuts

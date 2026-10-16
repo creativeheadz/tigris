@@ -45,11 +45,11 @@ run "$T" "$W/out"
 empty "$W/out" &&
   ok "wheel and staff: silent" || { bad "tight noisy"; cat "$W/out"; }
 
-echo "Tiger_Dscl_Cmd='$W/tests/fixtures/macos/dscl-stub'" >> "$W/tigerrc"
+echo "Tigris_Dscl_Cmd='$W/tests/fixtures/macos/dscl-stub'" >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/MacOSX/default/check_group ) 2>&1 |
 awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
 tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out" || true
-sed -i '$d' "$W/tigerrc"
+sed -i '$d' "$W/tigris.conf"
 empty "$W/out" &&
   ok "dscl stub wheel and staff: silent" || { bad "live noisy"; cat "$W/out"; }
 

@@ -53,11 +53,11 @@ if [ "$uid" = 0 ]; then
 fi
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
-  echo 'Tiger_Check_FILESYSTEM=Y'
-  for s in Setuid Setgid Devs SymLinks ofNote WDIR WFILE Unowned; do echo "Tiger_FSScan_$s=Y"; done
-  echo "Tiger_FSScan_PruneDirs=''"
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Deb_CheckMD5Sums=N'; echo 'Tigris_Deb_NoPackFiles=N'; echo 'Tigris_Deb_StatOverride=N'
+  echo 'Tigris_Check_FILESYSTEM=Y'
+  for s in Setuid Setgid Devs SymLinks ofNote WDIR WFILE Unowned; do echo "Tigris_FSScan_$s=Y"; done
+  echo "Tigris_FSScan_PruneDirs=''"
 } > "$W/profiles/scan"
 chmod 644 "$W/profiles/scan"
 

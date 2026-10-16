@@ -22,7 +22,7 @@
 #                    checks might not always sort information properly
 #                    and people might get spurious reports.
 # 12/26/2001 jfs Modified intensively to work properly. Added
-#  a new feature and associated variables in tigerrc so that cron jobs 
+#  a new feature and associated variables in tigris.conf so that cron jobs 
 #  can be compared against a "template" (policy-compliant?) runs. 
 #  This can reduce false positives even if they cannot be reduced 
 #  in a given module.

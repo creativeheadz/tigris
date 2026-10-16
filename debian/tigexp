@@ -1,4 +1,4 @@
 #!/bin/sh
 # Wrapper script for tiger
 
-cd /usr/lib/tiger && ./tigexp $*
+cd /usr/lib/tiger && ./tigris-explain $*

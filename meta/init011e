@@ -2,9 +2,9 @@ Id: init011e
 Severity: ERROR
 Category: tigris
 Check: tiger tigris
-Fix: Set Tiger_Output_JSON=Y in tigerrc, or compare later with tigris-diff.
-References: tigris-diff(8); tigerrc
+Fix: Set Tigris_Output_JSON=Y in tigris.conf, or compare later with tigris-diff.
+References: tigris-diff(8); tigris.conf
 
 --since compares the JSON Lines reports of two runs, and this run would
-not write one because Tiger_Output_JSON is N in the configuration file.
+not write one because Tigris_Output_JSON is N in the configuration file.
 Set it to Y, or run without --since and compare later with tigris-diff.

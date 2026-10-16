@@ -2,7 +2,7 @@
 #
 # tests/repos_check.sh - check_repos on offline roots
 #
-# Thirteen roots, all judged against Tiger_Repos_Now=1791974400
+# Thirteen roots, all judged against Tigris_Repos_Now=1791974400
 # (14 Oct 2026), so the ages never rot: apt judged by newest suite
 # (an old release pocket beside fresh updates is fine, whichever
 # files are fresh); an apt source dead 120 days; an apt source
@@ -21,14 +21,14 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 run() {  # run ROOT OUTFILE [EXTRA]: check_repos with ROOT as the audited system
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Repos_Now=1791974400"; } >> "$W/tigerrc"
-  [ -n "$3" ] && { echo "$3" >> "$W/tigerrc"; }
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Repos_Now=1791974400"; } >> "$W/tigris.conf"
+  [ -n "$3" ] && { echo "$3" >> "$W/tigris.conf"; }
   ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$1" sh ./systems/Linux/2/check_repos ) 2>&1 |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$2" || true
@@ -58,7 +58,7 @@ has 'from Packager, suite stable' "$W/out" &&
 has 'published 120 days ago' "$W/out" &&
 ! grep -q 'upd009w' "$W/out" && ! grep -q 'upd008w' "$W/out" &&
   ok "dead source: upd007w naming file, origin, age" || { bad "apt2"; cat "$W/out"; }
-run "$A2" "$W/out" "Tiger_Repos_MaxAge=200"
+run "$A2" "$W/out" "Tigris_Repos_MaxAge=200"
 ! grep -q 'upd007w' "$W/out" &&
   ok "MaxAge=200: the same source is fine" || { bad "maxage"; cat "$W/out"; }
 

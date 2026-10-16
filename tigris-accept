@@ -29,8 +29,9 @@
 # 'docker.service listens on 2283/tcp*'; without it every message with
 # that id is accepted.
 #
-# The file is tigris.accepted next to tigerrc: ./tigris.accepted when
-# run from a source tree, /etc/tiger/tigris.accepted when installed.
+# The file is tigris.accepted next to tigris.conf: ./tigris.accepted when
+# run from a source tree, /etc/tigris/tigris.accepted when installed
+# (/etc/tiger/tigris.accepted while the old install's file is still there).
 # One entry per line, tab-separated: id, expiry or -, glob or -, reason.
 #
 #-----------------------------------------------------------------------------
@@ -50,13 +51,13 @@ do
     -u) until=$2; shift ;;
     -m) glob=$2; shift ;;
     -f) file=$2; shift ;;
-    -h|--help) sed -n '18,35p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '18,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "tigris-accept: unknown option $1" >&2; exit 2 ;;
     *)  [ -z "$id" ] && id=$1 || { echo "tigris-accept: one id at a time" >&2; exit 2; } ;;
   esac
   shift
 done
-[ -n "$file" ] || { if [ -f ./tigerrc ]; then file=./tigris.accepted; else file=/etc/tiger/tigris.accepted; fi; }
+[ -n "$file" ] || { if [ -f ./tigris.conf ] || [ -f ./tigerrc ]; then file=./tigris.accepted; elif [ -f /etc/tigris/tigris.accepted ] || [ ! -f /etc/tiger/tigris.accepted ]; then file=/etc/tigris/tigris.accepted; else file=/etc/tiger/tigris.accepted; fi; }
 tab=`printf '\t'`
 
 case "$mode" in

@@ -76,7 +76,8 @@ else
 fi
 
 # A full run against a quick one: the quick run did not scan the file
-# system, so its missing fsys* findings are neither resolved nor new
+# system, so its missing fsys* findings are neither resolved nor new.
+# (3.3 reports say tigerrc: the name is what the run used, opaque to the diff)
 cat > "$W/full.jsonl" <<'EOF'
 {"type":"run","schema":1,"id":"full","tool":"tigris","version":"3.3","host":"box","os":"Linux","release":"7.0","arch":"x86_64","config":"tigerrc","filesystem_scan":true,"start":"2026-10-05T10:00:00Z"}
 {"type":"finding","level":"WARN","id":"fsys013w","check":"find_files","message":"/etc/x is a dangling symlink."}

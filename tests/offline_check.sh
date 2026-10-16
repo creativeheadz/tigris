@@ -41,11 +41,11 @@ echo 'minlen = 6' > "$R/etc/security/pwquality-real.conf"
 # absolute: followed on this host it would name a file that is not there
 ln -s /etc/security/pwquality-real.conf "$R/etc/security/pwquality.conf"
 
-# Every Tiger_Check_* off but seven, and the Debian ones off
+# Every Tigris_Check_* off but seven, and the Debian ones off
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
-  echo 'Tiger_Check_SYSTEM=Y'; echo 'Tiger_Check_PAM=Y'; echo 'Tiger_Check_TIMESYNC=Y'; echo 'Tiger_Check_SUDO=Y'; echo 'Tiger_Check_SSH=Y'; echo 'Tiger_Check_SIGNATURES=Y'; echo 'Tiger_Check_NTP=Y'; echo 'Tiger_Check_ROOTKIT=Y'
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Deb_CheckMD5Sums=N'; echo 'Tigris_Deb_NoPackFiles=N'; echo 'Tigris_Deb_StatOverride=N'
+  echo 'Tigris_Check_SYSTEM=Y'; echo 'Tigris_Check_PAM=Y'; echo 'Tigris_Check_TIMESYNC=Y'; echo 'Tigris_Check_SUDO=Y'; echo 'Tigris_Check_SSH=Y'; echo 'Tigris_Check_SIGNATURES=Y'; echo 'Tigris_Check_NTP=Y'; echo 'Tigris_Check_ROOTKIT=Y'
 } > "$W/profiles/offline"
 chmod 644 "$W/profiles/offline"
 
@@ -112,13 +112,13 @@ mkdir -p "$W/sp ace/etc"
 
 # tigris-diff: a run of the root against a run of the running system
 cat > "$W/live.jsonl" <<'EOF'
-{"type":"run","schema":1,"id":"a","tool":"tigris","version":"x","host":"h","os":"Linux","release":"r","arch":"x86_64","config":"./tigerrc","start":"2026-10-07T10:00:00Z"}
+{"type":"run","schema":1,"id":"a","tool":"tigris","version":"x","host":"h","os":"Linux","release":"r","arch":"x86_64","config":"./tigris.conf","start":"2026-10-07T10:00:00Z"}
 {"type":"finding","level":"WARN","id":"time001w","check":"check_timesync","message":"No time synchronisation daemon is running."}
 {"type":"finding","level":"WARN","id":"pam002w","check":"check_pam","message":"New passwords may be as short as 6 characters."}
 {"type":"summary","id":"a","end":"2026-10-07T10:01:00Z","counts":{"ALERT":0,"FAIL":0,"WARN":2,"INFO":0,"ERROR":0},"skipped":0}
 EOF
 sh "$W/tigris-diff" "$W/live.jsonl" "$json" > "$W/diff.out"
-grep -q "note: the runs used different configurations (./tigerrc, .* of $R)" "$W/diff.out" &&
+grep -q "note: the runs used different configurations (./tigris.conf, .* of $R)" "$W/diff.out" &&
   grep -q 'note: skipped in either run (not root, or a check that cannot read an offline root), so left out of both sides: .*check_timesync' "$W/diff.out" &&
   grep -q 'new (0)' "$W/diff.out" && grep -q 'resolved (0)' "$W/diff.out" &&
   ok "tigris-diff: the root is part of the configuration, live-only checks are set aside" || { bad "diff"; cat "$W/diff.out"; }

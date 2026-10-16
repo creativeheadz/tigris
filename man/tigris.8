@@ -11,7 +11,7 @@ tigris \- security auditor for Linux, in POSIX shell
 .RB [ \-\-since
 .IR run ]
 .RB [ \-c
-.IR tigerrc ]
+.IR tigris.conf ]
 .RB [ \-l
 .IR logdir ]
 .RB [ \-e | \-E ]
@@ -50,10 +50,10 @@ what changed is printed.
 .BI \-p " name" "\fR, \fP" \-\-profile " name"
 Read the profile
 .I name
-on top of the tigerrc: its settings replace the tigerrc's. Profiles are
+on top of the tigris.conf: its settings replace the tigris.conf's. Profiles are
 looked for in a
 .I profiles
-directory beside the tigerrc, then in Tigris's own:
+directory beside the tigris.conf, then in Tigris's own:
 .B quick
 (everything but the file system scan),
 .B server
@@ -92,9 +92,9 @@ is the .jsonl file of an earlier report, or
 for the most recent one of this host in the log directory. The exit
 status then counts only the new findings.
 .TP
-.BI \-c " tigerrc"
+.BI \-c " tigris.conf"
 Use another control file than
-.IR ./tigerrc .
+.IR ./tigris.conf .
 .TP
 .BI \-l " logdir"
 Write the reports to
@@ -138,7 +138,7 @@ Print the usage.
 Say what each finding id means: its severity, category, the checks that
 report it, the compliance controls it is evidence about, and what to do
 about it. The same as
-.BR tigexp (8).
+.BR tigris-explain (8).
 .SH OUTPUT
 On the terminal a run starts with one line naming the version, the host
 and its system, and the profile and root when there are any, shows each
@@ -205,14 +205,18 @@ only the new findings count. Accepted findings
 do not count.
 .SH FILES
 .TP
+.I tigris.conf
+Which checks run, and how. A
 .I tigerrc
-Which checks run, and how.
+kept beside it is read instead, and
+.I Tiger_*
+settings are still honored (an explicit new setting wins).
 .TP
 .I profiles/
-Profiles, read on top of the tigerrc.
+Profiles, read on top of the tigris.conf.
 .TP
 .I tigris.accepted
-Accepted findings, next to the tigerrc.
+Accepted findings, next to the tigris.conf.
 .TP
 .I meta/
 One file per finding id: its severity, category, checks, controls and
@@ -248,7 +252,7 @@ sudo tigris \-\-root rootfs
 .SH SEE ALSO
 .BR tigris\-diff (8),
 .BR tigris\-accept (8),
-.BR tigexp (8),
+.BR tigris-explain (8),
 .BR tigercron (8),
 .BR tiger (8)
 .LP

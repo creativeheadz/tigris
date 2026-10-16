@@ -38,5 +38,5 @@ body:
     id: config
     attributes:
       label: Configuration
-      description: Profile or tigerrc changes, if any
-      placeholder: "Default tigerrc / tigerrc-quick / ..."
+      description: Profile or tigris.conf changes, if any
+      placeholder: "Default tigris.conf / tigris-quick.conf / ..."

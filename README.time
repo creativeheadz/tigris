@@ -10,7 +10,7 @@ check_path, check_embedded, check_inetd, check_tcpd, and check_devices.
 
   Consider this information when configuring Tiger since you might want
 to not have resource intensive (if they could be considered as such)
-scripts from the cron daemon (by editing /etc/tiger/tigercron in Debian
+scripts from the cron daemon (by editing /etc/tigris/tigercron in Debian
 GNU/Linux systems).
 
 This output has been generated with:

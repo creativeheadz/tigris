@@ -5,7 +5,7 @@
 # Each case is a /sys with the firmware's SecureBoot and SetupMode
 # variables written the way efivarfs shows them (four attribute bytes,
 # then the value; the desktop's say 6 0 0 0 1) and a lockdown file, fed through
-# Tiger_Sysctl_Root. Needs no root, no UEFI and no Secure Boot.
+# Tigris_Sysctl_Root. Needs no root, no UEFI and no Secure Boot.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -13,7 +13,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -31,9 +31,9 @@ tree() {
   :
 }
 go() {  # go NAME: run the check on that tree, findings to $W/out
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  echo "Tiger_Sysctl_Root='$W/$1'" >> "$W/tigerrc"
-  echo "Tiger_Show_INFO_Msgs=Y" >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  echo "Tigris_Sysctl_Root='$W/$1'" >> "$W/tigris.conf"
+  echo "Tigris_Show_INFO_Msgs=Y" >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_secureboot ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"

@@ -17,7 +17,7 @@
 #
 # MacOSX/default/check - 10/09/2026
 #     The macOS system checks, run by scripts/check_system the way
-#     the Linux aggregator is. Each entry gates on its Tiger_Check_*
+#     the Linux aggregator is. Each entry gates on its Tigris_Check_*
 #     toggle and runs the check from this directory: a macOS check
 #     where the platform differs, a symlink to the Linux parser
 #     where the grammar is the platform's own (sudoers). Grows as
@@ -25,16 +25,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -59,7 +59,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds CAT GREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -76,11 +76,11 @@ SYSTEMDIR=$BASEDIR/systems/MacOSX/default
 #
 # Note: cannot echo TIMECMD since we lose the handle to the tmplog
 
-[ "$Tiger_Check_FIREWALL" != 'N' ] && {
+[ "$Tigris_Check_FIREWALL" != 'N' ] && {
   skip_check $SYSTEMDIR/check_firewall || $SYSTEMDIR/check_firewall
 }
 
-[ "$Tiger_Check_SUDO" != 'N' ] && {
+[ "$Tigris_Check_SUDO" != 'N' ] && {
   skip_check $SYSTEMDIR/check_sudo || $SYSTEMDIR/check_sudo
 }
 
@@ -89,6 +89,6 @@ SYSTEMDIR=$BASEDIR/systems/MacOSX/default
 # first, so they are not listed here (listing them would run them
 # twice).
 
-[ "$Tiger_Check_AUDIT" != 'N' ] && {
+[ "$Tigris_Check_AUDIT" != 'N' ] && {
   skip_check $SYSTEMDIR/check_audit || $SYSTEMDIR/check_audit
 }

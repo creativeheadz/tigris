@@ -27,14 +27,14 @@ chmod -R go-w "$W"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
-sed 's/^\(Tiger_\(Check\|Run\|Deb\)_[A-Za-z0-9_]*\)=.*/\1=N/' "$W/tigerrc" > "$W/rc.t"; chmod 600 "$W/rc.t"
+sed 's/^\(Tigris_\(Check\|Run\|Deb\)_[A-Za-z0-9_]*\)=.*/\1=N/' "$W/tigris.conf" > "$W/rc.t"; chmod 600 "$W/rc.t"
 run() { ( cd "$W" && sh ./tigris -q -c rc.t "$@" ) > "$W/out" 2>&1; echo $?; }
 
 # the defaults
 for v in Setuid Setgid WDIR; do
-  grep -q "^Tiger_FSScan_$v=Y" "$W/tigerrc" && ok "Tiger_FSScan_$v=Y by default" || bad "Tiger_FSScan_$v is not Y"
+  grep -q "^Tigris_FSScan_$v=Y" "$W/tigris.conf" && ok "Tigris_FSScan_$v=Y by default" || bad "Tigris_FSScan_$v is not Y"
 done
-grep -q "^Tiger_SSH_Protocol='2'" "$W/tigerrc" && ok "only SSH protocol 2 is acceptable" || bad "Tiger_SSH_Protocol"
+grep -q "^Tigris_SSH_Protocol='2'" "$W/tigris.conf" && ok "only SSH protocol 2 is acceptable" || bad "Tigris_SSH_Protocol"
 
 # a sane tree runs
 st=`run`; [ "$st" = 0 ] && ok "a tree of the runner's, modes 755/644: runs" || { bad "a sane tree: exit $st"; cat "$W/out"; }

@@ -19,7 +19,7 @@ build-indep: build-stamp
 build-stamp:
 	dh_testdir
 	autoconf
-	dh_auto_configure -- --with-tigerhome=/usr/lib/tiger --with-tigerwork=/var/lib/tiger/work --with-tigerlog=/var/log/tiger --with-tigerbin=/usr/sbin --with-tigerconfig=/etc/tiger --prefix=/usr --mandir=/usr/share/man
+	dh_auto_configure -- --with-tigerhome=/usr/lib/tiger --with-tigerwork=/var/lib/tiger/work --with-tigerlog=/var/log/tiger --with-tigerbin=/usr/sbin --with-tigerconfig=/etc/tigris --prefix=/usr --mandir=/usr/share/man
 	$(MAKE) all
 	touch build-stamp
 
@@ -51,11 +51,11 @@ install: build
 	# make this 'mv' more generic)
 	mv debian/tiger/usr/lib/tiger/systems/{AIX,HPUX,IRIX,NeXT,SunOS,UNICOS,UNICOSMK,Tru64,MacOSX} debian/tiger-otheros/usr/lib/tiger/systems/
 	# Install configuration files
-	install -m 600 cronrc debian/tiger/etc/tiger/
-	# Note: Do not install tigerrc, it is handled by ucf since it is edited by Debconf prompts:
-	-rm -f debian/tiger/etc/tiger/tigerrc
+	install -m 600 cronrc debian/tiger/etc/tigris/
+	# Note: Do not install tigris.conf, it is handled by ucf since it is edited by Debconf prompts:
+	-rm -f debian/tiger/etc/tigris/tigris.conf
 	install -m 600 debian/tiger.default debian/tiger/etc/default/tiger
-	install -m 600 debian/debian.ignore debian/tiger/etc/tiger/tiger.ignore
+	install -m 600 debian/debian.ignore debian/tiger/etc/tigris/tiger.ignore
 	install -m 644 version.h debian/tiger/usr/lib/tiger/
 	# Adjust the permissions of directories that might contain confidential information
 	chmod 0700 debian/tiger/var/lib/tiger/work
@@ -88,10 +88,10 @@ binary-arch: build install
 	dh_install
 	dh_installdebconf	
 	dh_installdocs
-	dh_installexamples tigerrc* site* cronrc issue* debian/server.ignore
+	dh_installexamples tigris.conf* site* cronrc issue* debian/server.ignore
 	dh_installmenu
 	dh_installcron
-	dh_installman man/tiger.8 man/tigexp.8 man/tigercron.8
+	dh_installman man/tiger.8 man/tigris-explain.8 man/tigercron.8
 	dh_installinfo
 	dh_installchangelogs CHANGES
 	dh_lintian

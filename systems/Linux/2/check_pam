@@ -25,7 +25,7 @@
 #                 a password line; its minimum length is minlen= on that
 #                 line, else in pwquality.conf and its .d files, else 8.
 #                 Lockout is pam_faillock or pam_tally2 in an auth line.
-#                 Tiger_Sysctl_Root prefixes /etc and /usr for the tests.
+#                 Tigris_Sysctl_Root prefixes /etc and /usr for the tests.
 # 10/07/2026 atrimbitas - Reads an offline root (--root): every file through
 #                 rootls and rootpaths, so its links resolve inside it.
 #
@@ -36,16 +36,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -71,7 +71,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT GREP SED || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 

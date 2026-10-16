@@ -20,7 +20,7 @@ mkdir -p "$W/run" "$W/log"
 [ "`id -u`" = 0 ] && chown -R 0:0 "$W"
 # cvtsudoers ships with sudo, which a minimal image has not: read the
 # flattened rules straight, as the Linux sudo suite's stubs stand in
-echo "Tiger_Cvtsudoers_Cmd='cat'" >> "$W/tigerrc"
+echo "Tigris_Cvtsudoers_Cmd='cat'" >> "$W/tigris.conf"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }

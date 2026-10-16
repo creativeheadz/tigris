@@ -107,11 +107,11 @@ cat > "$W/fakebrew" <<EOF
 echo "$W/brewhome"
 EOF
 chmod 755 "$W/fakebrew"
-echo "Tiger_Brew_Cmd='$W/fakebrew'" >> "$W/tigerrc"
+echo "Tigris_Brew_Cmd='$W/fakebrew'" >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/MacOSX/default/check_software ) 2>&1 |
 awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
 tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out" || true
-sed -i '$d' "$W/tigerrc"
+sed -i '$d' "$W/tigris.conf"
 has '--WARN-- [swd001w]' "$W/out" &&
 has 'Cellar' "$W/out" &&
   ok "stub brew Cellar: swd001w" || { bad "brew"; cat "$W/out"; }

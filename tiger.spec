@@ -65,7 +65,7 @@ autoconf
 %if %{want_reloc}
 	--with-tigerhome=/usr/lib/tiger \
 	--with-tigerbin=/usr/sbin \
-	--with-tigerconfig=/etc/tiger \
+	--with-tigerconfig=/etc/tigris \
 	--with-tigerwork=/var/lib/tiger/work \
 	--with-tigerlog=/var/log/tiger
 %else
@@ -96,9 +96,9 @@ chmod 644 ${DESTDIR}/etc/cron.d/tiger
 %endif
 # 2.- Tiger.ignore (needs to be revised for RedHat)
 %if %{want_reloc}
-install -m600 debian/debian.ignore ${DESTDIR}/etc/tiger/tiger.ignore
+install -m600 debian/debian.ignore ${DESTDIR}/etc/tigris/tiger.ignore
 %else
-install -m600 debian/debian.ignore ${DESTDIR}/usr/local/etc/tiger.ignore
+install -m600 debian/debian.ignore ${DESTDIR}/usr/local/etc/tigris.ignore
 %endif
 # 3.- This should be done by the Makefile, grumble...
 %if %{want_reloc}

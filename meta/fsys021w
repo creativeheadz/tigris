@@ -2,8 +2,8 @@ Id: fsys021w
 Severity: WARN
 Category: filesystem
 Check: check_wfile
-Fix: Find them with find DIR -xdev -type f -perm -o+w and chmod o-w the ones that should not be shared, or set Tiger_FSScan_DetailDirs to list them.
-References: find(1); chmod(1); tigerrc
+Fix: Find them with find DIR -xdev -type f -perm -o+w and chmod o-w the ones that should not be shared, or set Tigris_FSScan_DetailDirs to list them.
+References: find(1); chmod(1); tigris.conf
 Controls: CIS 3.3; NIST AC-3; ISO 8.3; CE Secure configuration
 
 World-writable files were found in a directory outside the system
@@ -11,8 +11,8 @@ trees (home directories, caches, /tmp, data disks), where one is usually
 a tool's lock or cache file made with mode 666 (Hugging Face's hub, a
 desktop updater's cache) rather than a way in, so Tigris reports how
 many and where instead of listing each. The directories where each file
-is still listed (fsys020f) are set by Tiger_FSScan_DetailDirs in
-tigerrc; set it to '*' to list them all. Whoever can write one of these
+is still listed (fsys020f) are set by Tigris_FSScan_DetailDirs in
+tigris.conf; set it to '*' to list them all. Whoever can write one of these
 files can change what the account that reads it sees or runs, so a
 world-writable shell start-up file or script in a home directory is
 worth fixing; a lock file is not.

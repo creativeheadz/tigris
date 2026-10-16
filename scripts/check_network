@@ -43,7 +43,7 @@ my @real_shells = &get_shells;
 # %portmap{name}{proto}{ver} = port
 my %portmap = &get_portmap;
 # @adminids = just an @array of valid UID's for admin accounts
-my @adminids = split('\|',$ENV{'Tiger_Admin_Accounts'});
+my @adminids = split('\|',$ENV{'Tigris_Admin_Accounts'});
 
 # Start the checks....
 

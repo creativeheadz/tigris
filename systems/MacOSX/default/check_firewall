@@ -27,8 +27,8 @@
 #             system, so an offline root has nothing to read and the
 #             check stays silent there.
 #
-# 10/09/2026 - Initial version. Tiger_Pfctl_Cmd points at another
-#             `pfctl -s info', Tiger_Appfw_Cmd at another
+# 10/09/2026 - Initial version. Tigris_Pfctl_Cmd points at another
+#             `pfctl -s info', Tigris_Appfw_Cmd at another
 #             `socketfilterfw --getglobalstate', for the tests.
 #
 # References:
@@ -41,16 +41,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -75,7 +75,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -93,14 +93,14 @@ haveallcmds AWK || exit 1
 echo
 echo "# Checking the packet filter and the application firewall..."
 
-pfctl=${Tiger_Pfctl_Cmd:-pfctl}
+pfctl=${Tigris_Pfctl_Cmd:-pfctl}
 pf=`$pfctl -s info 2>/dev/null | $AWK '/^[Ss]tatus:/ { print tolower($2); exit }'`
 [ "$pf" = enabled ] || {
   message WARN fire001w "Turn pf on ('pfctl -e', and enable it at boot), or filter elsewhere." "pf is not enabled: incoming IPv4 traffic nothing accepts still gets in."
   message WARN fire002w "Turn pf on ('pfctl -e', and enable it at boot), or filter elsewhere." "pf is not enabled: incoming IPv6 traffic nothing accepts still gets in."
 }
 
-appfw=${Tiger_Appfw_Cmd:-/usr/libexec/ApplicationFirewall/socketfilterfw}
+appfw=${Tigris_Appfw_Cmd:-/usr/libexec/ApplicationFirewall/socketfilterfw}
 fw=`$appfw --getglobalstate 2>/dev/null | $AWK '{ if (tolower($0) ~ /disabled/) { print "off"; exit } if (tolower($0) ~ /enabled/) { print "on"; exit } }'`
 [ "$fw" = on ] || {
   message WARN fire001w "Turn the application firewall on (System Settings, Network, Firewall), or filter elsewhere." "The application firewall is off: incoming IPv4 traffic nothing accepts still gets in."

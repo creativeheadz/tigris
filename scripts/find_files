@@ -17,7 +17,7 @@
 #
 # find_files - 06/14/93
 #
-# 10/12/2026 atrimbitas World-writable regular files (Tiger_FSScan_WFILE): one
+# 10/12/2026 atrimbitas World-writable regular files (Tigris_FSScan_WFILE): one
 #	     more class in the one-pass find and in flogit, judged by
 #	     sub/check_wfile.
 # 10/07/2026 atrimbitas An offline root (--root): the root is walked, its
@@ -29,7 +29,7 @@
 #                link to this host's files); every list names the root's
 #                own paths. Needs GNU find (-fprintf), as the fast scan does.
 #
-# 10/04/2026 atrimbitas Skip the directories listed in Tiger_FSScan_PruneDirs,
+# 10/04/2026 atrimbitas Skip the directories listed in Tigris_FSScan_PruneDirs,
 #                based on a patch from Nicholas Bamber (Debian bug #610785)
 #
 # 02/26/2010 fgclaramonte  Properly remove the temporary mountlist file
@@ -48,7 +48,7 @@
 #
 # 08/08/2003 jfs Improved creation of temporary files and removal.
 #
-# 04/29/93 dls Added support for 'tigerrc' file variable FS_FILES
+# 04/29/93 dls Added support for 'tigris.conf' file variable FS_FILES
 #
 # 04/28/93 dls Added search for device files...
 #
@@ -65,16 +65,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -100,7 +100,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT EXPR FIND GETDISKS GREP RM SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars WAIT || exit 1
@@ -138,8 +138,8 @@ cleanup()
     kill -1 `$CAT $pidlist 2>/dev/null` >/dev/null 2>&1
   }
   delete $pidlist $mountlist ${outfile}* >/dev/null 2>&1
-  [ "$_TIGER_RUN" != 'Y' -a -n "$TigerCleanup" ] && {
-    for file in $TigerCleanup
+  [ "$_TIGER_RUN" != 'Y' -a -n "$TigrisCleanup" ] && {
+    for file in $TigrisCleanup
     do
     	delete $file
     done
@@ -171,15 +171,15 @@ trap 'cleanup;exit 1' 15
 
 saveifs="$IFS"
 
-[ "$Tiger_FSScan_ofNote" != 'N' ] && {
+[ "$Tigris_FSScan_ofNote" != 'N' ] && {
   otheropt='\( \( -name ...'
   #
   # List of '/' separated filename globs (NOT pathnames) to look for
-  # Set 'FS_FILES' in 'tigerrc' to specify the list of files.  The
+  # Set 'FS_FILES' in 'tigris.conf' to specify the list of files.  The
   # ones here are just defaults in case FS_FILES isn't set.
   #
   filespecs='..[!.]*/.* */.[!.]/.log/.FSP*'
-  [ -n "$Tiger_Files_of_Note" ] && filespecs="$Tiger_Files_of_Note"
+  [ -n "$Tigris_Files_of_Note" ] && filespecs="$Tigris_Files_of_Note"
   
   IFS=/
 
@@ -196,41 +196,41 @@ saveifs="$IFS"
 #
 # Options to find for finding suid files and logging them
 #
-[ "x$Tiger_FSScan_Setuid" != 'xN' ] && {
+[ "x$Tigris_FSScan_Setuid" != 'xN' ] && {
   suidopt='\( -perm -004000 -a ! -type d  \)'
 }
 #
 # Options to find for finding sgid files and logging them
 #
-[ "x$Tiger_FSScan_Setgid" != 'xN' ] && {
+[ "x$Tigris_FSScan_Setgid" != 'xN' ] && {
   sgidopt='\( -perm -002000 -a ! -type d  \)'
 }
 #
 # Options to find for finding device files and logging them
 #
-[ "x$Tiger_FSScan_Devs" != 'xN' ] && {
+[ "x$Tigris_FSScan_Devs" != 'xN' ] && {
   devopt='\( -type b -o -type c \)'
 }
 #
 # Options for finding symbolic links and logging them
 #
-[ "x$Tiger_FSScan_SymLinks" != 'xN' ] && {
+[ "x$Tigris_FSScan_SymLinks" != 'xN' ] && {
   linkopt='-type l'
 }
 #
 # Options for finding writable directories
 #
-[ "x$Tiger_FSScan_WDIR" != 'xN' ] && {
+[ "x$Tigris_FSScan_WDIR" != 'xN' ] && {
   wdiropt='\( -type d -a -perm -000002 \)'
 }
 #
 # Options for finding world-writable regular files
 #
-[ "x$Tiger_FSScan_WFILE" != 'xN' ] && {
+[ "x$Tigris_FSScan_WFILE" != 'xN' ] && {
   wfileopt='\( -type f -a -perm -000002 \)'
 }
 
-[ "x$Tiger_FSScan_Unowned" != 'xN' ] && {
+[ "x$Tigris_FSScan_Unowned" != 'xN' ] && {
   #
   # Options for finding files with noowner
   #
@@ -285,7 +285,7 @@ $FIND /dev/null -maxdepth 0 -xtype l -fprintf /dev/null '' >/dev/null 2>&1 &&
 fastopts()
 {
   fo=
-  [ "$Tiger_FSScan_ofNote" != 'N' ] && {
+  [ "$Tigris_FSScan_ofNote" != 'N' ] && {
     fo="\( \( -name ..."
     IFS=/
     for fspec in $filespecs
@@ -295,25 +295,25 @@ fastopts()
     IFS=$saveifs
     fo="$fo \) -fprintf \"$1.other.$2\" '%p\n' \)"
   }
-  [ "x$Tiger_FSScan_Setuid" != 'xN' ] &&
+  [ "x$Tigris_FSScan_Setuid" != 'xN' ] &&
     fo="$fo${fo:+ ,} \( -perm -004000 ! -type d -fprintf \"$1.suid.$2\" '%p\n' \)"
-  [ "x$Tiger_FSScan_Setgid" != 'xN' ] &&
+  [ "x$Tigris_FSScan_Setgid" != 'xN' ] &&
     fo="$fo${fo:+ ,} \( -perm -002000 ! -type d -fprintf \"$1.sgid.$2\" '%p\n' \)"
-  [ "x$Tiger_FSScan_Devs" != 'xN' ] &&
+  [ "x$Tigris_FSScan_Devs" != 'xN' ] &&
     fo="$fo${fo:+ ,} \( \( -type b -o -type c \) -fprintf \"$1.dev.$2\" '%p\n' \)"
   if [ -n "$TIGRIS_ROOT" ]; then
     # dangling links are found inside the root afterwards
-    [ "x$Tiger_FSScan_SymLinks" != 'xN' ] &&
+    [ "x$Tigris_FSScan_SymLinks" != 'xN' ] &&
       fo="$fo${fo:+ ,} \( -type l -fprintf \"$1.link.$2\" '%p\n' \)"
   else
-  [ "x$Tiger_FSScan_SymLinks" != 'xN' ] &&
+  [ "x$Tigris_FSScan_SymLinks" != 'xN' ] &&
     fo="$fo${fo:+ ,} \( -type l -fprintf \"$1.link.$2\" '%p\n' \) , \( -type l -xtype l -fprintf \"$1.dangling.$2\" '%p\n' \)"
   fi
-  [ "x$Tiger_FSScan_WDIR" != 'xN' ] &&
+  [ "x$Tigris_FSScan_WDIR" != 'xN' ] &&
     fo="$fo${fo:+ ,} \( -type d -perm -000002 -fprintf \"$1.wdir.$2\" '%p\n' \)"
-  [ "x$Tiger_FSScan_WFILE" != 'xN' ] &&
+  [ "x$Tigris_FSScan_WFILE" != 'xN' ] &&
     fo="$fo${fo:+ ,} \( -type f -perm -000002 -fprintf \"$1.wfile.$2\" '%p\n' \)"
-  [ "x$Tiger_FSScan_Unowned" != 'xN' ] &&
+  [ "x$Tigris_FSScan_Unowned" != 'xN' ] &&
     fo="$fo${fo:+ ,} \( $nouser -fprintf \"$1.nouser.$2\" '%p\n' \) , \( $nogroup -fprintf \"$1.nogroup.$2\" '%p\n' \)"
   [ -n "$fo" ] && printf '%s\n' "\( $fo \)"
 }
@@ -339,20 +339,20 @@ outfile=$WORKDIR/find.out.$$
 safe_temp $pidlist $mountlist $outfile $WORKDIR/suid.msgs.$$  $WORKDIR/sgid.msgs.$$ $WORKDIR/other.msgs.$$ $WORKDIR/devs.msgs.$$ $WORKDIR/link.msgs.$$ $WORKDIR/wdir.msgs.$$ $WORKDIR/wfile.msgs.$$ $WORKDIR/noowner.msgs.$$
 
 # Define this for the cleanup() function
-TigerCleanup="$TigerCleanup $WORKDIR/suid.msgs.$$ $WORKDIR/sgid.msgs.$$ $WORKDIR/other.msgs.$$ $WORKDIR/devs.msgs.$$ $WORKDIR/link.msgs.$$ $WORKDIR/wdir.msgs.$$ $WORKDIR/wfile.msgs.$$ $WORKDIR/noowner.msgs.$$"
+TigrisCleanup="$TigrisCleanup $WORKDIR/suid.msgs.$$ $WORKDIR/sgid.msgs.$$ $WORKDIR/other.msgs.$$ $WORKDIR/devs.msgs.$$ $WORKDIR/link.msgs.$$ $WORKDIR/wdir.msgs.$$ $WORKDIR/wfile.msgs.$$ $WORKDIR/noowner.msgs.$$"
 
 counter=1
 
 rw=rw
-[ "x$Tiger_FSScan_ReadOnly" = 'xY' ] && rw=
+[ "x$Tigris_FSScan_ReadOnly" = 'xY' ] && rw=
 
 # Directories the admin does not want scanned (pipe-separated find -path patterns)
 pruneopt=
-if [ -n "$Tiger_FSScan_PruneDirs" ]; then
+if [ -n "$Tigris_FSScan_PruneDirs" ]; then
   saveIFS=$IFS
   IFS='|'
   set -f
-  for prunedir in $Tiger_FSScan_PruneDirs
+  for prunedir in $Tigris_FSScan_PruneDirs
   do
     # Match the directory and anything below it: a mount point inside a
     # pruned directory is a starting point of its own for find
@@ -491,7 +491,7 @@ fi
   # A header first, so these do not read as the last check's findings.
   [ -s $outfile.dangling ] && { echo; echo "# Checking for dangling symbolic links..."; }
   [ -s $outfile.dangling ] &&
-  $AWK -v detail="${Tiger_FSScan_DetailDirs-/etc|/bin|/sbin|/lib|/usr/bin|/usr/sbin|/usr/lib|/usr/local|/opt|/boot|/root|/var/lib|/var/spool|/srv}" '
+  $AWK -v detail="${Tigris_FSScan_DetailDirs-/etc|/bin|/sbin|/lib|/usr/bin|/usr/sbin|/usr/lib|/usr/local|/opt|/boot|/root|/var/lib|/var/spool|/srv}" '
     BEGIN { n = split(detail, prefix, "|") }
     {
       listed = (detail == "*")
@@ -510,7 +510,7 @@ fi
     case $kind in
       D) message WARN fsys013w "" "$rest is a dangling symlink." ;;
       S) set -- $rest
-         message WARN fsys016w "" "$1 dangling symlinks under $2 are not listed (see Tiger_FSScan_DetailDirs)." ;;
+         message WARN fsys016w "" "$1 dangling symlinks under $2 are not listed (see Tigris_FSScan_DetailDirs)." ;;
     esac
   done
 } &
@@ -521,41 +521,41 @@ $WAIT $pid
 
 {
   pidlist=
-  [ "x$Tiger_FSScan_Setuid" != 'xN' ] && {
+  [ "x$Tigris_FSScan_Setuid" != 'xN' ] && {
     $SCRIPTDIR/sub/check_suid $outfile.suid > $WORKDIR/suid.msgs.$$ &
     pidlist="$pidlist $!"
   }
-  [ "x$Tiger_FSScan_Setgid" != 'xN' ] && {
+  [ "x$Tigris_FSScan_Setgid" != 'xN' ] && {
     $SCRIPTDIR/sub/check_sgid $outfile.sgid > $WORKDIR/sgid.msgs.$$ &
     pidlist="$pidlist $!"
   }
 
-  [ "x$Tiger_FSScan_ofNote" != 'xN' ] && {
+  [ "x$Tigris_FSScan_ofNote" != 'xN' ] && {
     $SCRIPTDIR/sub/check_names $outfile.other > $WORKDIR/other.msgs.$$ &
     pidlist="$pidlist $!"
   }
 
-  [ "x$Tiger_FSScan_Devs" != 'xN' ] && {
+  [ "x$Tigris_FSScan_Devs" != 'xN' ] && {
     $SCRIPTDIR/sub/check_devs $outfile.dev > $WORKDIR/devs.msgs.$$ &
     pidlist="$pidlist $!"
   }
 
-  [ "x$Tiger_FSScan_Links" != 'xN' ] && {
+  [ "x$Tigris_FSScan_Links" != 'xN' ] && {
     $SCRIPTDIR/sub/check_links $outfile.link > $WORKDIR/link.msgs.$$ &
     pidlist="$pidlist $!"
   }
 
-  [ "x$Tiger_FSScan_WDIR" != 'xN' ] && {
+  [ "x$Tigris_FSScan_WDIR" != 'xN' ] && {
     $SCRIPTDIR/sub/check_wdir $outfile.wdir > $WORKDIR/wdir.msgs.$$ &
     pidlist="$pidlist $!"
   }
 
-  [ "x$Tiger_FSScan_WFILE" != 'xN' ] && {
+  [ "x$Tigris_FSScan_WFILE" != 'xN' ] && {
     $SCRIPTDIR/sub/check_wfile $outfile.wfile > $WORKDIR/wfile.msgs.$$ &
     pidlist="$pidlist $!"
   }
 
-  [ "x$Tiger_FSScan_Unowned" != 'xN' ] && {
+  [ "x$Tigris_FSScan_Unowned" != 'xN' ] && {
     $SCRIPTDIR/sub/check_nousrgrp $outfile.nouser $outfile.nogroup \
     > $WORKDIR/noowner.msgs.$$ &
     pidlist="$pidlist $!"

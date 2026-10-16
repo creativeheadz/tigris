@@ -23,7 +23,7 @@
 # ISSUENETFILE)
 #
 # check_issue - 05/27/2002 - jfs
-#        Changed TigerInstallDir to .
+#        Changed TigrisInstallDir to .
 #
 # check_issue - 08/09/2002 - jfs
 #        Fixed some ! problems in Solaris by changing the ! DIFF to a
@@ -66,16 +66,16 @@
 # 
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -101,7 +101,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds DIFF || exit 1
   haveallfiles ISSUEFILE ISSUENETFILE BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME || exit 1

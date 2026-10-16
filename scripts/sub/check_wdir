@@ -33,7 +33,7 @@ file="$1"
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds GREP CAT RM AWK SORT LS GETCLIENTDIRS || exit 1
   haveallfiles WORKDIR || exit 1
   

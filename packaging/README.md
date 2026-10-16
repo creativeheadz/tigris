@@ -9,13 +9,13 @@ would be its own package.
 ## Layout
 
 `make install` follows the Tiger paths (`tiger` in sbin, `$prefix/tiger`,
-`/etc/tiger`); the distro tree is reshaped from it, not forked from it:
+`/etc/tigris`); the distro tree is reshaped from it, not forked from it:
 
 | install                    | package                                   |
 |----------------------------|-------------------------------------------|
-| sbin `tiger tigercron tigexp` (+`tigris*`) | sbin keeps `tigris tigris-diff tigris-accept`; the rest move to the library dir |
+| sbin `tiger tigercron tigris-explain` (+`tigris*`) | sbin keeps `tigris tigris-diff tigris-accept`; the rest move to the library dir |
 | `$prefix/tiger`            | `/usr/lib/tigris` (`/usr/lib64` on 64-bit rpms) |
-| `/etc/tiger`, `/var/.../tiger` | `/etc/tigris`, `/var/lib/tigris`, `/var/log/tigris` |
+| `/etc/tigris`, `/var/.../tiger` | `/etc/tigris`, `/var/lib/tigris`, `/var/log/tigris` |
 | `tigris explain` beside sbin | baked library path, as `make install` bakes the others |
 | `tigris-diff`, `tigris-accept` defaults | rewritten to the tigris directories |
 | six man pages              | the three `tigris` ones (`-doc` split on Alpine) |

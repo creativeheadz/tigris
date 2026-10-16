@@ -2,21 +2,21 @@ Id: con010c
 Severity: CONFIG
 Category: tigris
 Check: gen_mounts
-Fix: Add the filesystem type to Tiger_FSScan_Local or Tiger_FSScan_NonLocal in tigerrc.
-References: tigerrc
+Fix: Add the filesystem type to Tigris_FSScan_Local or Tigris_FSScan_NonLocal in tigris.conf.
+References: tigris.conf
 
 The filesystem is not recognised by Tiger as a valid filesystem
 for this operating system and will not be analysed. If this is a local
 filesystem then the configuration script for this operating system
 needs to be modified. You should report this as a bug in the software.
 
-You can use the following tigerrc variables to adjust this message
+You can use the following tigris.conf variables to adjust this message
 or adapt it to your system locally:
 
- - Tiger_FSScan_Local: if set, filesystems defined in it will be considered
+ - Tigris_FSScan_Local: if set, filesystems defined in it will be considered
    local and will always be analysed.
- - Tiger_FSScan_NonLocal: ff set, filesystems defined in it will be considered
+ - Tigris_FSScan_NonLocal: ff set, filesystems defined in it will be considered
    non-local and will not be analysed.
- - Tiger_FSScan_WarnUnknown : If set to 'N' this message will not be presented
+ - Tigris_FSScan_WarnUnknown : If set to 'N' this message will not be presented
    (this prevents it from being emailed when some of the Tiger scripts are run
     through cron)

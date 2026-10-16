@@ -51,11 +51,11 @@
 # 01/21/2004 jfs Moved comment from check_accounts to here and expanded
 #       shell list definition to be equivalent to the one there.
 # 03/03/2004 jfs Check if users do not have a shell defined
-# 05/03/2004 jfs Define Tiger_Passwd_Hashes if not defined (Debian bug #246885)
+# 05/03/2004 jfs Define Tigris_Passwd_Hashes if not defined (Debian bug #246885)
 # 12/27/2004 jfs Delete temporary passwd files only on exit (Debian bug #284899)
 # 03/31/2005 jfs Recognise old xxxxxxxxxxxxx as a valid password hash
 #                Add /bin/true as valid shell as well as Solaris shells
-# 05/20/2006 jfs Add quotation marks to Tiger_Admin_Accounts to prevent
+# 05/20/2006 jfs Add quotation marks to Tigris_Admin_Accounts to prevent
 #                errors if empty (Debian bug #342181)
 # 01/09/2013 jfs Added /usr/sbin/nologin to list of valid nologin shells
 #               (Debian bug #734775, #717218)
@@ -81,16 +81,16 @@
 #  invalid shells listed are omitted.
 #
 #-----------------------------------------------------------------------------
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -115,7 +115,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT GEN_PASSWD_SETS GREP EGREP JOIN SED SORT TR UNIQ RM || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   
@@ -147,11 +147,11 @@ check_passwd_entries()
     # sha256, sha512, yescrypt, ...), * is locked, empty is none. The
     # system's values are compared, never parsed: until October 2026 they
     # went through eval, so an image's could run as code.
-    [ -z "$Tiger_Passwd_Hashes" ] && Tiger_Passwd_Hashes='crypt3|md5|sha256|sha512|yescrypt|gost-yescrypt|bcrypt|scrypt'
+    [ -z "$Tigris_Passwd_Hashes" ] && Tigris_Passwd_Hashes='crypt3|md5|sha256|sha512|yescrypt|gost-yescrypt|bcrypt|scrypt'
     case "$hash" in
       "") message FAIL pass011f "" "Username \`$login' has an empty password field." ;;
       '*') ;;
-      *) matchlist "$hash" "$Tiger_Passwd_Hashes" ||
+      *) matchlist "$hash" "$Tigris_Passwd_Hashes" ||
            message WARN pass013w "" "Username \`$login' is not using an acceptable password hash ($hash)." ;;
     esac
 
@@ -160,11 +160,11 @@ check_passwd_entries()
       message WARN pass017w "" "Login ID $login has uid == 0."
     }
 
-    # Administrative accounts (Tiger_Admin_Accounts) must have an
+    # Administrative accounts (Tigris_Admin_Accounts) must have an
     # impossible password, and the shell checks below are not for them.
     # (The list was quoted inside an eval, so it matched no login at all
     # until October 2026, and the login could run as code.)
-    if matchlist "$login" "$Tiger_Admin_Accounts"; then
+    if matchlist "$login" "$Tigris_Admin_Accounts"; then
       [ "$hash" != '*' ] &&
         message FAIL pass018f "" "Administrative user $login does not have an impossible password."
       continue
@@ -256,8 +256,8 @@ fi
   shells=`$AWK '/^[ \t]*#/ { next } NF { print $1 }' "\`__here $ETCSHELLS\`"`
 }
 
-if [ -n "$Tiger_PasswdFiles" ]; then
-  [ -f $Tiger_PasswdFiles ] && $CAT "$Tiger_PasswdFiles" > $WORKDIR/pass.list.$$
+if [ -n "$Tigris_PasswdFiles" ]; then
+  [ -f $Tigris_PasswdFiles ] && $CAT "$Tigris_PasswdFiles" > $WORKDIR/pass.list.$$
 else
   $GEN_PASSWD_SETS $WORKDIR/pass.list.$$
 fi
@@ -300,7 +300,7 @@ do
 
   # Check for multiple entries with duplicate home directories. Service
   # accounts without a login shell share / or /nonexistent by design.
-  $EGREP -v "^($Tiger_Admin_Accounts):" $WORKDIR/p1uid.$$ |
+  $EGREP -v "^($Tigris_Admin_Accounts):" $WORKDIR/p1uid.$$ |
   $AWK -F: '$7 !~ /\/(nologin|false)$/ && $6 != "/" && $6 != "/nonexistent" {print $6}' |
   $SORT |
   $UNIQ -c |
@@ -323,7 +323,7 @@ do
 done < $WORKDIR/pass.list.$$
 
 # See if the system is configured for shadow passwords.
-[ "$Tiger_Check_PASSWD_SHADOW" != 'N' ] && {
+[ "$Tigris_Check_PASSWD_SHADOW" != 'N' ] && {
   [ -s "`__here /etc/passwd`" ] && [ -s "`__here /etc/shadow`" ] || {
     message WARN pass007w "" "System is not properly configured for shadow passwords."
   }
@@ -362,8 +362,8 @@ fi
 
 # Check the password constraints.
 [ -r "`__here $LOGINDEF`" ] && { [ -z "$PAMLOGINDEF" ] || [ ! -f "`__here $PAMLOGINDEF`" ]; } && \
-[ -n "$Tiger_Passwd_Constraints" ]  && {
-  for param in $Tiger_Passwd_Constraints
+[ -n "$Tigris_Passwd_Constraints" ]  && {
+  for param in $Tigris_Passwd_Constraints
     do
     if [ ! `$GREP -v '#' "\`__here $LOGINDEF\`" | $GREP "$param"` ] >/dev/null 2>&1
       then
@@ -374,11 +374,11 @@ fi
 
 # TODO: For Pam systemms the PAMLOGINDEF file needs to be checked instead
 # of login.defs
-#[ -f "$PAMLOGINDEF" ] && [ -n "$Tiger_Pam_Constraints" ]  && {
+#[ -f "$PAMLOGINDEF" ] && [ -n "$Tigris_Pam_Constraints" ]  && {
 #}
                                                                                                                                                                                                            
 # Cleanup the temporary files.
-[ ! -n "$Tiger_PasswdFiles" ] && {
+[ ! -n "$Tigris_PasswdFiles" ] && {
   while read file
   do
     delete $file $file.src

@@ -189,7 +189,7 @@ json_escape()
 #
 # matchlist VALUE PATTERNS: does VALUE match one of the |-separated shell
 # patterns in PATTERNS? PATTERNS should be a setting of Tigris's own
-# (Tiger_Admin_Accounts, Tiger_PATH_OK_Owners, a column of a data file);
+# (Tigris_Admin_Accounts, Tigris_PATH_OK_Owners, a column of a data file);
 # VALUE is whatever was read from the system or from an offline root (an
 # account name, a shell, an owner) and is never parsed as code, whatever
 # characters it holds. An empty PATTERNS matches nothing.
@@ -253,13 +253,13 @@ accepted_message()
   return 1
 }
 
-# One JSON Lines record per finding, when Tiger_JSON_File is set. Built in
+# One JSON Lines record per finding, when Tigris_JSON_File is set. Built in
 # full first and written with one call, so checks running in parallel do
-# not interleave. The category and controls come from meta/ID. INFO goes in regardless of Tiger_Show_INFO_Msgs: the
+# not interleave. The category and controls come from meta/ID. INFO goes in regardless of Tigris_Show_INFO_Msgs: the
 # JSON is for programs, which can filter for themselves.
 json_record()
 {
-  [ -n "$Tiger_JSON_File" ] || return 0
+  [ -n "$Tigris_JSON_File" ] || return 0
   _jmsg=`printf '%s' "$4" | json_escape`
   _jline="{\"type\":\"finding\",\"level\":\"$1\",\"id\":\"$2\",\"check\":\"${0##*/}\",\"message\":\"$_jmsg\""
   [ -n "$3" ] && _jline="$_jline,\"detail\":\"`printf '%s' "$3" | json_escape`\""
@@ -290,7 +290,7 @@ json_record()
            }' "$BASEDIR/meta/$2"` &&
          _jline="$_jline$_jmeta" ;;
   esac
-  printf '%s}\n' "$_jline" >> "$Tiger_JSON_File"
+  printf '%s}\n' "$_jline" >> "$Tigris_JSON_File"
 }
 
 message()
@@ -299,7 +299,7 @@ message()
   _msgid="$2"
   _trail="$3"
   _mesg="$4"  
-  __len=${Tiger_Output_Width:=79}
+  __len=${Tigris_Output_Width:=79}
 
   # If the message should be ignore it is removed
   ignore_message "$_level $_msgid $_mesg" && return 
@@ -309,14 +309,14 @@ message()
   if accepted_message "$_msgid" "$_mesg"; then
     json_record "$_level" "$_msgid" "$_trail" "$_mesg"
     accepted_reason=; accepted_until=
-    [ -n "$Tiger_Accepted_Log" ] && echo "$_msgid" >> "$Tiger_Accepted_Log"
+    [ -n "$Tigris_Accepted_Log" ] && echo "$_msgid" >> "$Tigris_Accepted_Log"
     return
   fi
   json_record "$_level" "$_msgid" "$_trail" "$_mesg"
 
   [ "$HTML" = "N" ] && {
 
-  [ "$_level" = "INFO" -a "x$Tiger_Show_INFO_Msgs" = 'xN' ] && return
+  [ "$_level" = "INFO" -a "x$Tigris_Show_INFO_Msgs" = 'xN' ] && return
 
   # "--LEVEL-- [id]" and the words after it, wrapped at the width (0: no
   # wrapping), each line after the first indented under the id; the detail
@@ -351,7 +351,7 @@ message()
   END { printf("\n") }'
 }
  [ "$HTML" = "Y" ] && {
- [ "$_level" = "INFO" -a "x$Tiger_Show_INFO_Msgs" = 'xN' ] && return
+ [ "$_level" = "INFO" -a "x$Tigris_Show_INFO_Msgs" = 'xN' ] && return
   # The text is data from the audited system (a file or process name):
   # escaped, so that a name holding a tag is shown, not rendered, by the
   # browser that opens the report, and cannot forge a finding's marker
@@ -668,7 +668,7 @@ lgetpermit()
 exposed()
 {
   # getpermit resolves an offline root by itself, but not the tests'
-  # Tiger_Sysctl_Root, so that one is resolved here. The wanted group
+  # Tigris_Sysctl_Root, so that one is resolved here. The wanted group
   # is kept aside: set -- replaces the arguments below.
   __want=$2
   if [ -n "$TIGRIS_ROOT" ]; then
@@ -692,19 +692,19 @@ exposed()
 changelog()
 {
   _msgtxt="$*"
-  [ -n "$TigerChangeLog" ] && echo "$_msgtxt" >> $TigerChangeLog
+  [ -n "$TigrisChangeLog" ] && echo "$_msgtxt" >> $TigrisChangeLog
 }
 
 #
 # Generic cleanup routine.
-# It will clean all the files available in the TigerCleanup variable
+# It will clean all the files available in the TigrisCleanup variable
 # scripts can either use this or define their own cleanup routine.
 #
 cleanup()
 {
   spin_stop
-  [ "$_TIGER_RUN" != 'Y' -a -n "$TigerCleanup" ] && {
-    delete $TigerCleanup
+  [ "$_TIGER_RUN" != 'Y' -a -n "$TigrisCleanup" ] && {
+    delete $TigrisCleanup
   }
 }
 
@@ -717,24 +717,24 @@ cleanup()
 # A hard NFS or CIFS mount whose server is down blocks every program that
 # touches a path under it, and the check that touched it would never
 # finish. df -P asks the filesystem itself (statfs) and runs under a kill
-# timeout (Tiger_Mount_Timeout, seconds); only the kill means "dead". A
+# timeout (Tigris_Mount_Timeout, seconds); only the kill means "dead". A
 # path that does not exist, or a df that cannot run, is left for the
 # caller's own tests. Without a timeout command there is no probe, as
 # before. A parent directory found dead is remembered, so a hundred home
 # directories on one dead server cost one timeout, not a hundred.
-# Tiger_Mount_Probe_Cmd replaces df for the tests.
+# Tigris_Mount_Probe_Cmd replaces df for the tests.
 #
 mount_alive()
 {
   # an offline root's mounts are not this host's to probe
   [ -n "$TIGRIS_ROOT" ] && return 0
   [ -n "$TIMEOUT" ] || return 0
-  __probe=${Tiger_Mount_Probe_Cmd:-$DF}
+  __probe=${Tigris_Mount_Probe_Cmd:-$DF}
   [ -n "$__probe" ] || return 0
   __dir=${1%/*}
   [ -n "$__dir" ] || __dir=/
   case "|$__dead_dirs|" in *"|$__dir|"*) return 1 ;; esac
-  $TIMEOUT -s KILL "${Tiger_Mount_Timeout:-5}" "$__probe" -P "$1" >/dev/null 2>&1
+  $TIMEOUT -s KILL "${Tigris_Mount_Timeout:-5}" "$__probe" -P "$1" >/dev/null 2>&1
   case $? in
     124|137) __dead_dirs="$__dead_dirs|$__dir"; return 1 ;;
   esac
@@ -761,13 +761,13 @@ safe_temp()
 # is the path itself; auditing an offline root (--root) it is resolved
 # inside the root by util/rootpath, symbolic links followed the way that
 # system would follow them, so that nothing outside the root is read.
-# The tests' Tiger_Sysctl_Root is such a root too.
+# The tests' Tigris_Sysctl_Root is such a root too.
 # rootfile PATH: the same for one path.
 # rootls DIR: the entries of the audited system's DIR, as its paths.
 rootpaths()
 {
-  if [ -n "$TIGRIS_ROOT$Tiger_Sysctl_Root" ]; then
-    AWK=$AWK sh $BASEDIR/util/rootpath "${TIGRIS_ROOT:-$Tiger_Sysctl_Root}" "$TIGRIS_LINKS"
+  if [ -n "$TIGRIS_ROOT$Tigris_Sysctl_Root" ]; then
+    AWK=$AWK sh $BASEDIR/util/rootpath "${TIGRIS_ROOT:-$Tigris_Sysctl_Root}" "$TIGRIS_LINKS"
   else
     cat
   fi
@@ -778,7 +778,7 @@ rootfile()
 }
 # __here PATH: where PATH of the audited system is on this host: itself on
 # the running system, resolved inside the root when auditing an offline
-# one. Unlike rootfile it never prefixes the tests' Tiger_Sysctl_Root, so
+# one. Unlike rootfile it never prefixes the tests' Tigris_Sysctl_Root, so
 # the old checks that call it behave as they always have on a live system.
 __here()
 {
@@ -984,7 +984,7 @@ skip_check()
     return 1
   fi
   echo "# Skipped $__sname: $__text."
-  [ -n "$Tiger_JSON_File" ] && printf '{"type":"skip","check":"%s","reason":"%s"}\n' "$__sname" "$__why" >> "$Tiger_JSON_File"
+  [ -n "$Tigris_JSON_File" ] && printf '{"type":"skip","check":"%s","reason":"%s"}\n' "$__sname" "$__why" >> "$Tigris_JSON_File"
   return 0
 }
 
@@ -1015,7 +1015,7 @@ progress_start()
     return
   fi
   __progress_spin=Y
-  case "${Tiger_Orig_Locale:-${LC_ALL:-${LANG:-}}}" in
+  case "${Tigris_Orig_Locale:-${LC_ALL:-${LANG:-}}}" in
     *UTF-8*|*UTF8*|*utf8*) __progress_frames='⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏';;
     *) __progress_frames='- \ | /';;
   esac

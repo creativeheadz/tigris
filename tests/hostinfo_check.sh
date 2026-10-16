@@ -17,7 +17,7 @@ fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 probe() {  # probe STUB: gethostinfo with the uname stub
-  ( Tiger_Uname_Cmd="$TIGER/tests/fixtures/uname/$1" WORKDIR=$W sh "$TIGER/util/gethostinfo" ) 2>/dev/null
+  ( Tigris_Uname_Cmd="$TIGER/tests/fixtures/uname/$1" WORKDIR=$W sh "$TIGER/util/gethostinfo" ) 2>/dev/null
 }
 
 [ "`probe freebsd`" = "FreeBSD 14.1-RELEASE amd64" ] &&

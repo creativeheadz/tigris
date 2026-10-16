@@ -25,7 +25,7 @@ Changes in behavior:
 --------------------
 
 First of all make sure to read, understand and customize
-/etc/tiger/tigerrc and /etc/tiger/cronrc to adapt to your local security
+/etc/tigris/tigris.conf and /etc/tigris/cronrc to adapt to your local security
 policy, as the warning on installation says "You cannot expect to tiger to work 
 fully to your needs without adapting it". Bugs regarding false positives
 which can be fixed by the proper configuration and/or use of templates (see below)
@@ -41,12 +41,12 @@ Using Templates
 Tiger in Debian can compare against "templates" when running through
 a cron job. That is, you can take a given log from a previous run
 (at /var/log/tiger) rename it with a ".template" instead of a ".[number]"
-and place it under /etc/tiger/templates.
+and place it under /etc/tigris/templates.
 
 Tiger checks will compare against it. That way Tiger will only report issues
-when they changed from the template (if configured in /etc/tiger/tigerrc).
+when they changed from the template (if configured in /etc/tigris/tigris.conf).
 NOTE: Previous to 2.2.4-20 templates could be placed in /var/log/tiger,
-this behaviour is preserved but templates at /etc/tiger/ are used
+this behaviour is preserved but templates at /etc/tigris/ are used
 first if available.
 
 Another (less secure) method is to have Tiger only report changes from previous
@@ -68,7 +68,7 @@ script/check_accounts)
 
 - Debian specific checks take quite some time to finish, I have changed the
 Cron job to do this only once in a day, and you can optimize the check by
-changing the $Tiger_DPKG_Optimize variable in /etc/tiger. In any case
+changing the $Tigris_DPKG_Optimize variable in /etc/tigris. In any case
 finding packages in Debian takes quite some time... (due to the *very*
 large package list)
 
@@ -106,7 +106,7 @@ TODO
   are in the Debian stable release and have been found vulnerable (packages
   in stable-updates) so that Tiger can (if not online) check a Debian system
   and tell the administrator he *must* upgrade them from security.debian.org
-  For an example look at information on doc/signatures. Tigexp is very useful
+  For an example look at information on doc/signatures. tigris explain is very useful
   here and could be very informative.
 
 - (Nice feature) Provide internationalisation support.

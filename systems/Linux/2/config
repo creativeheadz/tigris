@@ -132,9 +132,9 @@ LXDISTRIBUTION="unknown"
 # /etc/os-release names the distribution (ID) and the ones it descends from
 # (ID_LIKE), which is how Ubuntu, Mint and Pop!_OS are Debian and Rocky,
 # Alma and Fedora are Red Hat. It is read as text, never sourced: this runs
-# as root. Tiger_Os_Release lets the tests point at a file of their own.
-__osrel=${Tiger_Os_Release:-`__relfile 7`}
-[ -r "$__osrel" ] || [ -n "$Tiger_Os_Release" ] || __osrel=`__relfile 8`
+# as root. Tigris_Os_Release lets the tests point at a file of their own.
+__osrel=${Tigris_Os_Release:-`__relfile 7`}
+[ -r "$__osrel" ] || [ -n "$Tigris_Os_Release" ] || __osrel=`__relfile 8`
 TESTEXEC=-x     # findcmd tests with it, and it is only set again further down
 __sed=`findcmd sed`; __tr=`findcmd tr`      # SED and TR are defined further down
 if [ -r "$__osrel" ] && [ -n "$__sed" ] && [ -n "$__tr" ]; then

@@ -29,16 +29,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -64,10 +64,10 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds RM || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
-  haveallvars TESTLINK HOSTNAME Tiger_INTEGRIT_CFG
+  haveallvars TESTLINK HOSTNAME Tigris_INTEGRIT_CFG
   
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
   exit 0
@@ -78,20 +78,20 @@ echo
 echo "# Running Integrit file checker..."
 
 # Integrit binary location|override + default check
-# Which, find, user-supplied var or tigexp's findcmd?:
+# Which, find, user-supplied var or tigris-explain's findcmd?:
 if [ -z "$INTEGRIT" ] 
 then
-if [ -z "${Tiger_INTEGRIT_LOC_OVERRIDE}" ]
+if [ -z "${Tigris_INTEGRIT_LOC_OVERRIDE}" ]
 then
    INTEGRIT=`command -v integrit`
 else
-   INTEGRIT=${Tiger_INTEGRIT_LOC_OVERRIDE}
+   INTEGRIT=${Tigris_INTEGRIT_LOC_OVERRIDE}
 fi
 fi
 
 haveallcmds RM INTEGRIT || exit 1
 haveallfiles BASEDIR WORKDIR || exit 1
-haveallvars TESTLINK HOSTNAME Tiger_INTEGRIT_CFG || exit 1
+haveallvars TESTLINK HOSTNAME Tigris_INTEGRIT_CFG || exit 1
 
 # TODO: 
 # - The location of integrit should be tested and not be
@@ -101,7 +101,7 @@ INTEGRIT_RPT="$WORKDIR/integrit.out.tmp.$$"
 safe_temp $INTEGRIT_RPT
 trap 'delete $INTEGRIT_RPT; exit 1' 1 2 3 15
 
-$INTEGRIT -c -C $Tiger_INTEGRIT_CFG 2> /dev/null > $INTEGRIT_RPT
+$INTEGRIT -c -C $Tigris_INTEGRIT_CFG 2> /dev/null > $INTEGRIT_RPT
 
 # TODO: calling INTEGRIT should check the errors (if any)
 # i.e. check $? and determine what happened

@@ -123,9 +123,9 @@ fi
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/log" "$W/run"
 [ "`id -u`" = 0 ] && chown -R 0:0 "$W"
-sed 's/^\(Tiger_\(Check\|Run\|Deb\)_[A-Za-z0-9_]*\)=.*/\1=N/' "$W/tigerrc" > "$W/tigerrc.t"
-echo "Tiger_Check_SYSTEM=Y" >> "$W/tigerrc.t"
-chmod 600 "$W/tigerrc.t"
+sed 's/^\(Tigris_\(Check\|Run\|Deb\)_[A-Za-z0-9_]*\)=.*/\1=N/' "$W/tigris.conf" > "$W/tigris.conf.t"
+echo "Tigris_Check_SYSTEM=Y" >> "$W/tigris.conf.t"
+chmod 600 "$W/tigris.conf.t"
 cat > "$W/plant" <<'EOF'
 #!/bin/sh
 basedir=${TIGERHOMEDIR:-.}
@@ -140,7 +140,7 @@ EOF
 chmod 755 "$W/plant"
 echo "$W/plant" > "$W/check.d/plant"
 printf 'WARN sum001w planted WARN\nWARN sum001w planted WARN again\nFAIL sum002f planted FAIL\n' > "$W/plant.list"
-( cd "$W" && sh ./tigris -c tigerrc.t -q ) > "$W/out" 2> "$W/err"; st=$?
+( cd "$W" && sh ./tigris -c tigris.conf.t -q ) > "$W/out" 2> "$W/err"; st=$?
 [ $st -eq 4 ] && ok "the planted run exits 4 (FAIL)" || bad "planted run exits $st: `cat "$W/err"`"
 report=`ls -t "$W"/log/security.report.* 2>/dev/null | grep -v jsonl | head -1`
 json=`ls -t "$W"/log/*.jsonl 2>/dev/null | head -1`
@@ -162,8 +162,8 @@ fi
 
 # with the JSON report off there is nothing to summarize from
 rm -f "$W"/log/*
-{ cat "$W/tigerrc.t"; echo "Tiger_Output_JSON=N"; } > "$W/tigerrc.n"; chmod 600 "$W/tigerrc.n"
-( cd "$W" && sh ./tigris -c tigerrc.n -q ) > "$W/out" 2> "$W/err"; st=$?
+{ cat "$W/tigris.conf.t"; echo "Tigris_Output_JSON=N"; } > "$W/tigris.conf.n"; chmod 600 "$W/tigris.conf.n"
+( cd "$W" && sh ./tigris -c tigris.conf.n -q ) > "$W/out" 2> "$W/err"; st=$?
 [ $st -eq 4 ] || bad "JSON-off run exits $st"
 report=`ls -t "$W"/log/security.report.* 2>/dev/null | head -1`
 [ -n "$report" ] && ! grep -q '^# Summary:' "$report" && ok "with the JSON off, no summary" || bad "JSON-off tail: `tail -3 "$report"`"

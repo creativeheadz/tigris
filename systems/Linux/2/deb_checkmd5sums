@@ -83,7 +83,7 @@
 # Tigris: offline
 #
 #-----------------------------------------------------------------------------
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 
 #
@@ -91,9 +91,9 @@ TigerInstallDir='.'
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -119,7 +119,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds MD5SUM CAT CUT SED GREP EGREP BASENAME || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME

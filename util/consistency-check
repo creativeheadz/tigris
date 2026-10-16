@@ -19,10 +19,10 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 
-# 1.- Verify that all scripts called by tigerrc are available
+# 1.- Verify that all scripts called by tigris.conf are available
 
 PROGRAM="tiger"
-CONFIG="tigerrc"
+CONFIG="tigris.conf"
 SCRIPTDIR="./scripts"
 if [ ! -r "$PROGRAM" -o ! -r "$CONFIG" -o ! -d "$SCRIPTDIR" ] 
 then
@@ -62,14 +62,14 @@ do
 done
 }
 
-# 3.- Verify that all check variables used by tiger are in tigerrc and
+# 3.- Verify that all check variables used by tiger are in tigris.conf and
 #     viceversa
 
 check_configuse () {
 echo "Checking $PROGRAM use of config lines"
 cat $PROGRAM |
 grep -v '^#' |
-sed -ne 's/^.*Tiger_Check_\([a-z]*\)\" != '[YN]' !.*/Tiger_Check_\1/pg' |
+sed -ne 's/^.*Tigris_Check_\([a-z]*\)\" != '[YN]' !.*/Tigris_Check_\1/pg' |
 while read configcheck
 do
 	[ -n "$configcheck" ] && 
@@ -80,7 +80,7 @@ done
 echo "Checking configuration lines of $CONFIG in $PROGRAM"
 cat $CONFIG |
 grep -v '^#' |
-grep ^Tiger_Check |
+grep ^Tigris_Check |
 awk -F = '{ print $1; }' |
 while read configcheck
 do

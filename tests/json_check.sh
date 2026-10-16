@@ -29,8 +29,8 @@ cd "$1" || exit 1
 set --                      # config parses the command line; give it none
 . ./config >/dev/null 2>&1
 . ./initdefs
-Tiger_JSON_File=$out
-export Tiger_JSON_File
+Tigris_JSON_File=$out
+export Tigris_JSON_File
 message WARN test001w "" 'quote " backslash \ tab	end'
 message FAIL test002f 'second line' 'control char here'
 message ALERT test003a "" 'latin1 file name: caf'$(printf '\351')' and utf8: caf'$(printf '\303\251')
@@ -57,9 +57,9 @@ echo 0 > "$W/bad/proc/sys/kernel/kptr_restrict"
 echo 0 > "$W/bad/proc/sys/kernel/randomize_va_space"
 echo 0 > "$W/bad/proc/sys/fs/protected_symlinks"
 {
-  echo "Tiger_Sysctl_Root='$W/bad'"
-  echo "Tiger_JSON_File='$W/sysctl.jsonl'"
-} >> "$W/tigerrc"
+  echo "Tigris_Sysctl_Root='$W/bad'"
+  echo "Tigris_JSON_File='$W/sysctl.jsonl'"
+} >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh systems/Linux/2/check_sysctl 2>&1 ) > "$W/sysctl.txt"
 # CONFIG lines (codes ending in c) are echoed by config itself, not by message()
 text_ids=`grep -oE '\[[a-z]+[0-9]{3}[a-bd-z]\]' "$W/sysctl.txt" | tr -d '[]' | sort | tr '\n' ' '`

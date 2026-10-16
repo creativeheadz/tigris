@@ -68,8 +68,8 @@ printf 'root:x:0:\n' > "$J/etc/group"
 echo entry > "$J/var/log/journal/deadbeef/system.journal"
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  for c in PERMS BACKUPS LOGFILES; do echo "Tiger_Check_$c=Y"; done
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  for c in PERMS BACKUPS LOGFILES; do echo "Tigris_Check_$c=Y"; done
 } > "$W/profiles/perms"
 chmod 644 "$W/profiles/perms"
 

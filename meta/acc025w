@@ -7,7 +7,7 @@ References: mount(8); nfs(5)
 Controls: CIS 3.3, 5.1; NIST AC-2, AC-3; ISO 5.16, 5.18, 8.3; CE User access control
 
 The user's home directory is on a filesystem that did not answer
-within Tiger_Mount_Timeout seconds, which is what a hard NFS or CIFS
+within Tigris_Mount_Timeout seconds, which is what a hard NFS or CIFS
 mount looks like when its server is down. The account's home-directory
 checks (permissions, dotfiles, dormancy) were skipped rather than hang.
 Other accounts with homes under the same parent directory are skipped

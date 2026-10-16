@@ -2,7 +2,7 @@
 #
 # tests/pam_check.sh - check_pam against PAM stacks of its own
 #
-# Trees under Tiger_Sysctl_Root with the stacks distributions ship:
+# Trees under Tigris_Sysctl_Root with the stacks distributions ship:
 # Debian's common-auth and common-password (pam_unix only), Fedora's
 # system-auth from authselect (pam_pwquality, controls in brackets),
 # Arch's system-auth (pam_faillock), openSUSE's defaults in /usr/lib/pam.d
@@ -14,14 +14,14 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 
 go() {
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  echo "Tiger_Sysctl_Root='$W/$1'" >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  echo "Tigris_Sysctl_Root='$W/$1'" >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_pam ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"

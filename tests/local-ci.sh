@@ -21,7 +21,7 @@ cd "$TIGER" || exit 1
 
 # The run must leave the tree exactly as it found it; anything it builds
 # happens in copies and temp dirs, never here.
-# the tree copies the tests make carry this checkout's modes: a tigerrc
+# the tree copies the tests make carry this checkout's modes: a tigris.conf
 # or profile that group may write is (rightly) ignored, so make them 644
 umask 022
 treestart=`git status --short 2>/dev/null`
@@ -42,7 +42,7 @@ say() { printf '%s\n' "$1"; }
 if run_section lint; then
   say "== lint: sh -n on every shell script"
   lintfail=0; n=0
-  for f in $(git ls-files tiger tigris-diff tigris-accept tigexp tigercron config initdefs scripts systems util tests packaging); do
+  for f in $(git ls-files tiger tigris-diff tigris-accept tigris-explain tigercron config initdefs scripts systems util tests packaging); do
     case "$f" in tests/fixtures/*|*.c|*.pl|*.txt|*.lst|*.tmpl|*.xref|*README*|*/services|*/inetd|*_list|*signatures*|*advisories*|*baseline*|*embedlist*|*facl*|*.spec|*PKGBUILD*) continue;; esac
     [ -f "$f" ] || continue
     head -1 "$f" | grep -q 'perl' && continue
@@ -71,7 +71,7 @@ if run_section lint; then
   if command -v shellcheck >/dev/null 2>&1; then
     say "== lint: ShellCheck (errors)"
     files=
-    for f in tiger tigexp tigercron config initdefs util/realpath util/rootpath util/summary tests/*.sh packaging/*.sh \
+    for f in tiger tigris-explain tigercron config initdefs util/realpath util/rootpath util/summary tests/*.sh packaging/*.sh \
         $(git ls-files scripts systems/Linux/2 systems/MacOSX/default systems/FreeBSD/default systems/default | grep -v '\.pl$\|README\|\.lst$\|\.tmpl$\|_list$\|signatures\|advisories\|baseline\|embedlist\|facl\|/services$\|/inetd$\|\.sh$'); do
       head -1 "$f" | grep -q perl && continue
       files="$files $f"
@@ -103,7 +103,7 @@ if run_section build; then
     say "== build: make install into a staging directory, man pages included"
     W=`mktemp -d`
     make install DESTDIR="$W/dest" || fail=1
-    for m in tiger tigexp tigercron tigris tigris-diff tigris-accept; do
+    for m in tiger tigris-explain tigercron tigris tigris-diff tigris-accept; do
       test -f "$W/dest/usr/local/share/man/man8/$m.8" || { echo "no $m.8"; fail=1; }
     done
     rm -rf "$W"

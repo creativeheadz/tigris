@@ -4,12 +4,12 @@
 #
 #   sudo ./tigris --profile server
 #
-# Read after the tigerrc; only what differs from it.
+# Read after the tigris.conf; only what differs from it.
 #
 # USB storage has no business here (stor008w when it is usable).
-Tiger_Storage_NoUSB=Y
+Tigris_Storage_NoUSB=Y
 # Every account's PATH, not root's alone: service accounts run commands.
-Tiger_Check_PATHALL=Y
+Tigris_Check_PATHALL=Y
 # Processes still using deleted files: libraries updated under a
 # running daemon, or a binary removed after it was started.
-Tiger_Check_DELETED=Y
+Tigris_Check_DELETED=Y

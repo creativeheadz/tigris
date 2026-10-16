@@ -50,16 +50,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -85,7 +85,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallfiles BASEDIR WORKDIR || exit 1
   
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
@@ -108,197 +108,197 @@ SYSTEMDIR=$BASEDIR/systems/Linux/2
 # Note: cannot echo TIMECMD since we lose the handle to the tmplog
 
 
-[ "$Tiger_Check_SINGLE" != 'N' ] && {
+[ "$Tigris_Check_SINGLE" != 'N' ] && {
 #  echo "`$TIMECMD`> Checking for single user mode password..."
   skip_check $SYSTEMDIR/check_single || $SYSTEMDIR/check_single
 }
 
-[ "$Tiger_Check_BOOT" != 'N' ] && {
+[ "$Tigris_Check_BOOT" != 'N' ] && {
 #  echo "`$TIMECMD`> Checking boot loader file permissions..."
   skip_check $SYSTEMDIR/check_lilo || $SYSTEMDIR/check_lilo
 }
 
 
-[ "$Tiger_Check_RCUMASK" != 'N' ] && {
+[ "$Tigris_Check_RCUMASK" != 'N' ] && {
 #  echo "`$TIMECMD`> Checking umask definitions..."
   skip_check $SYSTEMDIR/check_rcumask || $SYSTEMDIR/check_rcumask
 }
 
-[ "$Tiger_Check_NEVERLOG" != 'N' ] && {
+[ "$Tigris_Check_NEVERLOG" != 'N' ] && {
 #  echo "`$TIMECMD`> Checking for users which have not logged in..."
   skip_check $SYSTEMDIR/check_neverlogin || $SYSTEMDIR/check_neverlogin
 }
 
-[ "$Tiger_Check_NETWORKCONFIG" != 'N' ] && {
+[ "$Tigris_Check_NETWORKCONFIG" != 'N' ] && {
 # echo "`$TIMECMD`> Checking for values of the network configuration."
   skip_check $SYSTEMDIR/check_network_config || $SYSTEMDIR/check_network_config
 }
 
-[ "$Tiger_Check_PROMISC" != 'N' ] && {
+[ "$Tigris_Check_PROMISC" != 'N' ] && {
   skip_check $SYSTEMDIR/check_promisc || $SYSTEMDIR/check_promisc
 }
 
-[ "$Tiger_Check_SYSCTL" != 'N' ] && {
+[ "$Tigris_Check_SYSCTL" != 'N' ] && {
   skip_check $SYSTEMDIR/check_sysctl || $SYSTEMDIR/check_sysctl
 }
 
-[ "$Tiger_Check_SYSTEMD" != 'N' ] && {
+[ "$Tigris_Check_SYSTEMD" != 'N' ] && {
   skip_check $SYSTEMDIR/check_systemd || $SYSTEMDIR/check_systemd
 }
 
-[ "$Tiger_Check_FIREWALL" != 'N' ] && {
+[ "$Tigris_Check_FIREWALL" != 'N' ] && {
   skip_check $SYSTEMDIR/check_firewall || $SYSTEMDIR/check_firewall
 }
 
-[ "$Tiger_Check_SECUREBOOT" != 'N' ] && {
+[ "$Tigris_Check_SECUREBOOT" != 'N' ] && {
   skip_check $SYSTEMDIR/check_secureboot || $SYSTEMDIR/check_secureboot
 }
 
-[ "$Tiger_Check_MAC" != 'N' ] && {
+[ "$Tigris_Check_MAC" != 'N' ] && {
   skip_check $SYSTEMDIR/check_mac || $SYSTEMDIR/check_mac
 }
 
-[ "$Tiger_Check_AUDIT" != 'N' ] && {
+[ "$Tigris_Check_AUDIT" != 'N' ] && {
   skip_check $SYSTEMDIR/check_audit || $SYSTEMDIR/check_audit
 }
 
-[ "$Tiger_Check_ACCOUNTING" != 'N' ] && {
+[ "$Tigris_Check_ACCOUNTING" != 'N' ] && {
   skip_check $SYSTEMDIR/check_accounting || $SYSTEMDIR/check_accounting
 }
 
-[ "$Tiger_Check_TIMESYNC" != 'N' ] && {
+[ "$Tigris_Check_TIMESYNC" != 'N' ] && {
   skip_check $SYSTEMDIR/check_timesync || $SYSTEMDIR/check_timesync
 }
 
-[ "$Tiger_Check_UPDATES" != 'N' ] && {
+[ "$Tigris_Check_UPDATES" != 'N' ] && {
   skip_check $SYSTEMDIR/check_updates || $SYSTEMDIR/check_updates
 }
 
-[ "$Tiger_Check_REPOS" != 'N' ] && {
+[ "$Tigris_Check_REPOS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_repos || $SYSTEMDIR/check_repos
 }
 
-[ "$Tiger_Check_SUDO" != 'N' ] && {
+[ "$Tigris_Check_SUDO" != 'N' ] && {
   skip_check $SYSTEMDIR/check_sudo || $SYSTEMDIR/check_sudo
 }
 
-[ "$Tiger_Check_PAM" != 'N' ] && {
+[ "$Tigris_Check_PAM" != 'N' ] && {
   skip_check $SYSTEMDIR/check_pam || $SYSTEMDIR/check_pam
 }
 
-[ "$Tiger_Check_KERBEROS" != 'N' ] && {
+[ "$Tigris_Check_KERBEROS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_kerberos || $SYSTEMDIR/check_kerberos
 }
 
-[ "$Tiger_Check_LDAP" != 'N' ] && {
+[ "$Tigris_Check_LDAP" != 'N' ] && {
   skip_check $SYSTEMDIR/check_ldap || $SYSTEMDIR/check_ldap
 }
 
-[ "$Tiger_Check_PHP" != 'N' ] && {
+[ "$Tigris_Check_PHP" != 'N' ] && {
   skip_check $SYSTEMDIR/check_php || $SYSTEMDIR/check_php
 }
 
-[ "$Tiger_Check_SNMP" != 'N' ] && {
+[ "$Tigris_Check_SNMP" != 'N' ] && {
   skip_check $SYSTEMDIR/check_snmp || $SYSTEMDIR/check_snmp
 }
 
-[ "$Tiger_Check_SQUID" != 'N' ] && {
+[ "$Tigris_Check_SQUID" != 'N' ] && {
   skip_check $SYSTEMDIR/check_squid || $SYSTEMDIR/check_squid
 }
 
-[ "$Tiger_Check_PRINTERS" != 'N' ] && {
+[ "$Tigris_Check_PRINTERS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_printers || $SYSTEMDIR/check_printers
 }
 
-[ "$Tiger_Check_IDS" != 'N' ] && {
+[ "$Tigris_Check_IDS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_ids || $SYSTEMDIR/check_ids
 }
 
-[ "$Tiger_Check_COMPILERS" != 'N' ] && {
+[ "$Tigris_Check_COMPILERS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_compilers || $SYSTEMDIR/check_compilers
 }
 
-[ "$Tiger_Check_ANTIVIRUS" != 'N' ] && {
+[ "$Tigris_Check_ANTIVIRUS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_antivirus || $SYSTEMDIR/check_antivirus
 }
 
-[ "$Tiger_Check_MAIL" != 'N' ] && {
+[ "$Tigris_Check_MAIL" != 'N' ] && {
   skip_check $SYSTEMDIR/check_mail || $SYSTEMDIR/check_mail
 }
 
-[ "$Tiger_Check_CRYPTO" != 'N' ] && {
+[ "$Tigris_Check_CRYPTO" != 'N' ] && {
   skip_check $SYSTEMDIR/check_crypto || $SYSTEMDIR/check_crypto
 }
 
-[ "$Tiger_Check_INTEGRITY" != 'N' ] && {
+[ "$Tigris_Check_INTEGRITY" != 'N' ] && {
   skip_check $SYSTEMDIR/check_integrity || $SYSTEMDIR/check_integrity
 }
 
-[ "$Tiger_Check_UNITS" != 'N' ] && {
+[ "$Tigris_Check_UNITS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_units || $SYSTEMDIR/check_units
 }
 
-[ "$Tiger_Check_STORAGE" != 'N' ] && {
+[ "$Tigris_Check_STORAGE" != 'N' ] && {
   skip_check $SYSTEMDIR/check_storage || $SYSTEMDIR/check_storage
 }
 
-[ "$Tiger_Check_CONTAINERS" != 'N' ] && {
+[ "$Tigris_Check_CONTAINERS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_containers || $SYSTEMDIR/check_containers
 }
 
-[ "$Tiger_Check_CERTS" != 'N' ] && {
+[ "$Tigris_Check_CERTS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_certs || $SYSTEMDIR/check_certs
 }
 
-[ "$Tiger_Check_REMOTELOG" != 'N' ] && {
+[ "$Tigris_Check_REMOTELOG" != 'N' ] && {
   skip_check $SYSTEMDIR/check_remotelog || $SYSTEMDIR/check_remotelog
 }
 
-[ "$Tiger_Check_DNS" != 'N' ] && {
+[ "$Tigris_Check_DNS" != 'N' ] && {
   skip_check $SYSTEMDIR/check_dns || $SYSTEMDIR/check_dns
 }
 
-[ "$Tiger_Check_DATABASES" != 'N' ] && {
+[ "$Tigris_Check_DATABASES" != 'N' ] && {
   skip_check $SYSTEMDIR/check_databases || $SYSTEMDIR/check_databases
 }
 
-[ "$Tiger_Check_NGINX" != 'N' ] && {
+[ "$Tigris_Check_NGINX" != 'N' ] && {
   skip_check $SYSTEMDIR/check_nginx || $SYSTEMDIR/check_nginx
 }
 
-[ "$Tiger_Check_PASSWD" != 'N' -a "$Tiger_Check_PASSWD_SHADOW" != 'N' ] && {
+[ "$Tigris_Check_PASSWD" != 'N' -a "$Tigris_Check_PASSWD_SHADOW" != 'N' ] && {
   skip_check $SYSTEMDIR/check_passwdspec || $SYSTEMDIR/check_passwdspec
 }
 
 # The following scripts have been added to provide new checks 
 # specific to the Debian system, written by Javier Fernandez-Sanguino
 #
-[ "$Tiger_Check_PKGINTEGRITY" != 'N' ] && {
+[ "$Tigris_Check_PKGINTEGRITY" != 'N' ] && {
   skip_check $SYSTEMDIR/pkg_integrity || $SYSTEMDIR/pkg_integrity
 }
 
 if [ "$LXDISTRIBUTION" = "debian" ]; then
 
 # The following checks, for the moment, work only for Debian but
-# they could be generalised (there is a tigerrc variable for them)
-[ "$Tiger_Check_OS" != 'N' ] && {
+# they could be generalised (there is a tigris.conf variable for them)
+[ "$Tigris_Check_OS" != 'N' ] && {
 #  echo "`$TIMECMD`> Checking for correct OS version..."
   skip_check $SYSTEMDIR/check_release || $SYSTEMDIR/check_release
 }
 
-[ "$Tiger_Check_PATCH" != 'N' ] && {
+[ "$Tigris_Check_PATCH" != 'N' ] && {
 #  echo "`$TIMECMD`> Checking for up-to-date patches..."
   skip_check $SYSTEMDIR/check_patches || $SYSTEMDIR/check_patches
 }
 
 # Debian specific checks
-[ "$Tiger_Deb_CheckMD5Sums" != 'N' ]&&  {
+[ "$Tigris_Deb_CheckMD5Sums" != 'N' ]&&  {
   skip_check $SYSTEMDIR/deb_checkmd5sums || $SYSTEMDIR/deb_checkmd5sums
 }
-[ "$Tiger_Deb_NoPackFiles" != 'N' ]&&  {
+[ "$Tigris_Deb_NoPackFiles" != 'N' ]&&  {
   skip_check $SYSTEMDIR/deb_nopackfiles || $SYSTEMDIR/deb_nopackfiles
 }
-[ "$Tiger_Deb_StatOverride" != 'N' ] && {
+[ "$Tigris_Deb_StatOverride" != 'N' ] && {
   skip_check $SYSTEMDIR/deb_statoverride || $SYSTEMDIR/deb_statoverride
 }
 # End of Debian-specific checks

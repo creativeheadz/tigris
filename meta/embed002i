@@ -2,14 +2,14 @@ Id: embed002i
 Severity: INFO
 Category: filesystem
 Check: check_embedded
-Fix: chown root the file, or add its owner to Tiger_Embedded_OK_Owners if it is meant to own it.
-References: chown(1); tigerrc (Tiger_Embedded_OK_Owners)
+Fix: chown root the file, or add its owner to Tigris_Embedded_OK_Owners if it is meant to own it.
+References: chown(1); tigris.conf (Tigris_Embedded_OK_Owners)
 Controls: CIS 4.1; NIST AC-3, CM-6; ISO 8.9; CE Secure configuration
 
 See the 'embed' explanation for an explanation of the format of the
 embedded references.
 
 The file or directory is not owned by an administrative account
-(Tiger_Embedded_OK_Owners). This may indicate a vulnerability in the
+(Tigris_Embedded_OK_Owners). This may indicate a vulnerability in the
 system. It will be necessary to study the file and programs in which
 the pathname was found to determine whether there is a problem.

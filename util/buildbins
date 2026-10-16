@@ -23,7 +23,7 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 outfile=
 [ -n "$1" ] && {
@@ -38,9 +38,9 @@ outfile=
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -58,7 +58,7 @@ done
   exit 1
 }
 
-TigerNoBuild=Y
+TigrisNoBuild=Y
 
 . $basedir/config
 
@@ -68,7 +68,7 @@ TigerNoBuild=Y
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds RM CC CAT MV  || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   

@@ -81,7 +81,7 @@
 #                                   Added code to check the filesystems valid in the current kernel, this
 #                                   should prevent future false positivies when new filesystems are added to the kernel
 # Linux/2/gen_mounts - 07/02/2018 - Added fuse.clamfs (Ubuntu bug 1204527) and fuse.javafs (Ubuntu bug 1305057) 
-# Linux/2/gen_mounts - 06/10/2026 - Leave out a filesystem that does not answer within Tiger_Mount_Timeout (con011c)
+# Linux/2/gen_mounts - 06/10/2026 - Leave out a filesystem that does not answer within Tigris_Mount_Timeout (con011c)
 #                                 - Added nsfs as non-local (one con010c per container otherwise)
 #                                   filesystems
 #------------------------------------------------------------------------------------------------------------------
@@ -246,7 +246,7 @@ localfs()
                                     # https://www.kernel.org/doc/Documentation/filesystems/gfs2.txt
   # Note: gfs is considered non-local even though remoutely mounted in a SAN as this filesystem could
   # be used exclusively, if your system uses gfs or gfs2 and you want to scan the filesystem
-  # set it at Tiger_FSScan_Local
+  # set it at Tigris_FSScan_Local
 
   [ "$1" = "ceph" ] && LOCAL=1      # Distributed network filesystem, see
                                     # https://www.kernel.org/doc/Documentation/filesystems/ceph.txt
@@ -324,16 +324,16 @@ localfs()
   # Some special filesystems
   [ "$1" = "unknown" ] && [ "$2" = "/dev" ] && LOCAL=1
 
-  # Handle the Tiger_FSScan_Local and Tiger_FSScan_Nonlocal variables, if defined
-  if [ ! -z "$Tiger_FSScan_Local" ] ; then
+  # Handle the Tigris_FSScan_Local and Tigris_FSScan_Nonlocal variables, if defined
+  if [ ! -z "$Tigris_FSScan_Local" ] ; then
     # List of known filesystems the admin considers to be local to the system
-    if echo $1 | $EGREP -q $Tiger_FSScan_Local; then
+    if echo $1 | $EGREP -q $Tigris_FSScan_Local; then
         LOCAL=0
     fi
   fi
-  if [ ! -z "$Tiger_FSScan_NonLocal" ] ; then
+  if [ ! -z "$Tigris_FSScan_NonLocal" ] ; then
     # List of known filesystems the admin considers to be not local to the system
-    if echo $1 | $EGREP -q $Tiger_FSScan_NonLocal; then
+    if echo $1 | $EGREP -q $Tigris_FSScan_NonLocal; then
         LOCAL=1
     fi
   fi
@@ -357,7 +357,7 @@ localfs()
 
   # The rest we warn about
   if [ "$LOCAL" -eq 2 ] ; then
-    if [ -z "$Tiger_FSScan_WarnUnknown" ] || [ "$Tiger_FSScan_WarnUnknown" = "Y" ] ; then
+    if [ -z "$Tigris_FSScan_WarnUnknown" ] || [ "$Tigris_FSScan_WarnUnknown" = "Y" ] ; then
         echo "--CONFIG-- [con010c] Filesystem '$1' used by '$2' is not recognised as a valid filesystem" >&2
     fi
     LOCAL=1
@@ -368,7 +368,7 @@ localfs()
 # If run directly do this, just in case:
 [ -z "$GETFS" ] && GETFS=`command -v mount`
 # The tests' stand-in for mount
-[ -n "$Tiger_Mounts_Cmd" ] && GETFS=$Tiger_Mounts_Cmd
+[ -n "$Tigris_Mounts_Cmd" ] && GETFS=$Tigris_Mounts_Cmd
 [ -z "$SED" ] && SED=`command -v sed`
 [ -z "$BASENAME" ] && BASENAME=`command -v basename`
 [ -z "$EGREP" ] && EGREP="`command -v grep` -E"
@@ -379,23 +379,23 @@ localfs()
 # A hard NFS or CIFS mount whose server is down blocks every program that
 # touches a path under it, and the check that touched it would never
 # finish. df -P asks the filesystem itself (statfs) and runs under a kill
-# timeout (Tiger_Mount_Timeout, seconds); only the kill means "dead". A
+# timeout (Tigris_Mount_Timeout, seconds); only the kill means "dead". A
 # path that does not exist, or a df that cannot run, is left for the
 # caller's own tests. Without a timeout command there is no probe, as
 # before. A parent directory found dead is remembered, so a hundred home
 # directories on one dead server cost one timeout, not a hundred.
-# Tiger_Mount_Probe_Cmd replaces df for the tests.
+# Tigris_Mount_Probe_Cmd replaces df for the tests.
 # (The same function as in initdefs; this script runs on its own.)
 #
 mount_alive()
 {
   [ -n "$TIMEOUT" ] || return 0
-  __probe=${Tiger_Mount_Probe_Cmd:-$DF}
+  __probe=${Tigris_Mount_Probe_Cmd:-$DF}
   [ -n "$__probe" ] || return 0
   __dir=${1%/*}
   [ -n "$__dir" ] || __dir=/
   case "|$__dead_dirs|" in *"|$__dir|"*) return 1 ;; esac
-  $TIMEOUT -s KILL "${Tiger_Mount_Timeout:-5}" "$__probe" -P "$1" >/dev/null 2>&1
+  $TIMEOUT -s KILL "${Tigris_Mount_Timeout:-5}" "$__probe" -P "$1" >/dev/null 2>&1
   case $? in
     124|137) __dead_dirs="$__dead_dirs|$__dir"; return 1 ;;
   esac
@@ -429,7 +429,7 @@ do
   # that has gone away) would stall the scan: leave it out and say so
   [ "$PRINT" = "1" ] && [ "$LOCAL_ONLY" = "local" ] && {
     mount_alive "$rawmtpoint" || {
-      echo "--CONFIG-- [con011c] Filesystem '$rawmtpoint' ($fstype) did not answer within ${Tiger_Mount_Timeout:-5} seconds and is left out of the scan" >&2
+      echo "--CONFIG-- [con011c] Filesystem '$rawmtpoint' ($fstype) did not answer within ${Tigris_Mount_Timeout:-5} seconds and is left out of the scan" >&2
       PRINT=0
     }
   }

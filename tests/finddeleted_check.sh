@@ -43,8 +43,8 @@ EOF
 cat > "$W/drive.sh" <<'EOF'
 basedir=$TIGERHOMEDIR
 . $basedir/config
-LSOF="$LSTUB" PS="$PSTUB" Tiger_Output_Width=0
-export LSOF PS Tiger_Output_Width
+LSOF="$LSTUB" PS="$PSTUB" Tigris_Output_Width=0
+export LSOF PS Tigris_Output_Width
 sh $BASEDIR/scripts/check_finddeleted
 EOF
 chmod +x "$W/lsof" "$W/ps"

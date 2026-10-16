@@ -6,7 +6,7 @@
 # template whose "@" is not a target, and a stray file rsyslog will
 # ignore), a syslog-ng tcp() destination reached through @include, and
 # journal-upload with a URL. Then a root with local logging only, and
-# one with no syslog at all: rlog002i either way. Tiger_Show_INFO_Msgs
+# one with no syslog at all: rlog002i either way. Tigris_Show_INFO_Msgs
 # is on, since both verdicts are INFO.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
@@ -15,7 +15,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -34,8 +34,8 @@ printf '@version: 3.35\n@include "/etc/syslog-ng/conf.d/*.conf"\n' > "$r/etc/sys
 printf 'destination d_remote {\n  tcp("ng.example" port(514));\n};\nlog { source(s_src); destination(d_remote); };\n' > "$r/etc/syslog-ng/conf.d/remote.conf"
 printf '[Upload]\nURL=https://logs.example:19532\n' > "$r/etc/systemd/journal-upload.conf"
 
-cp "$W/tigerrc.base" "$W/tigerrc"
-{ echo "Tiger_Sysctl_Root='$r'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+{ echo "Tigris_Sysctl_Root='$r'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_remotelog ) 2>&1 | join > "$W/out"
 has()   { grep -F -q -- "$1" "$W/out"; }
 count() { grep -F -c -- "$1" "$W/out"; }
@@ -53,8 +53,8 @@ L=$W/local
 mkdir -p "$L/etc" "$L/etc/rsyslog.d"
 # with the commented forwarding example RHEL 7 ships, which forwards nothing
 printf '$IncludeConfig /etc/rsyslog.d/*.conf\n*.* /var/log/messages\n#*.* @@remote-host:514\n# *.* action(type="omfwd" target="example.com" port="514")\n' > "$L/etc/rsyslog.conf"
-cp "$W/tigerrc.base" "$W/tigerrc"
-{ echo "Tiger_Sysctl_Root='$L'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+{ echo "Tigris_Sysctl_Root='$L'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_remotelog ) 2>&1 | join > "$W/local.out"
 grep -F -q '[rlog002i] No remote logging is configured: rsyslog and syslog-ng keep every log on this host.' "$W/local.out" &&
   [ "`grep -F -c 'rlog002i' "$W/local.out"`" = 1 ] &&
@@ -62,8 +62,8 @@ grep -F -q '[rlog002i] No remote logging is configured: rsyslog and syslog-ng ke
   ok "local logging only, a commented forwarding example: rlog002i, once" || { bad "local"; cat "$W/local.out"; }
 
 mkdir -p "$W/none/etc"
-cp "$W/tigerrc.base" "$W/tigerrc"
-{ echo "Tiger_Sysctl_Root='$W/none'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+{ echo "Tigris_Sysctl_Root='$W/none'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_remotelog ) 2>&1 | join > "$W/none.out"
 grep -F -q '[rlog002i] No remote logging is configured, and no rsyslog or syslog-ng configuration was found.' "$W/none.out" &&
   [ "`grep -F -c 'rlog002i' "$W/none.out"`" = 1 ] &&
@@ -73,7 +73,7 @@ grep -F -q '[rlog002i] No remote logging is configured, and no rsyslog or syslog
 R=$W/img
 mkdir -p "$R/etc"
 printf '*.* @offsite.example\n' > "$R/etc/rsyslog.conf"
-cp "$W/tigerrc.base" "$W/tigerrc"; echo "Tiger_Show_INFO_Msgs=Y" >> "$W/tigerrc"
+cp "$W/tigris.conf.base" "$W/tigris.conf"; echo "Tigris_Show_INFO_Msgs=Y" >> "$W/tigris.conf"
 ( cd "$W" && TIGRIS_ROOT=$R TIGERHOMEDIR=$W sh ./systems/Linux/2/check_remotelog ) 2>&1 | join > "$W/off"
 grep -F -q '[rlog001i] Logs are forwarded to @offsite.example (rsyslog).' "$W/off" &&
   ok "offline root: the forwarding, by the root's own configuration" || { bad "offline"; cat "$W/off"; }

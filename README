@@ -12,10 +12,10 @@ if they could figure out how to get it down to their machine.
 If you just want to run it, without regards to time considerations,
 then just 'cd' into the tiger directory, and run './tiger' as 'root'.
 
-The 'tigerrc' file is set up for a generic host, and enables all checks.
+The 'tigris.conf' file is set up for a generic host, and enables all checks.
 You can customize this file as needed.
 
-(Or use the '-c' switch to use an alternate tigerrc file as of 2.2.2)
+(Or use the '-c' switch to use an alternate tigris.conf file as of 2.2.2)
 
 Please read the file USING for more information on how to use Tiger.
 And read the file COPYING for legal stuff.

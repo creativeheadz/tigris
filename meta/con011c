@@ -2,11 +2,11 @@ Id: con011c
 Severity: CONFIG
 Category: tigris
 Check: gen_mounts
-Fix: Unmount the hung filesystem or make it answer; raise Tiger_Mount_Timeout if it is merely slow.
-References: mount(8); tigerrc
+Fix: Unmount the hung filesystem or make it answer; raise Tigris_Mount_Timeout if it is merely slow.
+References: mount(8); tigris.conf
 
 The filesystem is of a local type but did not answer a df request
-within Tiger_Mount_Timeout seconds, so the filesystem scan leaves it out
+within Tigris_Mount_Timeout seconds, so the filesystem scan leaves it out
 rather than hang on it. This is what a hung FUSE mount or a disk that has
 gone away looks like. Unmount it, or make it answer, and run again. Raise
-Tiger_Mount_Timeout if the filesystem is merely slow.
+Tigris_Mount_Timeout if the filesystem is merely slow.

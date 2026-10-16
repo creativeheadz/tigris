@@ -31,8 +31,8 @@
 #                 database. The mode's fourth digit from the right holds
 #                 setuid (4) and setgid (2). Run from check_suid and
 #                 check_sgid, with config's settings in the environment;
-#                 Tiger_Sysctl_Root prefixes the databases and
-#                 Tiger_Rpm_Modes_Cmd replaces the rpm query, for the tests.
+#                 Tigris_Sysctl_Root prefixes the databases and
+#                 Tigris_Rpm_Modes_Cmd replaces the rpm query, for the tests.
 # 10/12/2026 atrimbitas - dpkg, which records no modes: Tigris's list of
 #                 what Debian and Ubuntu packages make setuid or setgid
 #                 (DPKG_SPECIAL, made by util/mkdebspecial), for the
@@ -52,7 +52,7 @@ case "$which" in
   *) echo "usage: pkgspecial suid|sgid|owners" >&2; exit 2 ;;
 esac
 # the tests' root, or an offline root's (tigris --root) database
-root=${Tiger_Sysctl_Root:-$TIGRIS_ROOT}
+root=${Tigris_Sysctl_Root:-$TIGRIS_ROOT}
 AWK=${AWK:-awk} SORT=${SORT:-sort} GREP=${GREP:-grep}
 
 if [ "$which" = owners ]; then
@@ -82,7 +82,7 @@ fi
 # Is there a database with modes in it? Decided here, before the
 # pipeline, so that the exit status says so
 case "$LXPKGMGR" in
-  rpm) [ -n "$Tiger_Rpm_Modes_Cmd" ] || command -v rpm >/dev/null 2>&1 || exit 1 ;;
+  rpm) [ -n "$Tigris_Rpm_Modes_Cmd" ] || command -v rpm >/dev/null 2>&1 || exit 1 ;;
   pacman) [ -d "$root/var/lib/pacman/local" ] || exit 1 ;;
   apk) [ -f "$root/lib/apk/db/installed" ] || exit 1 ;;
   dpkg) [ -d "$root/var/lib/dpkg/info" ] && [ -n "$DPKG_SPECIAL" ] && [ -f "$DPKG_SPECIAL" ] || exit 1 ;;
@@ -94,8 +94,8 @@ modes()
 {
   case "$LXPKGMGR" in
     rpm)
-      if [ -n "$Tiger_Rpm_Modes_Cmd" ]; then
-        $Tiger_Rpm_Modes_Cmd
+      if [ -n "$Tigris_Rpm_Modes_Cmd" ]; then
+        $Tigris_Rpm_Modes_Cmd
       else
         rpm ${TIGRIS_ROOT:+--root "$TIGRIS_ROOT"} -qa --qf '[%{FILEMODES:octal} %{FILENAMES}\n]'
       fi 2>/dev/null

@@ -32,34 +32,33 @@ need $S/tiger "sbin binary"
 need $S/tigris "sbin binary"
 need $S/tigris-diff "sbin binary"
 need $S/tigris-accept "sbin binary"
-need $S/tigexp "sbin binary"
+need $S/tigris-explain "sbin binary"
 need $S/tigercron "sbin binary"
-need "$R/tigexp" "helper beside the install (HELPERS in Makefile.in)"
+need "$R/tigris-explain" "helper beside the install (HELPERS in Makefile.in)"
 need "$R/tigris-diff" "helper beside the install (HELPERS in Makefile.in)"
-need etc/tigris/tigerrc "config file"
+need etc/tigris/tigris.conf "config file"
 need etc/tigris/cronrc "config file"
 need usr/share/man/man8/tigris.8 "man page"
 [ "$fail" -ne 0 ] && exit 1
 
 # sbin keeps the tigris entry points; the rest run from the library dir
-mv "$D/$S/tiger" "$D/$S/tigexp" "$D/$S/tigercron" "$D/$R/"
+mv "$D/$S/tiger" "$D/$S/tigris-explain" "$D/$S/tigercron" "$D/$R/"
 
-# `tigris explain` looks beside itself for tigexp; bake the library dir
+# `tigris explain` looks beside itself for tigris-explain; bake the library dir
 # the way make install bakes the other paths
 T=$D/$S/tigris
-grep -q '`dirname "$0"`/tigexp' "$T" || { echo "stage.sh: the explain line moved in tigris"; exit 1; }
-sed -i 's#`dirname "$0"`/tigexp#'"$LIB"'/tigexp#' "$T"
+grep -q '`dirname "$0"`/tigris-explain' "$T" || { echo "stage.sh: the explain line moved in tigris"; exit 1; }
+sed -i 's#`dirname "$0"`/tigris-explain#'"$LIB"'/tigris-explain#' "$T"
 
 # the log and accepted-file defaults name the tigris directories
 F=$D/$S/tigris-diff
 grep -q '/var/log/tiger' "$F" || { echo "stage.sh: the log default moved in tigris-diff"; exit 1; }
 sed -i 's#/var/log/tiger#/var/log/tigris#' "$F"
 A=$D/$S/tigris-accept
-grep -q '/etc/tiger' "$A" || { echo "stage.sh: the accepted-file default moved in tigris-accept"; exit 1; }
-sed -i 's#/etc/tiger#/etc/tigris#' "$A"
+grep -q '/etc/tigris/tigris.accepted' "$A" || { echo "stage.sh: the accepted-file default moved in tigris-accept"; exit 1; }
 
 # man pages: the tigris ones only
-rm -f "$D/usr/share/man/man8/tiger.8" "$D/usr/share/man/man8/tigexp.8" "$D/usr/share/man/man8/tigercron.8"
+rm -f "$D/usr/share/man/man8/tiger.8" "$D/usr/share/man/man8/tigris-explain.8" "$D/usr/share/man/man8/tigercron.8"
 
 # build droppings stay out of the package
 rm -f "$D/$R/doc/Makefile" "$D/$R/doc/Makefile.in"

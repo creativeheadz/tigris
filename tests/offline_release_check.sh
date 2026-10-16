@@ -5,7 +5,7 @@
 #
 # Each root holds what the distribution's own image holds (os-release as
 # shipped, debian_version, redhat-release), and the date is fixed
-# (Tiger_Today) so the verdicts do not drift as releases age. A supported
+# (Tigris_Today) so the verdicts do not drift as releases age. A supported
 # release says nothing; one past the end of its security support is
 # osv002f, naming the date and any paid extended support; Debian testing
 # is osv004w; Red Hat Linux, before RHEL, is osv001f. Ubuntu's
@@ -60,7 +60,7 @@ join() {
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--'
 }
 check() {  # check ROOT: check_release's findings for that root
-  ( cd "$W" && TIGRIS_ROOT="$W/$1" TIGERHOMEDIR="$W" Tiger_Today=20261010 sh ./systems/Linux/2/check_release ) 2>&1 | join
+  ( cd "$W" && TIGRIS_ROOT="$W/$1" TIGERHOMEDIR="$W" Tigris_Today=20261010 sh ./systems/Linux/2/check_release ) 2>&1 | join
 }
 quiet() {  # quiet ROOT WHY
   out=`check "$1"`
@@ -92,9 +92,9 @@ says  redhat71 "[osv001f] This is Red Hat Linux release 7.1 (Seawolf), which has
 
 # One full run, for the JSON and the paths
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
-  echo 'Tiger_Check_SYSTEM=Y'; echo 'Tiger_Check_OS=Y'; echo 'Tiger_Today=20261010'
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Deb_CheckMD5Sums=N'; echo 'Tigris_Deb_NoPackFiles=N'; echo 'Tigris_Deb_StatOverride=N'
+  echo 'Tigris_Check_SYSTEM=Y'; echo 'Tigris_Check_OS=Y'; echo 'Tigris_Today=20261010'
 } > "$W/profiles/release"
 chmod 644 "$W/profiles/release"
 ( cd "$W" && sh ./tigris -q --profile release --root "$W/deb11" ) > "$W/out" 2>&1

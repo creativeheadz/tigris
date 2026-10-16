@@ -22,7 +22,7 @@
 #             offline root has nothing to read and the check stays
 #             silent there.
 #
-# 10/09/2026 - Initial version. Tiger_Ifconfig_Cmd points at another
+# 10/09/2026 - Initial version. Tigris_Ifconfig_Cmd points at another
 #             `ifconfig -a', for the tests.
 #
 # References:
@@ -34,16 +34,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -68,7 +68,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -86,7 +86,7 @@ haveallcmds AWK || exit 1
 echo
 echo "# Checking for interfaces in promiscuous mode..."
 
-ifconfig=${Tiger_Ifconfig_Cmd:-ifconfig}
+ifconfig=${Tigris_Ifconfig_Cmd:-ifconfig}
 $ifconfig -a 2>/dev/null | $AWK '
 /^[a-zA-Z0-9_.]+:/ { iface = $1; sub(/:$/, "", iface) }
 iface != "" && /flags=.*<[^>]*PROMISC[^>]*>/ { print iface; iface = "" }' |

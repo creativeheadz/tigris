@@ -30,20 +30,20 @@ data files which is used for checking for security problems on a
 UNIX system.  It scans system configuration files, file systems,
 and user configuration files for possible security problems and
 reports them.  The command
-.BR tigexp (8)
+.BR tigris-explain (8)
 can be used to obtain explanations of the problems reported by \fBtiger\fR.
 .LP
 You can configure
 .B tiger
 by adjusting the 
-.B Tiger_
+.B Tigris_
 variables in the 
-.I @tigerconfigdir@/tigerrc
+.I @tigerconfigdir@/tigris.conf
 configuration file. For each available module (see 
 .B MODULES
 below) there is a corresponding variable in the configuration file that 
 determines whether the module is run. All of the variables names start with
-.B Tiger_check_
+.B Tigris_check_
 and should be set equal to Y to run, or N to skip. Other configuration
 variables will modify the behaviour of some modules, and should be 
 adjusted based on the operating system.
@@ -93,10 +93,10 @@ contains the binaries, these will be used.  If none are found in
 either place, then an attempt will be made to compile the C code
 and install the executables into \fIbindir\fR.
 .TP
-.BI "\-c " tigerrc
+.BI "\-c " tigris.conf
 Specify an alternate name for the
-.I tigerrc
-control file.  The default is '@tigerconfigdir@/tigerrc'.
+.I tigris.conf
+control file.  The default is '@tigerconfigdir@/tigris.conf'.
 .TP
 .B "\-e"
 This option will cause explanations to be inserted into the security
@@ -305,7 +305,7 @@ too out of date. This check is specific to Linux (RedHat or Debian).
 .TP
 .B check_runprocs
 This module will check if the processes configured in 
-.I tigerrc
+.I tigris.conf
 are running currently in the system. If any of the processes
 is not running,
 .B Tiger
@@ -372,7 +372,7 @@ happen, but not on warnings:
 .B "tigris; s=$?; [ $s -ne 1 ] && [ $s -lt 4 ]"
 .SH FILES
 .TP
-.I @tigerconfigdir@/tigerrc
+.I @tigerconfigdir@/tigris.conf
 Configuration file for the 
 .B Tiger
 tool.
@@ -398,7 +398,7 @@ ignored by
 .B Tiger
 and will not be presented in the final report.
 .SH SEE ALSO
-.BR tigexp (8)
+.BR tigris-explain (8)
 .PP
 There are also a number of 
 .I README

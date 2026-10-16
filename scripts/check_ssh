@@ -45,16 +45,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -80,7 +80,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallfiles BASEDIR || exit 1
   
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
@@ -103,14 +103,14 @@ parse_Protocol()
 {
 	line=$1
 
-	[ -z "$Tiger_SSH_Protocol" ] && return 1
+	[ -z "$Tigris_SSH_Protocol" ] && return 1
 	while [ -n "$line" ]
 	do
 		proto=${line%%,*}
 		line=${line##${proto}}
 		line=${line##,}
 
-		matchlist "$proto" "$Tiger_SSH_Protocol" || return 0
+		matchlist "$proto" "$Tigris_SSH_Protocol" || return 0
 	done
 	return 1
 }
@@ -161,14 +161,14 @@ parse_sshd_config_file()
 
 			RhostsAuthentication)
 				found_RhostsAuthentication=1
-				parse_directive "$val" "$Tiger_SSH_RhostsAuthentication" && {
+				parse_directive "$val" "$Tigris_SSH_RhostsAuthentication" && {
 					message WARN ssh003w "" "The RhostsAuthentication directive in $1 is set to the unapproved value: $val."
 				}
 				;;
 
 			PasswordAuthentication)
 				found_PasswordAuthentication=1
-				parse_directive "$val" "$Tiger_SSH_PasswordAuthentication" && {
+				parse_directive "$val" "$Tigris_SSH_PasswordAuthentication" && {
 					message WARN ssh004w "" "The PasswordAuthentication directive in $1 is set to the unapproved value: $val."
 				}
 				;;
@@ -179,10 +179,10 @@ parse_sshd_config_file()
 	[ $found_Protocol = 0 ] && parse_Protocol "2,1" && {
 		message WARN ssh001w "" "Protocol $proto is enabled in $file"
 	}
-	[ $found_RhostsAuthentication = 0 ] && parse_directive "no" "$Tiger_SSH_RhostsAuthentication" && {
+	[ $found_RhostsAuthentication = 0 ] && parse_directive "no" "$Tigris_SSH_RhostsAuthentication" && {
 		message WARN ssh003w "" "The RhostsAuthentication directive in $1 is set to the unapproved default value: no."
 	}
-	[ $found_PasswordAuthentication = 0 ] && parse_directive "yes" "$Tiger_SSH_PasswordAuthentication" && {
+	[ $found_PasswordAuthentication = 0 ] && parse_directive "yes" "$Tigris_SSH_PasswordAuthentication" && {
 		message WARN ssh004w "" "The PasswordAuthentication directive in $1 is set to the unapproved default value: yes."
 	}
 }
@@ -278,11 +278,11 @@ fi
 #
 # The effective configuration, as sshd itself resolves it: Include files,
 # Match-free defaults and all. Needs a working sshd and (for its host keys)
-# root; otherwise the text parsing below is used. Tiger_SSHD_Cmd lets the
+# root; otherwise the text parsing below is used. Tigris_SSHD_Cmd lets the
 # tests feed a fixture in sshd -T format.
 #
 effective=
-sshd_cmd=${Tiger_SSHD_Cmd:-}
+sshd_cmd=${Tigris_SSHD_Cmd:-}
 if [ -n "$TIGRIS_ROOT" ] && [ -z "$sshd_cmd" ]; then
 	# An offline root's sshd_config (openSUSE ships its defaults in /usr/etc)
 	for SSHD_CONFIG in /etc/ssh/sshd_config /usr/etc/ssh/sshd_config /usr/local/etc/sshd_config ''
@@ -319,7 +319,7 @@ setting()
 }
 
 if [ -n "$effective" ]; then
-	if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tiger_SSHD_Cmd" ]; then
+	if [ -n "$TIGRIS_ROOT" ] && [ -z "$Tigris_SSHD_Cmd" ]; then
 		echo "# Checking the sshd configuration written in $SSHD_CONFIG and its Include files (sshd is not run on an offline root)..."
 	else
 		echo "# Checking the effective sshd configuration (sshd -T)..."

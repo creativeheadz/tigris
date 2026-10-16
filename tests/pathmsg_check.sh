@@ -21,7 +21,7 @@ bad() { echo "FAIL $1"; fail=1; }
 
 X=$W/x D=$W/d
 : > "$X"; chmod 755 "$X"
-echo "Tiger_JSON_File='$W/out.jsonl'" >> "$W/tigerrc"
+echo "Tigris_JSON_File='$W/out.jsonl'" >> "$W/tigris.conf"
 cat > "$W/drive.sh" <<EOF
 basedir=\$TIGERHOMEDIR
 . \$basedir/config

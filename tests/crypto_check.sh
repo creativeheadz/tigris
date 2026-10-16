@@ -7,9 +7,9 @@
 # key beside a certificate and an OpenSSH host key left readable;
 # locked-down equivalents (a hardware device, keys alone); and an
 # empty root, where there is nothing to judge. A fifth leg reads a
-# fixture /proc through Tiger_Sysctl_Root for the pool level, and a
+# fixture /proc through Tigris_Sysctl_Root for the pool level, and a
 # sixth proves it stays silent under --root. INFO findings only show
-# with Tiger_Show_INFO_Msgs=Y. Runs as a user and as root; the
+# with Tigris_Show_INFO_Msgs=Y. Runs as a user and as root; the
 # fixtures read the same for both.
 #
 TIGER=${TIGER:-`cd "\`dirname \"$0\"\`/.." && pwd`}
@@ -18,13 +18,13 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 run() {  # run ROOT OUTFILE [SYSROOT]: check_crypto with ROOT audited
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Show_INFO_Msgs=Y"; [ -n "$3" ] && echo "Tiger_Sysctl_Root='$3'"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Show_INFO_Msgs=Y"; [ -n "$3" ] && echo "Tigris_Sysctl_Root='$3'"; } >> "$W/tigris.conf"
   if [ -n "$3" ]; then
     ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_crypto ) 2>&1
   else

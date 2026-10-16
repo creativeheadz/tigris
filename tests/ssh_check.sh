@@ -3,7 +3,7 @@
 # tests/ssh_check.sh - check_ssh against canned sshd -T output
 #
 # Feeds the check a fixture in which every setting is wrong, then one in
-# which every setting is right, through Tiger_SSHD_Cmd. Then an offline
+# which every setting is right, through Tigris_SSHD_Cmd. Then an offline
 # root (TIGRIS_ROOT, as tigris --root sets it), where sshd is not run and
 # the configuration is worked out from the files: an Include whose file
 # sets PasswordAuthentication before the main file does (the first value
@@ -56,9 +56,9 @@ FIX
 
 run()
 {
-  echo "Tiger_SSHD_Cmd='cat $1'" >> "$W/tigerrc"
+  echo "Tigris_SSHD_Cmd='cat $1'" >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh scripts/check_ssh 2>&1 )
-  sed -i '$d' "$W/tigerrc"
+  sed -i '$d' "$W/tigris.conf"
 }
 
 fail=0

@@ -20,7 +20,7 @@
 # 10.26.2001
 # Paul Telford <paul_telford@hp.com>
 # 07/25/2002 jfs      Changed -e lilo.conf to -r lilo.conf
-#                     Changed TigerInstallDir to .
+#                     Changed TigrisInstallDir to .
 # 01/15/2004 jfs      Fixed dependancies
 # 03/21/2005 jfs      Only run if running on the x86 architecture 
 #                     (Debian bug #288737)
@@ -31,16 +31,16 @@
 # Tigris: offline
 #   the root's lilo.conf, grub menu and inittab.
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -63,7 +63,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds GREP RM UNAME EGREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   

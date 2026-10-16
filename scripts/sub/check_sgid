@@ -34,7 +34,7 @@ inputfile="$1"
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds RM FILECMD SGREP LS STRINGS SORT COMM CAT AWK || exit 1
   haveallfiles BASEDIR WORKDIR SUID_LIST || exit 1
   
@@ -48,12 +48,12 @@ echo "# Checking setgid executables..."
 
 haveallfiles BASEDIR WORKDIR || exit 1
 
-#[ -n "$TigerCheckEmbedded" -a "x$Tiger_Embed_Check_SGID" = 'xY' ] && {
+#[ -n "$TigrisCheckEmbedded" -a "x$Tigris_Embed_Check_SGID" = 'xY' ] && {
 #  while read -r file
 #  do
 #    $LS -lLd "$file" 2>/dev/null | {
 #      read p l owner rest
-#      [ "$owner" = root ] && echo "$file" >> $TigerCheckEmbedded
+#      [ "$owner" = root ] && echo "$file" >> $TigrisCheckEmbedded
 #    }
 #  done
 #}
@@ -127,7 +127,7 @@ haveallcmds LS AWK && [ -s $WORKDIR/sgid.list.$$ ] && {
 # Try to locate setuid copies of any executables we have signatures
 # for.
 #
-if [ "$Tiger_Check_SIGNATURES" != 'N' ]; then  
+if [ "$Tigris_Check_SIGNATURES" != 'N' ]; then  
 haveallcmds SORT AWK COMM GREP LS SNEFRU &&
 haveallfiles SIGNATURE_FILE && {
   $SORT $inputfile > $WORKDIR/sgid.$$

@@ -38,7 +38,7 @@ nogroupfile="$2"
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds GETCLIENTDIRS AWK GREP LS RM || exit 1
   haveallfiles WORKDIR || exit 1
   

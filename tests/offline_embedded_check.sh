@@ -47,9 +47,9 @@ printf 'data\n' > "$R/opt/app/helper4"; chmod 755 "$R/opt/app/helper4"
 [ "$uid" = 0 ] && chown -R "$U:$G" "$R" && chown -h "$U:$G" "$R/evil-link"
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Embed_Report_Exec_Only=N'
-  for c in EMBEDDED ALIASES; do echo "Tiger_Check_$c=Y"; done
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Embed_Report_Exec_Only=N'
+  for c in EMBEDDED ALIASES; do echo "Tigris_Check_$c=Y"; done
 } > "$W/profiles/embed"
 chmod 644 "$W/profiles/embed"
 

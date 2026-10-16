@@ -4,9 +4,9 @@
 #
 # Runs the two sub-checks as the filesystem scan does (config sourced, a
 # list of files in), with LXPKGMGR set to apk (an installed database under
-# Tiger_Sysctl_Root), rpm (a stand-in for rpm -qa's modes through
-# Tiger_Rpm_Modes_Cmd) and dpkg (file lists and statoverrides under
-# Tiger_Sysctl_Root, and Tigris's list of what Debian and Ubuntu packages
+# Tigris_Sysctl_Root), rpm (a stand-in for rpm -qa's modes through
+# Tigris_Rpm_Modes_Cmd) and dpkg (file lists and statoverrides under
+# Tigris_Sysctl_Root, and Tigris's list of what Debian and Ubuntu packages
 # make setuid, DPKG_SPECIAL; Tigris's per-platform list without it). Of
 # the setuid files, those a package makes setuid are expected and the
 # others are non-standard, one finding each. util/pkgspecial itself was
@@ -52,15 +52,15 @@ printf '# mode package path\n4755 demo %s\n4755 absent %s\n' "$P" "$L" > "$W/dpk
 cat > "$W/drive.sh" <<'EOF'
 basedir=$TIGERHOMEDIR
 . $basedir/config
-# tigerrc sets Tiger_Sysctl_Root empty: the tree is given after it
-LXPKGMGR=$MGR SUID_LIST=$LIST SGID_LIST=$LIST CONFIGURED_ALREADY=YES Tiger_Sysctl_Root=$ROOT
-DPKG_SPECIAL=$SPECIAL Tiger_Output_Width=0
-export LXPKGMGR SUID_LIST SGID_LIST CONFIGURED_ALREADY Tiger_Sysctl_Root DPKG_SPECIAL Tiger_Output_Width
+# tigris.conf sets Tigris_Sysctl_Root empty: the tree is given after it
+LXPKGMGR=$MGR SUID_LIST=$LIST SGID_LIST=$LIST CONFIGURED_ALREADY=YES Tigris_Sysctl_Root=$ROOT
+DPKG_SPECIAL=$SPECIAL Tigris_Output_Width=0
+export LXPKGMGR SUID_LIST SGID_LIST CONFIGURED_ALREADY Tigris_Sysctl_Root DPKG_SPECIAL Tigris_Output_Width
 sh $BASEDIR/scripts/sub/check_$KIND $INPUT
 EOF
 go() {  # go MANAGER KIND [INPUT] [SPECIAL]
   ( cd "$W" && TIGERHOMEDIR=$W MGR=$1 KIND=$2 INPUT="${3:-$W/setuid.in}" LIST="$W/suid_list" \
-      SPECIAL="$4" ROOT="$W/root" Tiger_Rpm_Modes_Cmd="sh $W/rpm" sh ./drive.sh ) > "$W/out" 2>&1
+      SPECIAL="$4" ROOT="$W/root" Tigris_Rpm_Modes_Cmd="sh $W/rpm" sh ./drive.sh ) > "$W/out" 2>&1
   # the file each fsys004a or fsys011a names (one finding a file)
   sed -n -E 's/^--ALERT-- \[fsys0(04a|11a)\] Set[gu]id program (.*) \([^()]*\) is non-standard\.$/\2/p' "$W/out" > "$W/listed"
 }
@@ -111,17 +111,17 @@ printf '/bin/zz-mount\n' > "$M/var/lib/dpkg/info/mount.list"
 printf '/usr/lib/aarch64-linux-gnu/utempter/utempter\n' > "$M/var/lib/dpkg/info/libutempter0:arm64.list"
 printf '/usr/bin/zz-other\n' > "$M/var/lib/dpkg/info/other.list"
 printf '4755 mount /usr/bin/zz-mount\n2755 libutempter0 /usr/lib/x86_64-linux-gnu/utempter/utempter\n4755 mount /usr/bin/zz-other\n' > "$W/merged_special"
-out=`LXPKGMGR=dpkg Tiger_Sysctl_Root=$M DPKG_SPECIAL=$W/merged_special sh "$W/util/pkgspecial" suid`
+out=`LXPKGMGR=dpkg Tigris_Sysctl_Root=$M DPKG_SPECIAL=$W/merged_special sh "$W/util/pkgspecial" suid`
 [ "$out" = /usr/bin/zz-mount ] &&
   ok "dpkg, usrmerge: the list's /usr/bin/zz-mount is the file list's /bin/zz-mount; another package's file is not" || bad "usrmerge: got '$out'"
-out=`LXPKGMGR=dpkg Tiger_Sysctl_Root=$M DPKG_SPECIAL=$W/merged_special sh "$W/util/pkgspecial" sgid`
+out=`LXPKGMGR=dpkg Tigris_Sysctl_Root=$M DPKG_SPECIAL=$W/merged_special sh "$W/util/pkgspecial" sgid`
 [ "$out" = /usr/lib/aarch64-linux-gnu/utempter/utempter ] &&
   ok "dpkg, multiarch: the list's x86_64 utempter is the arm64 package's" || bad "multiarch: got '$out'"
 rm "$M/bin"; mkdir "$M/bin"
-out=`LXPKGMGR=dpkg Tiger_Sysctl_Root=$M DPKG_SPECIAL=$W/merged_special sh "$W/util/pkgspecial" suid`
+out=`LXPKGMGR=dpkg Tigris_Sysctl_Root=$M DPKG_SPECIAL=$W/merged_special sh "$W/util/pkgspecial" suid`
 [ "$out" = /bin/zz-mount ] &&
   ok "dpkg, no usrmerge: /bin/zz-mount is itself, not /usr/bin/zz-mount" || bad "unmerged: got '$out'"
-out=`printf '/bin/zz-mount\n/usr/bin/zz-nobody\n' | LXPKGMGR=dpkg Tiger_Sysctl_Root=$M WORKDIR=$W/run sh "$W/util/pkgspecial" owners`
+out=`printf '/bin/zz-mount\n/usr/bin/zz-nobody\n' | LXPKGMGR=dpkg Tigris_Sysctl_Root=$M WORKDIR=$W/run sh "$W/util/pkgspecial" owners`
 [ "$out" = "/bin/zz-mount	mount" ] && ok "pkgspecial owners: a file's package, none for a file no package has" || bad "owners: got '$out'"
 
 [ $fail -eq 0 ] && echo "PASS"

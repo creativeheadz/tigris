@@ -6,9 +6,9 @@ Fix: Name an existing profile (quick, server, desktop, container, or one in prof
 References: tigris(8)
 
 The profile given with --profile (or -p) does not exist, or its name is
-not letters, digits, - and _. Profiles are files read after the tigerrc,
+not letters, digits, - and _. Profiles are files read after the tigris.conf,
 looked for in the profiles directory beside it, then in Tigris's own
 (quick, server, desktop, container). The run stops before any check, so
 that a mistyped name does not quietly audit with the wrong settings. A
-profile file writable by its group or by anyone is ignored, as a tigerrc
+profile file writable by its group or by anyone is ignored, as a tigris.conf
 is (con003c).

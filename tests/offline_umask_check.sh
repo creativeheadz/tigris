@@ -53,8 +53,8 @@ printf '# system profile\n' > "$P/etc/profile"
 printf '#!/bin/sh\n' > "$P/bin/bash"; chmod 755 "$P/bin/bash"
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  for c in USERUMASK RCUMASK SYSTEM; do echo "Tiger_Check_$c=Y"; done
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  for c in USERUMASK RCUMASK SYSTEM; do echo "Tigris_Check_$c=Y"; done
 } > "$W/profiles/umasks"
 chmod 644 "$W/profiles/umasks"
 

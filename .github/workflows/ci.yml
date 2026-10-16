@@ -22,7 +22,7 @@ jobs:
       - name: sh -n on every shell script
         run: |
           fail=0; n=0
-          for f in $(git ls-files tiger tigris-diff tigris-accept tigexp tigercron config initdefs scripts systems util tests packaging); do
+          for f in $(git ls-files tiger tigris-diff tigris-accept tigris-explain tigercron config initdefs scripts systems util tests packaging); do
             case "$f" in tests/fixtures/*|*.c|*.pl|*.txt|*.lst|*.tmpl|*.xref|*README*|*/services|*/inetd|*_list|*signatures*|*advisories*|*baseline*|*embedlist*|*facl*|*.spec|*PKGBUILD*) continue;; esac
             [ -f "$f" ] || continue
             head -1 "$f" | grep -q 'perl' && continue
@@ -65,8 +65,10 @@ jobs:
         run: sh tests/schema_check.sh
       - name: Every finding id explained
         run: sh tests/explain_check.sh
-      - name: Quick profile matches tigerrc
+      - name: Quick profile matches tigris.conf
         run: sh tests/profile_check.sh
+      - name: Old names still work
+        run: sh tests/compat_check.sh
       - name: A filesystem that does not answer is left alone
         run: sh tests/mounts_check.sh
       - name: Exit status, -q and --since
@@ -195,7 +197,7 @@ jobs:
         run: |
           shellcheck --version | head -2
           files=
-          for f in tiger tigexp tigercron config initdefs util/realpath util/rootpath util/summary tests/*.sh packaging/*.sh \
+          for f in tiger tigris-explain tigercron config initdefs util/realpath util/rootpath util/summary tests/*.sh packaging/*.sh \
               $(git ls-files scripts systems/Linux/2 systems/MacOSX/default systems/FreeBSD/default systems/default | grep -v '\.pl$\|README\|\.lst$\|\.tmpl$\|_list$\|signatures\|advisories\|baseline\|embedlist\|facl\|/services$\|/inetd$\|\.sh$'); do
             head -1 "$f" | grep -q perl && continue
             files="$files $f"
@@ -221,7 +223,7 @@ jobs:
       - name: make install into a staging directory, man pages included
         run: |
           make install DESTDIR="$RUNNER_TEMP/dest"
-          for m in tiger tigexp tigercron tigris tigris-diff tigris-accept; do
+          for m in tiger tigris-explain tigercron tigris tigris-diff tigris-accept; do
             test -f "$RUNNER_TEMP/dest/usr/local/share/man/man8/$m.8" || { echo "no $m.8"; exit 1; }
           done
           head -3 "$RUNNER_TEMP/dest/usr/local/share/man/man8/tigris.8"

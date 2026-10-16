@@ -2,12 +2,12 @@
 #
 # tests/timesync_check.sh - check_timesync against process trees of its own
 #
-# The running processes are /proc/PID/comm files under Tiger_Sysctl_Root,
+# The running processes are /proc/PID/comm files under Tigris_Sysctl_Root,
 # with the names /proc really shows (systemd-timesyn, 15 characters);
 # timedatectl show, chronyc -n tracking, chronyc -n sources and ntpq -pn
 # are scripts printing what the real ones print, through
-# Tiger_Timedatectl_Cmd, Tiger_Chronyc_Cmd, Tiger_Chronyc_Sources_Cmd
-# and Tiger_Ntpq_Cmd.
+# Tigris_Timedatectl_Cmd, Tigris_Chronyc_Cmd, Tigris_Chronyc_Sources_Cmd
+# and Tigris_Ntpq_Cmd.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -15,7 +15,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -129,8 +129,8 @@ oGPS_NMEA(0)    .GPS.            0 l    1   16  377    0.000   -0.001   0.002
 EOT
 EOF
 go() {  # go NAME TIMEDATECTL CHRONYC SOURCES NTPQ
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$W/$1'"; echo "Tiger_Timedatectl_Cmd='sh $W/$2'"; echo "Tiger_Chronyc_Cmd='sh $W/$3'"; echo "Tiger_Chronyc_Sources_Cmd='sh $W/$4'"; echo "Tiger_Ntpq_Cmd='sh $W/$5'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$W/$1'"; echo "Tigris_Timedatectl_Cmd='sh $W/$2'"; echo "Tigris_Chronyc_Cmd='sh $W/$3'"; echo "Tigris_Chronyc_Sources_Cmd='sh $W/$4'"; echo "Tigris_Ntpq_Cmd='sh $W/$5'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_timesync ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"

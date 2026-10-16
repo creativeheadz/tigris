@@ -2,8 +2,8 @@ Id: fsys017w
 Severity: WARN
 Category: filesystem
 Check: check_names
-Fix: Inspect the directories; set Tiger_FSScan_DetailDirs to list the files.
-References: find(1); tigerrc
+Fix: Inspect the directories; set Tigris_FSScan_DetailDirs to list the files.
+References: find(1); tigris.conf
 Controls: NIST SI-4; ISO 8.16
 
 Files with unusual names (see fsys005a) were found in a directory where
@@ -12,5 +12,5 @@ and backup disks, and copies of other systems' files. Apple's resource
 fork files ("._name"), mail index files ("..cmeta") and browser lock
 files are the usual culprits. Tiger reports how many and where instead
 of listing each one. The directories where each file is still listed
-individually (fsys005a) are set by Tiger_FSScan_DetailDirs in tigerrc;
+individually (fsys005a) are set by Tigris_FSScan_DetailDirs in tigris.conf;
 set it to '*' to list them all.

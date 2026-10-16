@@ -21,7 +21,7 @@
 #
 # 07/25/2002 jfs Fixed so it suggests that there might be errors if running
 #                as a non-root user.
-#                Changed TigerInstallDir to .
+#                Changed TigrisInstallDir to .
 # 04/15/2003 jfs Added some TODOS
 # 01/15/2004 jfs Fixed dependancies
 # 10/19/2008 jfs Use UUID instead of UID since UID is not defined in all shells
@@ -35,16 +35,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -67,7 +67,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds GREP JOIN RM  || exit 1
   havelallcmds APT || haveallcmds AUTORPM || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1

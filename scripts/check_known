@@ -39,7 +39,7 @@
 # 11/19/2003 jfs Linux: accurate, per interface, promiscuous mode detection
 #                Contributed by unspawn with some changes to make it POSIX
 #                correct.
-# 10/01/2003 jfs Do not delete passwd files if the Tiger_PasswdFiles is
+# 10/01/2003 jfs Do not delete passwd files if the Tigris_PasswdFiles is
 #                defined, otherwise checks relying on it will break
 # 09/19/2003 jfs Fixed deletion of temporary files thanks to a patch
 #                provided by Nicolas François 
@@ -73,16 +73,16 @@
 #   the promiscuous and setuid probes read the running
 #   system and stay live.
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -108,7 +108,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT EGREP FIND GET_MOUNTS LS SED SGREP STRINGS TR TAIL HEAD CUT OUTPUTMETHOD RM GEN_INETD_SETS WC || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME
@@ -296,8 +296,8 @@ trap 'delete $WORKDIR/login.str.$$ $WORKDIR/pass.list.$$ ; exit 1' 1 2 3 15
     echo "# Performing check of files in system mail spool..."
 
 
-     if [ -n "$Tiger_PasswdFiles" ]; then
-      [ -f $Tiger_PasswdFiles ] && $CAT "$Tiger_PasswdFiles" > $WORKDIR/pass.list.$$
+     if [ -n "$Tigris_PasswdFiles" ]; then
+      [ -f $Tigris_PasswdFiles ] && $CAT "$Tigris_PasswdFiles" > $WORKDIR/pass.list.$$
      else
       $GEN_PASSWD_SETS $WORKDIR/pass.list.$$
      fi
@@ -335,7 +335,7 @@ trap 'delete $WORKDIR/login.str.$$ $WORKDIR/pass.list.$$ ; exit 1' 1 2 3 15
     done # of the while read
 
     if [ -f $WORKDIR/pass.list.$$ ] ; then
-    	if [ -z "$Tiger_PasswdFiles" ] ; then
+    	if [ -z "$Tigris_PasswdFiles" ] ; then
  	     	for passwd_set in `$CAT $WORKDIR/pass.list.$$`; do
       			delete $passwd_set $passwd_set.src 
       		done

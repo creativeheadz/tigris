@@ -18,7 +18,7 @@
 # check_rootdir - 11/10/2001
 #
 # check_rootdir - 07/25/2002 - jfs
-#       Changed TigerInstallDir to .
+#       Changed TigrisInstallDir to .
 # check_rootdir - 06/21/2003 - jfs
 #       Removed useless debug message (patch from Ryan Bradetich)
 # check_rootdir - 11/18/2003 - Patch from Ryan Bradetich:
@@ -38,16 +38,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -73,7 +73,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds CAT SORT AWK LS RM GETFS GREP AWK || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME || exit 1

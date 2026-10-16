@@ -2,13 +2,13 @@
 #
 # tests/release_virt_check.sh - the guest-detection leg of check_release
 #
-# Four fixture /sys+proc trees, read through Tiger_Sysctl_Root the way
+# Four fixture /sys+proc trees, read through Tigris_Sysctl_Root the way
 # the promisc suite reads its sysfs: a Xen domU (hypervisor type file),
 # a VMware guest (DMI vendor and product), a guest on no recognized
 # platform (only the hypervisor bit in cpuinfo), and bare metal (none
 # of the three). A fifth leg sets TIGRIS_ROOT over the Xen tree: the
 # leg describes the auditing host, never a root, so it stays silent.
-# INFO findings only show with Tiger_Show_INFO_Msgs=Y. Runs as a user
+# INFO findings only show with Tigris_Show_INFO_Msgs=Y. Runs as a user
 # and as root; sysfs and cpuinfo read the same for both.
 #
 TIGER=${TIGER:-`cd "\`dirname \"$0\"\`/.." && pwd`}
@@ -17,13 +17,13 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 run() {  # run TREE OUTFILE [ROOT]: check_release with /proc and /sys under TREE
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$1'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$1'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   {
     if [ -n "$3" ]; then
       ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$3" sh ./systems/Linux/2/check_release ) 2>&1

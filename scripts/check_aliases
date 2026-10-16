@@ -23,16 +23,16 @@
 #   the root's aliases, programs and include files; lgetpermit
 #   and pathmsg read the root themselves.
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -58,7 +58,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds GEN_ALIAS_SETS CAT AWK SED OUTPUTMETHOD RM || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   
@@ -91,8 +91,8 @@ progalias()
   if [ ! -f "$hereprog" ]; then
     message INFO ali001i "$prog" "Program alias \`$alias' executable does not exist$fmsg"
   else
-    [ -n "$TigerCheckEmbedded" ] && {
-      echo "$prog $source" >> $TigerCheckEmbedded
+    [ -n "$TigrisCheckEmbedded" ] && {
+      echo "$prog $source" >> $TigrisCheckEmbedded
     }
     message WARN ali005w "$prog" "Alias \`$alias' contains a program entry${fmsg}:"
     case "$prog" in 

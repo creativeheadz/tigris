@@ -48,16 +48,16 @@ getpermit()
 
 while read file
 do
-  if [ "x$Tiger_FSScan_Devs" != 'xN' -a \( -b "$file" -o -c "$file" \) ]; then
+  if [ "x$Tigris_FSScan_Devs" != 'xN' -a \( -b "$file" -o -c "$file" \) ]; then
     echo "$file" >> $devfile
-  elif [ "x$Tiger_FSScan_Links" != 'xN' -a -h "$file" ]; then
+  elif [ "x$Tigris_FSScan_Links" != 'xN' -a -h "$file" ]; then
     echo "$file" >> $linkfile
-  elif [ "x$Tiger_FSScan_Setuid" != 'xN' -a \( -u "$file" -a -f "$file" \) ]; then
+  elif [ "x$Tigris_FSScan_Setuid" != 'xN' -a \( -u "$file" -a -f "$file" \) ]; then
     echo "$file" >> $suidfile
   fi
 
-  if [ "x$Tiger_FSScan_WDIR" != 'xN' ]; then
-    if [ "x$Tiger_FSScan_Unowned" != 'xN' ]; then
+  if [ "x$Tigris_FSScan_WDIR" != 'xN' ]; then
+    if [ "x$Tigris_FSScan_Unowned" != 'xN' ]; then
       getpermit "$file" | {
 	read owner group ur uw ux gr gw gx or ow ox
 	[ ! -h "$file" -a -d "$file" -a "$ow" = '1' ] && {
@@ -78,7 +78,7 @@ do
 	}
       }
     fi
-  elif [ "x$Tiger_FSScan_Unowned" != 'xN' ]; then
+  elif [ "x$Tigris_FSScan_Unowned" != 'xN' ]; then
     getpermit "$file" | {
       read owner group ur uw ux gr gw gx or ow ox
       case "$owner" in
@@ -92,7 +92,7 @@ do
 
   # A regular file anyone can write (not a link to one): the list
   # sub/check_wfile judges
-  [ "x$Tiger_FSScan_WFILE" != 'xN' -a -n "$wfilefile" -a -f "$file" -a ! -h "$file" ] && {
+  [ "x$Tigris_FSScan_WFILE" != 'xN' -a -n "$wfilefile" -a -f "$file" -a ! -h "$file" ] && {
     getpermit "$file" | {
       read owner group ur uw ux gr gw gx or ow ox
       [ "$ow" = '1' ] && echo "$file" >> $wfilefile

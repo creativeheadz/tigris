@@ -15,20 +15,20 @@ policy template for the module or a previous run to check against,
 if available. Only messages not reported before (or not in the policy
 will be checked against)
 3.- The report (whether full or differential) is sent through e-mail
-to the address configured at 'Tiger_Mail_RCPT'
+to the address configured at 'Tigris_Mail_RCPT'
 
 Tiger can be configured so that it is run as a cron job hourly. 
 The cron job that is run is 'tigercron' which reads the cronrc file
-(which should be installed under /etc/tiger or /usr/local/etc/tiger
+(which should be installed under /etc/tigris or /usr/local/etc/tigris
 depending on our installation). This file tells Tiger which checks
 should be run on any given hour (format is similar to a cron file).
 
 When a module is run, the 'tigercron' program checks:
 
-- if 'Tiger_Cron_Template' is set to Y in tigerrc, it checks
+- if 'Tigris_Cron_Template' is set to Y in tigris.conf, it checks
 if there is a template stating which are the expected results, 
 
-- if 'Tiger_Cron_CheckPrev' is set to Y in tigerrc, it checks
+- if 'Tigris_Cron_CheckPrev' is set to Y in tigris.conf, it checks
 if there is a previous run of the module it can check against.
 
 This differential reports provide an easy way to detect intrusions

@@ -32,7 +32,7 @@
 #                 message each run's findings looked new to tigris-diff
 #                 and --since. The lin002i WARN for a listener on every
 #                 interface no longer comes with an INFO copy (&& || on
-#                 message(), which can return non-zero). Tiger_LSOF_Cmd
+#                 message(), which can return non-zero). Tigris_LSOF_Cmd
 #                 lets the tests feed lsof -F fixtures.
 # 10/12/2026 atrimbitas  A DHCP client's socket (UDP 68, 546) is no
 #                 listener, and a socket systemd holds for activation is
@@ -49,7 +49,7 @@
 #   use of NETSTAT and LSOF. Information gathered by both is piped to
 #   the same block to generated the report.
 #   Reordered changelog.
-# 04/23/2003 - jfs - Changed TigerInstallDir to '.'
+# 04/23/2003 - jfs - Changed TigrisInstallDir to '.'
 # 10/16/2002 - jfs - Changed the case statement into an eval in order
 #   to properly work for more than two processes or users
 #   (i.e. with "process1|process2")
@@ -70,7 +70,7 @@
 #   Under --root it is skipped: it reads the sockets of the running processes.
 #
 #-----------------------------------------------------------------------------
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 
 #
@@ -78,9 +78,9 @@ TigerInstallDir='.'
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -106,7 +106,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds CUT GREP EGREP || exit 1
 # ss, lsof or netstat, in that order of preference
   [ -n "$SS" ] || [ -n "$LSOF" ] || haveallcmds NETSTAT || exit 1
@@ -123,26 +123,26 @@ echo "# Checking listening processes "
 
 haveallcmds CAT AWK SED SORT || exit 1
 
-okprocessusers=${Tiger_Listening_ValidUsers-"root"}
-okprocess=${Tiger_Listening_ValidProcs-""}
+okprocessusers=${Tigris_Listening_ValidUsers-"root"}
+okprocess=${Tigris_Listening_ValidProcs-""}
 export okprocess okprocessusers
 
 # The sockets come from ss (iproute2, on every current distribution), else
 # lsof, else netstat, else /proc itself. busybox's lsof and netstat do not
 # take the options used here (Alpine without iproute2 has only those), so
-# they count as missing. Tiger_SS_Cmd, Tiger_LSOF_Cmd and Tiger_Netstat_Cmd
+# they count as missing. Tigris_SS_Cmd, Tigris_LSOF_Cmd and Tigris_Netstat_Cmd
 # replace the call, so the tests can feed each one a fixture;
-# Tiger_Listening_Source=proc reads /proc whatever is installed.
+# Tigris_Listening_Source=proc reads /proc whatever is installed.
 busybox_tool()
 {
   case "`readlink -f "$1" 2>/dev/null`" in */busybox*) return 0 ;; esac
   return 1
 }
-ss_cmd=${Tiger_SS_Cmd:-}
-lsof_cmd=${Tiger_LSOF_Cmd:-}
-netstat_cmd=${Tiger_Netstat_Cmd:-}
+ss_cmd=${Tigris_SS_Cmd:-}
+lsof_cmd=${Tigris_LSOF_Cmd:-}
+netstat_cmd=${Tigris_Netstat_Cmd:-}
 procnet=
-if [ "$Tiger_Listening_Source" = proc ]; then
+if [ "$Tigris_Listening_Source" = proc ]; then
 	procnet=Y
 elif [ -z "$ss_cmd$lsof_cmd$netstat_cmd" ]; then
 	if [ -n "$SS" ]; then
@@ -183,7 +183,7 @@ OWNER_AWK='
 		return names[uid]
 	}
 '
-procdir="${Tiger_Sysctl_Root:-}/proc"
+procdir="${Tigris_Sysctl_Root:-}/proc"
 
 # The kernel's ephemeral port range. A socket in it was most likely given
 # its port by the kernel (browsers, Syncthing and other clients keep UDP
@@ -191,7 +191,7 @@ procdir="${Tiger_Sysctl_Root:-}/proc"
 # are reported once per process, user, protocol and address, with the
 # ports in the detail rather than the message, so that a finding means
 # the same thing in two runs and --since does not call it new each time.
-set -- `$CAT "${Tiger_Sysctl_Root:-}/proc/sys/net/ipv4/ip_local_port_range" 2>/dev/null`
+set -- `$CAT "${Tigris_Sysctl_Root:-}/proc/sys/net/ipv4/ip_local_port_range" 2>/dev/null`
 eph_lo=$1 eph_hi=$2
 case "$eph_lo$eph_hi" in ''|*[!0-9]*) eph_lo=32768 eph_hi=60999 ;; esac
 
@@ -409,7 +409,7 @@ do
 		if [ "$isokuser" = "yes" ] ; then
 			# an if, not && ||: message() can return non-zero, and
 			# the INFO line would then follow every WARN
-			if [ "$address" = "every" -a "$Tiger_Listening_Every" != "N" ]; then
+			if [ "$address" = "every" -a "$Tigris_Listening_Every" != "N" ]; then
 				message WARN lin002i "$trail" "The process \`$proc' is listening on $socktext ($type) on $address interface."
 			else
 				message INFO lin002i "$trail" "The process \`$proc' is listening on $socktext ($type) on $address interface."

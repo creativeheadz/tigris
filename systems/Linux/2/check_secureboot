@@ -27,7 +27,7 @@
 #                 unsigned code into it, which undoes what Secure Boot
 #                 vouched for. Where /sys/firmware is empty (a container)
 #                 there is nothing to say about the host's boot.
-#                 Tiger_Sysctl_Root prefixes /sys for the tests.
+#                 Tigris_Sysctl_Root prefixes /sys for the tests.
 #
 # References:
 #   https://uefi.org/specs/UEFI/2.10/32_Secure_Boot_and_Driver_Signing.html
@@ -38,16 +38,16 @@
 #
 #-----------------------------------------------------------------------------
 #
-TigerInstallDir='.'
+TigrisInstallDir='.'
 
 #
 # Set default base directory.
 # Order or preference:
 #      -B option
 #      TIGERHOMEDIR environment variable
-#      TigerInstallDir installed location
+#      TigrisInstallDir installed location
 #
-basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
 
 for parm
 do
@@ -73,7 +73,7 @@ done
 # If run in test mode (-t) this will verify that all required
 # elements are set.
 #
-[ "$Tiger_TESTMODE" = 'Y' ] && {
+[ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallcmds AWK CAT LS SED || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
@@ -85,7 +85,7 @@ done
 
 haveallcmds AWK CAT LS SED || exit 1
 
-fw="${Tiger_Sysctl_Root:-}/sys/firmware"
+fw="${Tigris_Sysctl_Root:-}/sys/firmware"
 # A container sees an empty (or no) /sys/firmware: the host's boot is not
 # its to judge
 [ -n "`$LS "$fw" 2>/dev/null`" ] || exit 0
@@ -108,7 +108,7 @@ efivar()
 }
 
 # The kernel's lockdown mode, "" when it has no lockdown support
-lockdown=`$SED -n 's/.*\[\([a-z]*\)\].*/\1/p' "${Tiger_Sysctl_Root:-}/sys/kernel/security/lockdown" 2>/dev/null`
+lockdown=`$SED -n 's/.*\[\([a-z]*\)\].*/\1/p' "${Tigris_Sysctl_Root:-}/sys/kernel/security/lockdown" 2>/dev/null`
 
 if [ ! -d "$fw/efi" ]; then
   message INFO boot010i "" "The system booted without UEFI (legacy BIOS), where Secure Boot does not exist."

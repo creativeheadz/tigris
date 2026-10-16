@@ -3,8 +3,8 @@
 # tests/systemd_check.sh - check_systemd against canned ss and
 # systemd-analyze output
 #
-# Feeds the check a fixture through Tiger_SS_Cmd and
-# Tiger_Systemd_Analyze_Cmd: three listening units, one UNSAFE, one
+# Feeds the check a fixture through Tigris_SS_Cmd and
+# Tigris_Systemd_Analyze_Cmd: three listening units, one UNSAFE, one
 # EXPOSED, one OK, plus a socket-activated one, a user service and a
 # session scope that must be ignored. Needs no root and no systemd.
 #
@@ -57,10 +57,10 @@ FIX
 chmod +x "$W/analyze.sh"
 
 {
-  echo "Tiger_SS_Cmd='cat $W/ss.txt'"
-  echo "Tiger_Systemd_Analyze_Cmd='sh $W/analyze.sh'"
-  echo "Tiger_Show_INFO_Msgs=Y"
-} >> "$W/tigerrc"
+  echo "Tigris_SS_Cmd='cat $W/ss.txt'"
+  echo "Tigris_Systemd_Analyze_Cmd='sh $W/analyze.sh'"
+  echo "Tigris_Show_INFO_Msgs=Y"
+} >> "$W/tigris.conf"
 ( cd "$W" && TIGERHOMEDIR=$W sh systems/Linux/2/check_systemd 2>&1 ) > "$W/out"
 # join wrapped lines
 awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' "$W/out" | tr -s ' ' > "$W/joined"

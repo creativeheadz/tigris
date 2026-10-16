@@ -44,7 +44,7 @@ SHELL = /bin/sh
 INSTALL=@INSTALL@
 CC=@CC@
 
-# This directory will contain the 'tiger', 'tigercron', 'tigexp'
+# This directory will contain the 'tiger', 'tigercron', 'tigris-explain'
 # scripts, config files, the 'scripts' subdirectory which will
 # contain the checking scripts, the platform specific scripts, etc.
 # None of this will need to be writable once installed.
@@ -93,12 +93,12 @@ BINARIES=./tiger \
 	 ./tigris \
 	 ./tigris-diff \
 	 ./tigris-accept \
-	 ./tigexp  \
+	 ./tigris-explain  \
 	 ./tigercron 
 
 # tigris calls these two from BASEDIR (-E reports, --since), so they are
 # installed beside the tree as well as with the binaries.
-HELPERS=./tigexp \
+HELPERS=./tigris-explain \
 	./tigris-diff
 
 # Maybe this should be modified to be a generic ./scripts/check_*
@@ -141,7 +141,7 @@ SCRIPTS=./scripts/check_accounts \
 	./util/buildbins \
 	$(PLATFORM_SCRIPTS)
 
-CONFIGFILES=./tigerrc \
+CONFIGFILES=./tigris.conf \
 	./cronrc
 
 MISCFILES=./initdefs \
@@ -231,7 +231,7 @@ installdirs:
 installmanpages: installdirs
 	@echo "Copying manpages..."
 	$(INSTALL) -m 0444 man/tiger.8 $(DESTDIR)$(TIGERMANDIR)/man8
-	$(INSTALL) -m 0444 man/tigexp.8 $(DESTDIR)$(TIGERMANDIR)/man8
+	$(INSTALL) -m 0444 man/tigris-explain.8 $(DESTDIR)$(TIGERMANDIR)/man8
 	$(INSTALL) -m 0444 man/tigercron.8 $(DESTDIR)$(TIGERMANDIR)/man8
 	$(INSTALL) -m 0444 man/tigris.8 $(DESTDIR)$(TIGERMANDIR)/man8
 	$(INSTALL) -m 0444 man/tigris-diff.8 $(DESTDIR)$(TIGERMANDIR)/man8
@@ -240,11 +240,11 @@ installmanpages: installdirs
 installbinaries: installdirs
 	@echo "Copying binaries..."
 	@for file in $(BINARIES); do \
-	   sed -e 's%^TigerLogDir=.*$$%TigerLogDir="'$(TIGERLOGS)'"%' \
-	         -e 's%^TigerWorkDir=.*$$%TigerWorkDir="'$(TIGERWORK)'"%' \
-	         -e 's%^TigerConfigDir=.*$$%TigerConfigDir="'$(TIGERCONFIG)'"%' \
-	         -e 's%^TigerBinDir=.*$$%TigerBinDir="'$(TIGERBIN)'"%' \
-	         -e 's%^TigerInstallDir=.*$$%TigerInstallDir="'$(TIGERHOME)'"%' \
+	   sed -e 's%^TigrisLogDir=.*$$%TigrisLogDir="'$(TIGERLOGS)'"%' \
+	         -e 's%^TigrisWorkDir=.*$$%TigrisWorkDir="'$(TIGERWORK)'"%' \
+	         -e 's%^TigrisConfigDir=.*$$%TigrisConfigDir="'$(TIGERCONFIG)'"%' \
+	         -e 's%^TigrisBinDir=.*$$%TigrisBinDir="'$(TIGERBIN)'"%' \
+	         -e 's%^TigrisInstallDir=.*$$%TigrisInstallDir="'$(TIGERHOME)'"%' \
 	         $$file > $(DESTDIR)$(TIGERBIN)/$$file; \
 	  chmod 755 $(DESTDIR)$(TIGERBIN)/$$file ; \
 	done
@@ -252,11 +252,11 @@ installbinaries: installdirs
 installhelpers: installdirs
 	@echo "Copying helper binaries beside the install..."
 	@for file in $(HELPERS); do \
-	   sed -e 's%^TigerLogDir=.*$$%TigerLogDir="'$(TIGERLOGS)'"%' \
-	         -e 's%^TigerWorkDir=.*$$%TigerWorkDir="'$(TIGERWORK)'"%' \
-	         -e 's%^TigerConfigDir=.*$$%TigerConfigDir="'$(TIGERCONFIG)'"%' \
-	         -e 's%^TigerBinDir=.*$$%TigerBinDir="'$(TIGERBIN)'"%' \
-	         -e 's%^TigerInstallDir=.*$$%TigerInstallDir="'$(TIGERHOME)'"%' \
+	   sed -e 's%^TigrisLogDir=.*$$%TigrisLogDir="'$(TIGERLOGS)'"%' \
+	         -e 's%^TigrisWorkDir=.*$$%TigrisWorkDir="'$(TIGERWORK)'"%' \
+	         -e 's%^TigrisConfigDir=.*$$%TigrisConfigDir="'$(TIGERCONFIG)'"%' \
+	         -e 's%^TigrisBinDir=.*$$%TigrisBinDir="'$(TIGERBIN)'"%' \
+	         -e 's%^TigrisInstallDir=.*$$%TigrisInstallDir="'$(TIGERHOME)'"%' \
 	         $$file > $(DESTDIR)$(TIGERHOME)/$$file; \
 	  chmod 755 $(DESTDIR)$(TIGERHOME)/$$file ; \
 	done
@@ -267,11 +267,11 @@ installconfig: installdirs
 	  $(INSTALL) -m 0640 $$file $(DESTDIR)$(TIGERCONFIG)/$$file; \
 	done
 	@echo "Copying general configuration..."
-	@sed -e 's%^TigerLogDir=.*$$%TigerLogDir="'$(TIGERLOGS)'"%' \
-         -e 's%^TigerWorkDir=.*$$%TigerWorkDir="'$(TIGERWORK)'"%' \
-         -e 's%^TigerConfigDir=.*$$%TigerConfigDir="'$(TIGERCONFIG)'"%' \
-         -e 's%^TigerBinDir=.*$$%TigerBinDir="'$(TIGERBIN)'"%' \
-         -e 's%^TigerInstallDir=.*$$%TigerInstallDir="'$(TIGERHOME)'"%' \
+	@sed -e 's%^TigrisLogDir=.*$$%TigrisLogDir="'$(TIGERLOGS)'"%' \
+         -e 's%^TigrisWorkDir=.*$$%TigrisWorkDir="'$(TIGERWORK)'"%' \
+         -e 's%^TigrisConfigDir=.*$$%TigrisConfigDir="'$(TIGERCONFIG)'"%' \
+         -e 's%^TigrisBinDir=.*$$%TigrisBinDir="'$(TIGERBIN)'"%' \
+         -e 's%^TigrisInstallDir=.*$$%TigrisInstallDir="'$(TIGERHOME)'"%' \
 	 ./config >$(DESTDIR)$(TIGERHOME)/config
 	@chmod 644 $(DESTDIR)$(TIGERHOME)/config
 
@@ -294,14 +294,14 @@ install: installdirs installbinaries installhelpers installconfig installmanpage
 	done
 	@echo "Copying scripts..."
 	@for file in $(SCRIPTS); do \
-	  sed -e 's%^TigerInstallDir=.*$$%TigerInstallDir="'$(TIGERHOME)'"%' \
+	  sed -e 's%^TigrisInstallDir=.*$$%TigrisInstallDir="'$(TIGERHOME)'"%' \
 	      $$file > $(DESTDIR)$(TIGERHOME)/$$file;\
 	  chmod 755 $(DESTDIR)$(TIGERHOME)/$$file; \
 	done
 	@echo "Copying platform scripts..."
 	@for file in $(PLATFORM_SCRIPTS); do \
 	  if [ -x $$file ] ; then \
-	  sed -e 's%^TigerInstallDir=.*$$%TigerInstallDir="'$(TIGERHOME)'"%' \
+	  sed -e 's%^TigrisInstallDir=.*$$%TigrisInstallDir="'$(TIGERHOME)'"%' \
 	      $$file > $(DESTDIR)$(TIGERHOME)/$$file;\
 	  chmod 755 $(DESTDIR)$(TIGERHOME)/$$file; \
 	  else \

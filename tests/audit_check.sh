@@ -2,8 +2,8 @@
 #
 # tests/audit_check.sh - check_audit against trees and an auditctl of its own
 #
-# The running processes are /proc/PID/comm files under Tiger_Sysctl_Root,
-# auditctl -l is a script through Tiger_Auditctl_Cmd, and journald's
+# The running processes are /proc/PID/comm files under Tigris_Sysctl_Root,
+# auditctl -l is a script through Tigris_Auditctl_Cmd, and journald's
 # configuration is journald.conf and drop-ins under the same root, to
 # show that the last Storage= in systemd's order wins: drop-ins by file
 # name, one in /etc hiding the same name in /usr/lib.
@@ -14,7 +14,7 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-cp "$W/tigerrc" "$W/tigerrc.base"
+cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -29,8 +29,8 @@ printf '#!/bin/sh\nprintf "%%s\\n" "-w /etc/passwd -p wa -k identity" "-a always
 printf '#!/bin/sh\necho "No rules"\n' > "$W/ac-none"
 printf '#!/bin/sh\necho "You must be root to run this program." >&2\nexit 4\n' > "$W/ac-denied"
 go() {  # go NAME AUDITCTL-SCRIPT
-  cp "$W/tigerrc.base" "$W/tigerrc"
-  { echo "Tiger_Sysctl_Root='$W/$1'"; echo "Tiger_Auditctl_Cmd='sh $W/$2'"; echo "Tiger_Show_INFO_Msgs=Y"; } >> "$W/tigerrc"
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$W/$1'"; echo "Tigris_Auditctl_Cmd='sh $W/$2'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_audit ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"

@@ -90,9 +90,9 @@ status > "$W/hoststatus"
 ln -s ../../../../hoststatus "$H/var/lib/dpkg/status"
 
 {
-  sed -n 's/^\(Tiger_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigerrc"
-  echo 'Tiger_Check_SYSTEM=Y'; echo 'Tiger_Check_UPDATES=Y'
-  echo 'Tiger_Deb_CheckMD5Sums=N'; echo 'Tiger_Deb_NoPackFiles=N'; echo 'Tiger_Deb_StatOverride=N'
+  sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
+  echo 'Tigris_Check_SYSTEM=Y'; echo 'Tigris_Check_UPDATES=Y'
+  echo 'Tigris_Deb_CheckMD5Sums=N'; echo 'Tigris_Deb_NoPackFiles=N'; echo 'Tigris_Deb_StatOverride=N'
 } > "$W/profiles/upd"
 chmod 644 "$W/profiles/upd"
 
