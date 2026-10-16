@@ -1,0 +1,11 @@
+Id: apa007i
+Severity: INFO
+Category: services
+Check: check_apache
+References: Apache Module mod_so
+Controls: CIS 4.1; NIST CM-6, CM-7; ISO 8.9; CE Secure configuration
+
+Apache is configured to load the modules named, read from the
+LoadModule lines of the configuration with its Includes expanded.
+This is informational: what the server can do frames every other
+Apache finding.

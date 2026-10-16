@@ -2,6 +2,7 @@
 #
 #     tiger - A UN*X security checking system
 #     Copyright (C) 2002 Javier Fernandez-Sanguino
+#     Copyright (C) 2026 Andrei Trimbitas
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -15,27 +16,56 @@
 #
 #     Please see the file `COPYING' for the complete copyright notice.
 #
-# check_apache - 11/25/2002 - jfs - first release
+# check_apache: what the Apache configuration serves, and with what.
+#
+# The mains tried are /etc/apache2/apache2.conf (Debian, Ubuntu),
+# /etc/apache2/httpd.conf (macOS), /etc/httpd/conf/httpd.conf (Fedora,
+# RHEL, SUSE) and /usr/local/etc/apache24/httpd.conf (FreeBSD), each
+# with its Include and IncludeOptional expanded; no main means no
+# Apache, and nothing is said. What is judged: the address Listen
+# binds (apa001w, httpd.conf mains only, as before), Options per
+# Directory (apa003i to apa006w), access to the filesystem root
+# (apa002w), the loaded modules (apa007i), an open forward proxy
+# (apa008w), WebDAV writes (apa009w) and exposed status pages
+# (apa010w). Each block is judged from its own lines only; what an
+# enclosing block allows is not followed into it.
 #
 # The checks in this script are derived from the following references:
 # Bastille's Apache module
 # http://httpd.apache.org/docs-2.0/misc/security_tips.html
-# http://www.intersectalliance.com/projects/ApacheConfig/index.html 
+# http://www.intersectalliance.com/projects/ApacheConfig/index.html
 # SANS's Linux Security Checklist (item #25)
 #
+# 11/25/2002 - jfs - first release
 # 08/12/2003 - jfs - Fixed a typo in the call to SED
 # 11/08/2007 - jfs - Change message calls so that they can be filtered (Debian bug #411534)
 #                  - Fix the way the configuration file is handled to obtain
 #                  the IP address and port (Debian bug #436904)
+# 10/16/2026 - Rewritten: Includes expanded (Debian's mods-enabled and
+#             sites-enabled are Includes), so the check reads every
+#             distribution's layout live and offline; module inventory
+#             (apa007i), open proxy (apa008w), WebDAV (apa009w) and
+#             exposed status pages (apa010w). The '/' access check is
+#             fixed (it called open closed and closed open) and taught
+#             Require; Options findings are withheld where nothing is
+#             served. Listen is still judged for httpd.conf mains only:
+#             ports.conf's bare Listen 80 would warn on every stock
+#             Debian, single-homed or not.
 #
 # TODO (generic)
-# - include checks for problematic modules
 # - analyse authenticating methods
 # - analyse SSL configuration (is the certificate protected?)
 # - include some more analysis of the configuration file
-# - provide cross-checks for configuration (i.e. not only determine if 
-#   a given directive is configured but if the current setup might 
+# - provide cross-checks for configuration (i.e. not only determine if
+#   a given directive is configured but if the current setup might
 #   be vulnerable: eg. user with a symbolic link back to the root filesystem
+#
+# TODO: the Listen check should warn only if this is a multihomed host
+# (we probably need to check this in other places so a utils function
+# 'amImultihome' might be useful)
+#
+# Tigris: offline
+#   the root's Apache mains with their Includes expanded.
 #
 #-----------------------------------------------------------------------------
 #
@@ -75,117 +105,263 @@ done
 # elements are set.
 #
 [ "$Tiger_TESTMODE" = 'Y' ] && {
-  haveallcmds GREP AWK CAT SED CUT || exit 1
-  haveallfiles APACHECONFDIR BASEDIR WORKDIR || exit 1
-  
+  haveallcmds AWK SED SORT || exit 1
+  haveallfiles BASEDIR WORKDIR || exit 1
+
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
   exit 0
 }
 
 #------------------------------------------------------------------------
 
+haveallcmds AWK SED SORT || exit 1
+
+# expand_apache FILE DEPTH: FILE (an audited-system path) with its
+# Include and IncludeOptional expanded in place, read inside the
+# root. Every file's lines follow a "# @@FILE@@ PATH COUNT" line, so
+# a value found knows where it stands. One level of glob, as the
+# server allows; relative to the file that names them, which is
+# where the packaged configurations keep them.
+expand_apache()
+{
+  (
+  __f=$1 __d=$2
+  __h=`rootfile "$__f"`
+  [ -f "$__h" ] && [ "$__d" -le 16 ] || exit 0
+  __n=0
+  printf '# @@FILE@@ %s %d\n' "$__f" $__n
+  while IFS= read -r __l || [ -n "$__l" ]
+  do
+    __n=`expr $__n + 1`
+    __s=`printf '%s' "$__l" | $SED 's/#.*//'`
+    __w=
+    case "$__s" in
+      Include[\ \	]*|*[!a-zA-Z]Include[\ \	]*) __w=Include ;;
+    esac
+    case "$__s" in
+      IncludeOptional[\ \	]*|*[!a-zA-Z]IncludeOptional[\ \	]*) __w=IncludeOptional ;;
+    esac
+    if [ -z "$__w" ]; then printf '%s\n' "$__l"; continue; fi
+    __p=`printf '%s' "$__s" | $SED "s/^.*[^a-zA-Z]${__w}[ 	][ 	]*//; s/^${__w}[ 	][ 	]*//; s/[; 	]*$//; s/^['\"]//; s/['\"]$//"`
+    [ -n "$__p" ] || continue
+    case "$__p" in /*) ;; *) __p=${__f%/*}/$__p ;; esac
+    case "$__p" in
+      *[\*\?[]*)
+        __dir=${__p%/*} __pat=${__p##*/}
+        rootls "$__dir" 2>/dev/null | while IFS= read -r __m
+        do
+          case "${__m##*/}" in $__pat) expand_apache "$__m" `expr $__d + 1` ;; esac
+        done ;;
+      *) expand_apache "$__p" `expr $__d + 1` ;;
+    esac
+    printf '# @@FILE@@ %s %d\n' "$__f" $__n
+  done < "$__h"
+  )
+}
+
+found=
+for main in /etc/apache2/apache2.conf /etc/apache2/httpd.conf /etc/httpd/conf/httpd.conf /usr/local/etc/apache24/httpd.conf
+do
+  [ -f "`rootfile $main`" ] || continue
+  found=1
+done
+[ -z "$found" ] && exit 0
+
 echo
 echo "# Checking apache configuration files..."
 
-haveallcmds GREP AWK CAT SED CUT || exit 1
-haveallfiles APACHECONFDIR BASEDIR WORKDIR || exit 1
+mods=$WORKDIR/apamods.$$
+listens=$WORKDIR/apalisten.$$
+safe_temp $mods $listens
+trap 'delete $mods $listens; exit 1' 1 2 3 15
 
-
-# First check if Apache is bound to use only an IP address
-[ -f $APACHECONFDIR/httpd.conf ] && {
-	listen=`$GREP ^Listen $APACHECONFDIR/httpd.conf | head -1 | $AWK '{print $2}'`
-        if [ -n "$listen" ]; then
-                if echo "$listen" | grep -q ':' ; then
-                    port=`echo "$listen" | $CUT -d : -f 2`
-                    ipaddr=`echo "$listen" | $SED -e 's/:.*$//'`
-                else
-                    port="$listen"
-                    ipaddr=""
-                fi
-        fi
-	# TODO: this check should warn only if this is a multihomed host
-	# (we probably need to check this in other places so a utils function
-	# 'amImultihome' might be useful)
-	if [ -z "$port" -o -z "$ipaddr" ]; then
-		message WARN apa001w "" "The Apache server is not configured to be bound to an specific IP address."
-	else 
-		message INFO apa001w "" "The Apache server is configured to listen only on address $ipaddr port $port."
-	fi
-}
-# Now check options
-# we need to do this for all possible configuration files
-# Options that might be a securityrisk are FollowSymlinks, Indexes,
-# FollowSymlinksIfOwnerMatch
-
-for file in $APACHECONFDIR/*.conf 
+for main in /etc/apache2/apache2.conf /etc/apache2/httpd.conf /etc/httpd/conf/httpd.conf /usr/local/etc/apache24/httpd.conf
 do
-# We have to read the file line by line in order to know which Directory
-# we are talking about
-	directory="Any (default)"; export directory;
-	denyfirst=0; export denyfirst
-	alldenied=0; export alldenied
-	options=""; export options
-	$CAT $file |  $GREP -v '^#' |
-	while read line
-	do
-		if [ ! -z "`echo $line | $GREP -i \"<Directory\"`" ] ; then
-			directory=`echo $line | $AWK '/^\s*<Directory (.*)$/ {print $2} ' | $SED -e 's/>$//'`
-			denyfirst=0
-		fi
+  [ -f "`rootfile $main`" ] || continue
+  case "$main" in /etc/httpd/conf/httpd.conf) ishttpd=1 ;; *) ishttpd=0 ;; esac
+  expand_apache $main 0 | $AWK -v ishttpd=$ishttpd -v main="$main" '
+  function open22(lvl,   b) {
+    b = border[lvl]
+    if (b == "deny,allow") return (allowall[lvl] || !denyall[lvl])
+    return (allowall[lvl] && !denyall[lvl])
+  }
+  function isopen(lvl) { return (open22(lvl) || granted[lvl]) }
+  function showtype(t) { return toupper(substr(t, 1, 1)) substr(t, 2) }
+  function judge_status(lvl,   where) {
+    if (handler[lvl] == "" || !isopen(lvl)) return
+    if (lvl == 0) where = "the server"
+    else where = "<" showtype(btype[lvl]) " " barg[lvl] ">"
+    print "STATUS\t" handler[lvl] "\t" where "\t" handlerfile[lvl] "\t" handlerline[lvl]
+  }
+  function judge_root(lvl) {
+    if (btype[lvl] != "directory" || barg[lvl] != "/" || !isopen(lvl)) return
+    print "ROOT_OPEN\t" file "\t" lineno
+    if (lastopts[lvl] != "none") print "ROOT_OPTS\t" file "\t" lineno
+  }
+  function flush_opts(lvl) {
+    if (optbuf[lvl] != "" && isopen(lvl)) printf "%s", optbuf[lvl]
+  }
+  function scope_name(   l) {
+    for (l = d; l > 0; l--)
+      if (btype[l] == "directory" || btype[l] == "location" || btype[l] == "files")
+        return "<" showtype(btype[l]) " " barg[l] ">"
+    return "the server"
+  }
+  /^# @@FILE@@ / { sub(/^# @@FILE@@ /, ""); lineno = $NF + 0; sub(/ [0-9]+$/, ""); file = $0; next }
+  {
+    lineno++
+    code = $0; sub(/#.*/, "", code)
+    tag = code; sub(/^[ \t]+/, "", tag)
+    if (tag ~ /^</) {
+      closing = (tag ~ /^<[ \t]*[/]/)
+      t = tag; sub(/^<[ \t]*[/]?/, "", t); sub(/[ \t>].*$/, "", t); t = tolower(t)
+      if (t == "requireall" || t == "requireany" || t == "requirenone") next
+      if (closing) {
+        if (d > 0 && btype[d] == t) {
+          judge_status(d); judge_root(d); flush_opts(d)
+          if (t == "proxy") { nproxy++; if (!isopen(d)) nconfined++ }
+          d--
+        }
+        next
+      }
+      if (t ~ /match$/) t = substr(t, 1, length(t) - 5)
+      if (t != "directory" && t != "location" && t != "files" && t != "proxy") next
+      arg = tag; sub(/^<[ \t]*[A-Za-z]+[ \t]*/, "", arg); sub(/[ \t]*>[ \t]*$/, "", arg)
+      sq = sprintf("%c", 39)
+      gsub(/^"|"$/, "", arg); gsub("^" sq "|" sq "$", "", arg)
+      d++
+      btype[d] = t; barg[d] = arg; border[d] = ""
+      allowall[d] = 0; denyall[d] = 0; granted[d] = 0
+      handler[d] = ""; handlerfile[d] = ""; handlerline[d] = 0
+      lastopts[d] = ""; optbuf[d] = ""
+      next
+    }
+    line = code; sub(/^[ \t]+/, "", line)
+    if (line == "") next
+    w1 = line; sub(/[ \t].*$/, "", w1); w1 = tolower(w1)
+    if (line == w1) rest = ""
+    else { rest = line; sub(/^[^ \t]+[ \t]+/, "", rest); sub(/[ \t]+$/, "", rest) }
+    if (w1 == "loadmodule") {
+      m = rest; sub(/[ \t].*$/, "", m); m = tolower(m); sub(/_module$/, "", m)
+      if (m != "" && !(m in seenmod)) { seenmod[m] = 1; print "MODULE\t" m }
+      next
+    }
+    if (w1 == "listen" && ishttpd) {
+      v = rest; sub(/[ \t].*$/, "", v)
+      if (v ~ /:/) { nb++; boundv[nb] = v }
+      else if (v != "") { na++; barev[na] = v; bareloc[na] = file " line " lineno }
+      next
+    }
+    if (w1 == "options") {
+      where = "Any (default)"
+      for (l = d; l > 0; l--) if (btype[l] == "directory") { where = barg[l]; break }
+      n = split(rest, w, /[ \t]+/); bare = ""
+      for (i = 1; i <= n; i++) {
+        word = w[i]; minus = (substr(word, 1, 1) == "-")
+        sub(/^[+-]/, "", word); word = tolower(word)
+        if (word == "") continue
+        if (!minus) bare = bare " " word
+        if (minus) continue
+        if (word == "followsymlinks") optbuf[d] = optbuf[d] "FOLLOW\t" where "\t" file "\t" lineno "\n"
+        else if (word == "symlinksifownermatch") optbuf[d] = optbuf[d] "FOLLOW_OWNER\t" where "\t" file "\t" lineno "\n"
+        else if (word == "execcgi") optbuf[d] = optbuf[d] "CGI\t" where "\t" file "\t" lineno "\n"
+        else if (word == "indexes") optbuf[d] = optbuf[d] "INDEXES\t" where "\t" file "\t" lineno "\n"
+      }
+      if (bare != "" && btype[d] == "directory") { sub(/^ /, "", bare); lastopts[d] = bare }
+      next
+    }
+    if (w1 == "order") { b = rest; gsub(/[ \t]/, "", b); border[d] = tolower(b); next }
+    if (w1 == "allow" || w1 == "deny") {
+      r = tolower(rest); gsub(/[ \t]+/, " ", r); gsub(/^ | $/, "", r)
+      if (r == "from all") { if (w1 == "allow") allowall[d] = 1; else denyall[d] = 1 }
+      next
+    }
+    if (w1 == "require") {
+      r = tolower(rest); gsub(/[ \t]+/, " ", r); gsub(/^ | $/, "", r)
+      if (r == "all granted") granted[d] = 1
+      next
+    }
+    if (w1 == "proxyrequests") {
+      proxyval = tolower(rest); sub(/[ \t].*$/, "", proxyval)
+      proxyfile = file; proxyline = lineno
+      next
+    }
+    if (w1 == "dav") {
+      v = tolower(rest); sub(/[ \t].*$/, "", v)
+      if (v == "on") print "DAV\t" scope_name() "\t" file "\t" lineno
+      next
+    }
+    if (w1 == "sethandler") {
+      v = tolower(rest); sub(/[ \t].*$/, "", v)
+      if (v == "server-status" || v == "server-info") {
+        handler[d] = v; handlerfile[d] = file; handlerline[d] = lineno
+      }
+      next
+    }
+  }
+  END {
+    for (l = d; l >= 1; l--) {
+      judge_status(l); judge_root(l); flush_opts(l)
+      if (btype[l] == "proxy") { nproxy++; if (!isopen(l)) nconfined++ }
+    }
+    judge_status(0); flush_opts(0)
+    if (proxyval == "on" && !(nproxy > 0 && nconfined == nproxy)) print "PROXY\t" proxyfile "\t" proxyline
+    if (ishttpd) {
+      if (na + nb == 0) print "NOLISTEN\t" main
+      else {
+        for (i = 1; i <= na; i++) print "BARE\t" barev[i] "\t" bareloc[i]
+        if (na == 0) {
+          s = ""; for (i = 1; i <= nb; i++) s = s (s == "" ? "" : ", ") boundv[i]
+          print "BOUND\t" s
+        }
+      }
+    }
+  }'
+done | {
+  while IFS='	' read -r t a b c d
+  do
+    case "$t" in
+      MODULE) echo "$a" >> $mods ;;
+      BARE) echo "bare: $a in $b" >> $listens ;;
+      BOUND) echo "bound: $a" >> $listens ;;
+      NOLISTEN) echo "none: $a" >> $listens ;;
+      FOLLOW) message WARN apa004w "" "$a directory configuration permits symlink following ($b line $c)." ;;
+      FOLLOW_OWNER) message INFO apa003i "" "$a directory configuration permits symlink following only if owner of the symlink matches ($b line $c)." ;;
+      CGI) message WARN apa005w "" "$a directory can hold executable CGI ($b line $c)." ;;
+      INDEXES) message WARN apa006w "" "$a directory will provide content listing if there are no index.html files ($b line $c)." ;;
+      ROOT_OPEN) message WARN apa002w "" "There is no limitation to access filesystem locations (configuration for '/' in $a line $b)." ;;
+      ROOT_OPTS) message WARN apa002w "" "Options flag for the filesystem should be 'None' (configuration for '/' in $a line $b)." ;;
+      PROXY) message WARN apa008w "Turn it Off (it defaults Off) unless this host is a forward proxy, and confine it with Proxy blocks." "ProxyRequests is On ($a line $b): the server forwards requests for any client its Proxy blocks allow." ;;
+      DAV) message WARN apa009w "Confine Dav On to the collections that need it, behind authentication only the writers have." "WebDAV writes are on for $a ($b line $c): PUT and DELETE reach the filesystem." ;;
+      STATUS) message WARN apa010w "Restrict it to localhost ('Require local' in that block)." "$a is world-readable ($b in $c line $d): it names clients, requests and server slots." ;;
+    esac
+  done
+}
 
-		if [ ! -z "`echo $line | $GREP -i \"</Directory\"`" ] ; then
-		# Before reseting check the '/' configuration
-			if  [ "$directory" = "/" ] ; then
-				[ $denyfirst -ne 1 -o $alldenied -ne 0 ] &&  \
-				message WARN apa002w "" "There is no limitation to access filesystem locations (configuration for '/')"
-				[ "$options" != "None" -a "$options" != "none" ] && \
-				message WARN apa002w "" "Options flag  for the filesystem should be 'None' (configuration for '/')"
-			fi
-			directory="Any (default)"
-			denyfirst=0
-			alldenied=0
-			options=""
-		fi
+n=`$SORT -u $mods 2>/dev/null | $AWK 'END { print NR + 0 }'`
+if [ "$n" = 0 ]; then
+  message INFO apa007i "" "Apache is configured with no LoadModule lines: statically built, or nothing loaded."
+else
+  modlist=`$SORT -u $mods 2>/dev/null | $AWK '{ printf "%s%s", (NR > 1 ? ", " : ""), $0 }'`
+  [ "$n" = 1 ] && what=module || what=modules
+  message INFO apa007i "$modlist" "Apache is configured to load $n $what."
+fi
 
-		if [ ! -z "`echo $line | $GREP -i Options`" ]; then
-
-			options=`echo $line | $SED -e 's/options\b//i'`
-
-			if [ ! -z "`echo $options | $GREP -i followsymlinks`" ]; then
-# TODO: We could try to check if there are symlinks that are going to be
-# followed back to the root dir
-# Sample: ln -s /etc/passwd
-			if [ ! -z "`echo $options | $GREP -i ifownermatch`" ]; then
-			message INFO apa003i "" "$directory directory configuration permits symlink following only if owner of the symlink matches."
-			else 
-			message WARN apa004w "" "$directory directory configuration permits symlink following."
-			fi
-			fi # of followsymlinks
-
-# TODO: we could list executable files in the directory
-			if [ ! -z "`echo $options | $GREP -i execcgi`" ]; then
-			message WARN apa005w "" "$directory directory can hold executable CGI."
-			fi
-
-#  TODO we could check which directories do not have an index.html file
-			if [ ! -z "`echo $options | $GREP -i indexes`" ]; then
-			message WARN apa006w "" "$directory directory will provide content listing if there are no index.html files."
-			fi
-
-		fi # of the options
-
-# Some more parsing for configuration  (to be checked when the Directory
-# is finished)
-		if [ ! -z "`echo $line | $GREP -i \"Order\"`" ] ; then
-			denyfirst=0
-			[ ! -z "`echo $line | $GREP -i \"Deny,Allow\"`" ] && denyfirst=1
-		fi
-
-		[ ! -z "`echo $line | $GREP -i \"Deny from all\"`" ] && alldenied=1
-		[ ! -z "`echo $line | $GREP -i \"Allow from all\"`" ] && alldenied=0
-
-	done
-
-
+$SED -n 's/^bare: //p' $listens 2>/dev/null | while IFS= read -r __b
+do
+  [ -n "$__b" ] && message WARN apa001w "Give each Listen directive an address (Listen 192.0.2.10:80) and restart." "Listen $__b serves every address of the machine."
 done
+if [ -z "`$SED -n 's/^bare: //p' $listens 2>/dev/null`" ]; then
+  bound=`$SED -n 's/^bound: //p' $listens 2>/dev/null | $AWK '{ l = l (NR > 1 ? ", " : "") $0 } END { print l }'`
+  if [ -n "$bound" ]; then
+    message INFO apa001w "" "Apache listens only on $bound."
+  else
+    $SED -n 's/^none: //p' $listens 2>/dev/null | while IFS= read -r __m
+    do
+      [ -n "$__m" ] && message WARN apa001w "Give each Listen directive an address (Listen 192.0.2.10:80) and restart." "Apache has no Listen directive in $__m."
+    done
+  fi
+fi
 
+delete $mods $listens
+exit 0

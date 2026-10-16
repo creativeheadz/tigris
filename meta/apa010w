@@ -1,0 +1,13 @@
+Id: apa010w
+Severity: WARN
+Category: services
+Check: check_apache
+Fix: Restrict the block to localhost (Require local).
+References: Apache Module mod_status; Apache Module mod_info
+Controls: CIS 4.1; NIST CM-6, CM-7; ISO 8.9; CE Secure configuration
+
+The server-status or server-info handler is world-readable in the
+block named: it shows clients, requests, server slots and the whole
+configuration to anyone who asks. Only an explicitly open block is
+flagged; a handler restricted to localhost, or left to the default
+deny, is not. Restrict the block to localhost.

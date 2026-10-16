@@ -34,7 +34,7 @@ re-running the inventory and updating the counts below.
 | networking | 16 | check_network, check_listeningprocs (ss/lsof/netstat//proc) | verify promiscuous-mode check; DONE 2026-10-09: FreeBSD half (ifconfig PROMISC, prom001w reused) |
 | ports_packages | 43 | pkg_integrity (dpkg/rpm/apk/pacman), check_updates, check_patches | verify unpurged packages, YUM GPG signing; DONE 2026-10-09: check_software (swd001w/002w; app and Cellar writability, auto-update prefs; macOS phase); DONE 2026-10-09: check_pkg (upd006w; pkg updating notices; FreeBSD phase; pkg audit/portaudit/portmaster cut as network/dead) |
 | time | 17 | check_ntp, check_timesync | DONE 2026-10-16: protocol depth in check_timesync (time005w/006w; too few sources, falsetickers for chronyd and ntpd; stratum in time003i; refclocks and unparseable output not judged) |
-| webservers | 18 | check_apache, check_nginx, check_certs | verify Apache module-inventory depth |
+| webservers | 18 | check_apache, check_nginx, check_certs | DONE 2026-10-16: check_apache rewritten (apa007i/008w/009w/010w; module inventory, open proxy, Dav, exposed status; Includes expanded, offline; 2.2 access logic fixed, Require taught) |
 
 ## Partial (15 groups)
 

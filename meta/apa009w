@@ -1,0 +1,12 @@
+Id: apa009w
+Severity: WARN
+Category: services
+Check: check_apache
+Fix: Keep Dav On only where WebDAV is needed, behind authentication.
+References: Apache Module mod_dav
+Controls: CIS 4.1; NIST CM-6, CM-7; ISO 8.9; CE Secure configuration
+
+WebDAV writes are on for the scope named: PUT, DELETE and the
+other authoring methods reach the filesystem wherever the scope's
+authentication allows. Keep Dav On only on the collections that
+need it, behind authentication only the writers have.
