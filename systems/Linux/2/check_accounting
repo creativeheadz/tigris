@@ -1,0 +1,139 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# check_accounting: the collectors besides auditd: sysstat's sadc and
+#             snoopy's command logging, judged by what they keep, not
+#             by what is installed. sysstat with no data in two days
+#             is not collecting (aud005w); data being written is
+#             inventoried (aud006i). Snoopy configured but not
+#             preloaded logs nothing (aud007w); preloaded is
+#             inventoried (aud008i). Neither installed is not a
+#             finding, and sysstat explicitly disabled (ENABLED=false
+#             in /etc/default/sysstat) is the administrator's choice,
+#             not a failure.
+#
+# 10/16/2026 - Initial version. sysstat binaries, configs, cron and
+#             data files; snoopy.ini and /etc/ld.so.preload.
+#
+# References:
+#   sar(1), snoopy.ini
+#
+# Tigris: offline
+#   the root's binaries, configs and data files.
+#
+#-----------------------------------------------------------------------------
+#
+TigerInstallDir='.'
+
+#
+# Set default base directory.
+# Order or preference:
+#      -B option
+#      TIGERHOMEDIR environment variable
+#      TigerInstallDir installed location
+#
+basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+
+for parm
+do
+   case $parm in
+   -B) basedir=$2; break;;
+   esac
+done
+
+#
+# Verify that a config file exists there, and if it does
+# source it.
+#
+[ ! -r $basedir/config ] && {
+  echo "--ERROR-- [init002e] No 'config' file in \`$basedir'."
+  exit 1
+}
+
+. $basedir/config
+
+. $BASEDIR/initdefs
+#
+# If run in test mode (-t) this will verify that all required
+# elements are set.
+#
+[ "$Tiger_TESTMODE" = 'Y' ] && {
+  haveallcmds AWK CAT FIND GREP || exit 1
+  haveallfiles BASEDIR WORKDIR || exit 1
+
+  echo "--CONFIG-- [init003c] $0: Configuration ok..."
+  exit 0
+}
+
+#------------------------------------------------------------------------
+
+haveallcmds AWK CAT FIND GREP || exit 1
+
+# existing_sys: the existing files among the arguments, one per line
+existing_sys()
+{
+  for __f
+  do
+    [ -f "`rootfile $__f`" ] && echo "$__f"
+  done
+}
+
+sysstat=`existing_sys /usr/bin/sar /usr/bin/sadc /usr/lib/sysstat/sadc /usr/lib/sysstat/debian-sa1 /usr/lib64/sa/sadc /etc/sysstat/sysstat /etc/default/sysstat /etc/cron.d/sysstat /etc/sysconfig/sysstat`
+snoopy=`existing_sys /etc/snoopy.ini /usr/lib/x86_64-linux-gnu/libsnoopy.so /usr/lib64/libsnoopy.so /usr/lib/libsnoopy.so /lib/x86_64-linux-gnu/libsnoopy.so`
+
+# Neither installed: not a finding
+[ -z "$sysstat$snoopy" ] && [ ! -f "`rootfile /etc/ld.so.preload`" ] && exit 0
+
+echo
+echo "# Checking system accounting (sysstat, snoopy)..."
+
+# sysstat: data written in the last two days means collecting. An
+# explicit ENABLED=false is the administrator's choice, not a
+# failure, and is left alone.
+if [ -n "$sysstat" ]; then
+  enabled=1
+  def=`rootfile /etc/default/sysstat`
+  if [ -f "$def" ] && $GREP -i '^[ \t]*ENABLED[ \t]*=[ \t]*["'\'']*false' "$def" >/dev/null 2>&1; then
+    enabled=0
+  fi
+  fresh=
+  for d in /var/log/sysstat /var/log/sa
+  do
+    here=`rootfile $d`
+    [ -d "$here" ] || continue
+    if [ -n "`$FIND "$here" \( -name 'sa[0-9]*' -o -name 'sar[0-9]*' \) -mtime -2 2>/dev/null`" ]; then
+      fresh=$d
+    fi
+  done
+  if [ -n "$fresh" ]; then
+    message INFO aud006i "" "sysstat collects system activity (data in $fresh)."
+  elif [ "$enabled" = 1 ]; then
+    message WARN aud005w "Enable collection (ENABLED=true with a sysstat cron job or timer) or remove sysstat." "sysstat is installed but collects nothing: no data in two days, so the activity history an investigation wants is not there."
+  fi
+fi
+
+# Snoopy: configured but not preloaded logs nothing
+preload=`rootfile /etc/ld.so.preload`
+if [ -n "$snoopy" ] || { [ -f "$preload" ] && $GREP snoopy "$preload" >/dev/null 2>&1; }; then
+  if [ -f "$preload" ] && $GREP snoopy "$preload" >/dev/null 2>&1; then
+    message INFO aud008i "" "Snoopy logs commands to syslog (preloaded from /etc/ld.so.preload)."
+  else
+    message WARN aud007w "Preload it (its library in /etc/ld.so.preload) or remove the configuration." "Snoopy is configured but not preloaded, so it logs no commands."
+  fi
+fi
+
+exit 0

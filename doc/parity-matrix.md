@@ -40,7 +40,7 @@ re-running the inventory and updating the counts below.
 
 | Lynis group | Tests | Tigris cover | Missing |
 |---|---|---|---|
-| accounting | 17 | check_audit (auditd) | sysstat, snoopy; Solaris daemons backlogged with Phase D; DONE 2026-10-09: macOS half (audit_control flags, aud001w/002w reused; running-state is the watchdog's, unified log persists by default) |
+| accounting | 17 | check_audit (auditd) | DONE 2026-10-16: check_accounting (aud005w/006i sysstat, aud007w/008i snoopy); Solaris daemons backlogged with Phase D; DONE 2026-10-09: macOS half (audit_control flags, aud001w/002w reused; running-state is the watchdog's, unified log persists by default) |
 | crypto | 8 | check_certs (expiry), check_storage (LUKS, swap) | DONE 2026-10-09: check_crypto (cry001w/002w/003i; rngd source, key perms, pool level). DONE 2026-10-09: check_filevault (fde001w; macOS phase) |
 | databases | 16 | check_databases (MySQL/MariaDB, PostgreSQL, Redis) | DONE 2026-10-09: MongoDB (dbs011f/012w/013w/014f), Oracle sqlnet.ora (dbs015w/016w). DB2 not coverable offline (binary dbm config) |
 | file_integrity | 18 | aide/tripwire runners | DONE 2026-10-09: check_integrity (int001w/002w/003i; AIDE/AFICK databases, watcher inventory; OSSEC stays in check_ids) |

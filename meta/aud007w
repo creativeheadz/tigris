@@ -1,0 +1,11 @@
+Id: aud007w
+Severity: WARN
+Category: logging
+Check: check_accounting
+Fix: Preload it (its library in /etc/ld.so.preload) or remove the configuration.
+References: snoopy.ini
+Controls: CIS 8.2, 8.5; NIST AU-2, AU-12; ISO 8.15
+
+Snoopy is configured but not preloaded, so it logs no commands:
+who ran what is not recorded. Preload its library, or remove the
+configuration that promises a command history nothing keeps.

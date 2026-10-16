@@ -1,0 +1,10 @@
+Id: aud006i
+Severity: INFO
+Category: logging
+Check: check_accounting
+References: sar(1)
+Controls: CIS 8.2, 8.5; NIST AU-2, AU-12; ISO 8.15
+
+sysstat collects system activity: fresh data sits where it
+should. This is the performance history an investigation reads
+first.

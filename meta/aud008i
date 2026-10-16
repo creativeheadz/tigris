@@ -1,0 +1,9 @@
+Id: aud008i
+Severity: INFO
+Category: logging
+Check: check_accounting
+References: snoopy.ini
+Controls: CIS 8.2, 8.5; NIST AU-2, AU-12; ISO 8.15
+
+Snoopy logs commands to syslog: its library is preloaded, so who
+ran what is recorded.

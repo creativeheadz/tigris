@@ -162,6 +162,10 @@ SYSTEMDIR=$BASEDIR/systems/Linux/2
   skip_check $SYSTEMDIR/check_audit || $SYSTEMDIR/check_audit
 }
 
+[ "$Tiger_Check_ACCOUNTING" != 'N' ] && {
+  skip_check $SYSTEMDIR/check_accounting || $SYSTEMDIR/check_accounting
+}
+
 [ "$Tiger_Check_TIMESYNC" != 'N' ] && {
   skip_check $SYSTEMDIR/check_timesync || $SYSTEMDIR/check_timesync
 }

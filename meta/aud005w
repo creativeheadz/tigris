@@ -1,0 +1,12 @@
+Id: aud005w
+Severity: WARN
+Category: logging
+Check: check_accounting
+Fix: Enable collection (ENABLED=true with a sysstat cron job or timer) or remove sysstat.
+References: sar(1)
+Controls: CIS 8.2, 8.5; NIST AU-2, AU-12; ISO 8.15
+
+sysstat is installed but collects nothing: no data in two days,
+so the system activity history an investigation wants (how loaded
+the machine was, and when) is not there. Enable collection, or
+remove sysstat if the history is not wanted.

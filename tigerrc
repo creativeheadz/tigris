@@ -90,6 +90,7 @@ Tiger_Check_FIREWALL=Y          # Fast - incoming traffic denied by default (nft
 Tiger_Check_SECUREBOOT=Y        # Fast - Secure Boot on, and the kernel locked down under it
 Tiger_Check_MAC=Y               # Fast - AppArmor or SELinux enforcing
 Tiger_Check_AUDIT=Y             # Fast - auditd with rules, logs kept across reboots
+Tiger_Check_ACCOUNTING=Y        # Fast - sysstat and snoopy collecting
 Tiger_Check_TIMESYNC=Y          # Fast - one time daemon, and the clock synchronised
 Tiger_Check_UPDATES=Y           # Fast - security updates waiting, automatic, reboot (offline)
 Tiger_Check_SUDO=Y              # Fast - sudo rules without a password or with wildcards
