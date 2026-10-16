@@ -1,0 +1,130 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# check_antivirus: whether the malware scanner in place can do its job.
+#             ClamAV with no signatures, or signatures older than a
+#             week, scans with nothing to match or with yesterday's
+#             knowledge: freshclam never ran, or stopped running. No
+#             scanner installed is not a finding: this check reports
+#             reality, it does not sell products. rkhunter stays with
+#             check_compilers, chkrootkit runs in check_rootkit.
+#
+# 10/16/2026 - Initial version. ClamAV signatures judged, freshness
+#             inventoried.
+#
+# References:
+#   clamscan(1)
+#   freshclam(1)
+#   freshclam.conf(5)
+#
+# Tigris: offline
+#   the root's binaries, configs and signature databases.
+#
+#-----------------------------------------------------------------------------
+#
+TigerInstallDir='.'
+
+#
+# Set default base directory.
+# Order or preference:
+#      -B option
+#      TIGERHOMEDIR environment variable
+#      TigerInstallDir installed location
+#
+basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+
+for parm
+do
+   case $parm in
+   -B) basedir=$2; break;;
+   esac
+done
+
+#
+# Verify that a config file exists there, and if it does
+# source it.
+#
+[ ! -r $basedir/config ] && {
+  echo "--ERROR-- [init002e] No 'config' file in \`$basedir'."
+  exit 1
+}
+
+. $basedir/config
+
+. $BASEDIR/initdefs
+#
+# If run in test mode (-t) this will verify that all required
+# elements are set.
+#
+[ "$Tiger_TESTMODE" = 'Y' ] && {
+  haveallcmds AWK FIND GREP || exit 1
+  haveallfiles BASEDIR WORKDIR || exit 1
+
+  echo "--CONFIG-- [init003c] $0: Configuration ok..."
+  exit 0
+}
+
+#------------------------------------------------------------------------
+
+haveallcmds AWK FIND GREP || exit 1
+
+# existing_sys: the existing files among the arguments, one per line
+existing_sys()
+{
+  for __f
+  do
+    [ -f "`rootfile $__f`" ] && echo "$__f"
+  done
+}
+
+bins=`existing_sys /usr/bin/clamscan /usr/bin/clamdscan /usr/bin/freshclam \
+  /usr/sbin/clamd /bin/clamscan /sbin/clamd /usr/local/bin/clamscan \
+  /usr/local/bin/freshclam /usr/local/sbin/clamd`
+haveconf=
+[ -d "`rootfile /etc/clamav`" ] && haveconf=1
+
+# No scanner installed: not a finding
+[ -z "$bins$haveconf" ] && exit 0
+
+# Where freshclam keeps the databases: its DatabaseDirectory, or the
+# stock one. Only an absolute path is read: anything else resolves
+# wherever Tigris runs, not where the audited system keeps them.
+dbdir=/var/lib/clamav
+for c in /etc/clamav/freshclam.conf /etc/clamav/clamd.conf
+do
+  [ -f "`rootfile $c`" ] || continue
+  d=`$GREP -i '^[ \t]*DatabaseDirectory' "\`rootfile $c\`" 2>/dev/null | \
+    $AWK '{ sub(/#.*$/, ""); if (NF >= 2) v=$NF } END { if (v != "") print v }'`
+  case "$d" in /*) dbdir=$d;; esac
+done
+
+dbhere=`rootfile $dbdir`
+dbs=`$FIND "$dbhere" \( -name '*.cvd' -o -name '*.cld' \) 2>/dev/null`
+fresh=`$FIND "$dbhere" \( -name '*.cvd' -o -name '*.cld' \) -mtime -7 2>/dev/null`
+
+echo
+echo "# Checking the antivirus signatures..."
+
+if [ -z "$dbs" ]; then
+  message WARN av001w "Fetch them and keep them coming (run freshclam, and leave its timer or daemon enabled)." "ClamAV is installed but has no signatures in $dbdir: freshclam never fetched any, so it scans with nothing to match."
+elif [ -z "$fresh" ]; then
+  message WARN av001w "Fetch new ones and keep them coming (run freshclam, and leave its timer or daemon enabled)." "ClamAV's signatures in $dbdir are all older than a week: freshclam stopped fetching, so it scans with yesterday's knowledge."
+else
+  message INFO av002i "" "ClamAV is the malware scanner in place, with fresh signatures in $dbdir."
+fi
+
+exit 0

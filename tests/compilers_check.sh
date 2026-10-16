@@ -29,11 +29,11 @@ has() { grep -F -q -- "$1" "$2"; }
 
 T=$W/toolchain; mkdir -p "$T/etc" "$T/usr/bin"
 printf '#!/bin/sh\n' > "$T/usr/bin/gcc"; printf '#!/bin/sh\n' > "$T/usr/bin/cc"
-printf '#!/bin/sh\n' > "$T/usr/bin/clamscan"
-chmod 755 "$T/usr/bin/gcc" "$T/usr/bin/cc" "$T/usr/bin/clamscan"
+printf '#!/bin/sh\n' > "$T/usr/bin/rkhunter"
+chmod 755 "$T/usr/bin/gcc" "$T/usr/bin/cc" "$T/usr/bin/rkhunter"
 run "$T" "$W/out"
 has '--INFO-- [cmp001i] C compilers are installed (/usr/bin/cc /usr/bin/gcc)' "$W/out" &&
-has '--INFO-- [cmp003i]' "$W/out" && has 'ClamAV scans this box' "$W/out" &&
+has '--INFO-- [cmp003i]' "$W/out" && has 'rkhunter scans this box' "$W/out" &&
 ! grep -q 'cmp002w' "$W/out" &&
   ok "a toolchain with a scanner: inventory only" || { bad "toolchain"; cat "$W/out"; }
 

@@ -48,7 +48,7 @@ re-running the inventory and updating the counts below.
 | kernel | 13 | check_sysctl, core dumps, pending-reboot | I/O scheduler and module detail (mostly informational) |
 | mac_frameworks | 8 | check_mac (AppArmor, SELinux) | DONE 2026-10-09: TOMOYO (mac007w/008i), PaX softmode (mac005w/006i) |
 | mail_messaging | 11 | check_sendmail | DONE 2026-10-09: check_mail (mail001w/002w/003i; Exim, Postfix, Dovecot). Qmail/OpenSMTPD depth open |
-| malware | 11 | check_rootkit | antivirus presence depth (ClamAV and friends) |
+| malware | 11 | check_rootkit | DONE 2026-10-16: check_antivirus (av001w/002i; ClamAV signatures judged, freshness inventoried; rkhunter stays in check_compilers, chkrootkit runs in check_rootkit) |
 | memory_processes | 5 | check_runprocs, check_finddeleted | prelink handled (Oct 2026: no longer called for checksums, no longer shipped); zombie/heavy-IO are informational |
 | nameservices | 27 | check_dns (resolvers, unbound, BIND) | PowerDNS; verify hosts duplicates; NIS retired deliberately |
 | scheduling | 5 | check_crontabs, check_cron | verify `at` jobs coverage; DONE 2026-10-09: macOS half (tabs, periodic, full pathnames; cron008f/008w/009w/001w reused; orphans and at-allow cut) |

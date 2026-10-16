@@ -1,0 +1,13 @@
+Id: av001w
+Severity: WARN
+Category: intrusion
+Check: check_antivirus
+Fix: Run freshclam and leave its updater enabled.
+References: freshclam(1); freshclam.conf(5)
+Controls: CIS 10.1; NIST SI-3; ISO 8.7; CE Malware protection
+
+ClamAV is installed but its signatures are missing, or every one
+of them is older than a week: freshclam never fetched any, or
+stopped fetching, so it scans with nothing to match, or with
+yesterday's knowledge. Run freshclam, and leave its timer or
+daemon enabled so they stay fresh.

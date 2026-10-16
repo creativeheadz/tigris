@@ -60,6 +60,7 @@ Tiger_Check_SQUID=Y		# Fast - Squid proxy access and secrets
 Tiger_Check_PRINTERS=Y	# Fast - CUPS browsing, listen and URIs
 Tiger_Check_IDS=Y		# Fast - IDS/IPS presence and blindness
 Tiger_Check_COMPILERS=Y	# Fast - compilers and malware scanners
+Tiger_Check_ANTIVIRUS=Y	# Fast - antivirus signatures judged
 Tiger_Check_MAIL=Y		# Fast - Exim, Postfix and Dovecot config
 Tiger_Check_CRYPTO=Y	# Fast - RNG config, key perms, entropy
 Tiger_Check_INTEGRITY=Y	# Fast - integrity watcher config

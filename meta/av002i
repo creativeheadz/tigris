@@ -1,0 +1,8 @@
+Id: av002i
+Severity: INFO
+Category: intrusion
+Check: check_antivirus
+References: clamscan(1)
+
+ClamAV is in place with fresh signatures. What scans the box
+reframes everything else in the report.

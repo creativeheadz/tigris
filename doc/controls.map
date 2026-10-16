@@ -101,6 +101,7 @@ check:check_known         | 10.1               | SI-3, SI-4               | 8.7,
 check:check_rootkit       | 10.1               | SI-3, SI-4               | 8.7, 8.16           | Malware protection
 check:check_exrc          | 10.1               | SI-3, SI-4               | 8.7, 8.16           | Malware protection
 check:check_finddeleted   | 10.1               | SI-4                     | 8.16                | Malware protection
+check:check_antivirus     | 10.1               | SI-3                     | 8.7                 | Malware protection
 
 # ---- the kernel
 check:check_sysctl        | 4.1, 10.5          | CM-6, SI-16              | 8.9                 | Secure configuration
@@ -268,6 +269,8 @@ id:dos002i                | -                  | -                        | -   
 id:ids003i                | -                  | -                        | -                   | -
 # int003i: names the file-integrity watcher in place; not a gap.
 id:int003i                | -                  | -                        | -                   | -
+# av002i: names the antivirus in place with fresh signatures; not a gap.
+id:av002i                 | -                  | -                        | -                   | -
 # rlog001i: forwarding is the arrangement to have; the finding only records where the copies go.
 id:rlog001i               | -                  | -                        | -                   | -
 # Tigris's own messages (its configuration, the run, its helpers) are about

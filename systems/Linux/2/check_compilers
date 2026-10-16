@@ -20,19 +20,21 @@
 #             want it, and attackers love it. Their presence is worth
 #             knowing, and their permissions worth checking: a compiler
 #             anyone can write to is a compiler anyone can replace,
-#             and the next build as root runs their code. Malware
-#             scanners are reported the same way, present or not said:
-#             what scans the box reframes everything else. No compiler
-#             and no scanner means neither is installed, and there is
-#             nothing to say.
+#             and the next build as root runs their code. rkhunter's
+#             presence is reported the same way, present or not said:
+#             what scans the box reframes everything else. ClamAV is
+#             judged by check_antivirus. No compiler and no scanner
+#             means neither is installed, and there is nothing to say.
 #
 # 10/09/2026 - Initial version. The C toolchains (cc, gcc, clang,
 #             tcc) in the usual bin directories; ClamAV and rkhunter
 #             by their binaries and configs.
+# 10/16/2026 - ClamAV moved to check_antivirus, which judges its
+#             signatures; rkhunter stays here.
 #
 # References:
 #   gcc(1)
-#   clamscan(1)
+#   rkhunter(8)
 #
 # Tigris: offline
 #   the root's bin directories and configs; `ls' reads the mode of
@@ -120,8 +122,6 @@ do
   done
 done
 scanners=
-[ -f "`rootfile /usr/bin/clamscan`" ] || [ -f "`rootfile /usr/bin/freshclam`" ] ||
-[ -d "`rootfile /etc/clamav`" ] && scanners="$scanners ClamAV"
 [ -f "`rootfile /usr/bin/rkhunter`" ] || [ -f "`rootfile /etc/rkhunter.conf`" ] && scanners="$scanners rkhunter"
 
 # Neither a compiler nor a scanner: nothing to say

@@ -210,6 +210,10 @@ SYSTEMDIR=$BASEDIR/systems/Linux/2
   skip_check $SYSTEMDIR/check_compilers || $SYSTEMDIR/check_compilers
 }
 
+[ "$Tiger_Check_ANTIVIRUS" != 'N' ] && {
+  skip_check $SYSTEMDIR/check_antivirus || $SYSTEMDIR/check_antivirus
+}
+
 [ "$Tiger_Check_MAIL" != 'N' ] && {
   skip_check $SYSTEMDIR/check_mail || $SYSTEMDIR/check_mail
 }

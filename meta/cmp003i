@@ -2,7 +2,7 @@ Id: cmp003i
 Severity: INFO
 Category: packages
 Check: check_compilers
-References: clamscan(1)
+References: rkhunter(8)
 
 A malware scanner is installed. What scans the box reframes
 everything else in the report.
