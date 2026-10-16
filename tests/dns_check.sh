@@ -7,7 +7,9 @@
 # recursion from an included file, and a bind opening
 # it through a named ACL. Then roots with no usable nameserver, a single
 # real one, a lone loopback stub (fine), an authoritative-only bind
-# (recursion no: not analyzed), and clean daemon configurations.
+# (recursion no: not analyzed), clean daemon configurations, a PowerDNS
+# recursor open through an include-dir with an open authoritative
+# server beside it, and a PowerDNS pair closed to their own networks.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -96,6 +98,25 @@ printf 'server:\n  access-control: 127.0.0.0/8 allow\n  access-control: 10.0.0.0
 printf 'options {\n  allow-recursion { localhost; localnets; };\n};\n' > "$C/etc/bind/named.conf"
 run "$C" "$W/clean.out"
 grep -q 'dns00[1-6]' "$W/clean.out" && { bad "clean"; cat "$W/clean.out"; } || ok "closed daemons and two servers: nothing"
+
+# PowerDNS: an open recursor and an open authoritative server, then a pair closed to their own networks
+P=$W/pdns
+mkdir -p "$P/etc" "$P/etc/powerdns/recursor.conf.d"
+printf 'nameserver 192.0.2.1\nnameserver 192.0.2.2\n' > "$P/etc/resolv.conf"
+printf 'allow-from=127.0.0.0/8, 10.0.0.0/8\ninclude-dir=/etc/powerdns/recursor.conf.d\n' > "$P/etc/powerdns/recursor.conf"
+printf '# opened by hand\nallow-from=127.0.0.1, 0.0.0.0/0\n' > "$P/etc/powerdns/recursor.conf.d/open.conf"
+printf 'allow-recursion=::/0\n' > "$P/etc/powerdns/pdns.conf"
+run "$P" "$W/pdns.out"
+grep -F -q "[dns008f] \`/etc/powerdns/recursor.conf.d/open.conf' lets anyone use this recursor (allow-from holds the whole Internet)" "$W/pdns.out" &&
+grep -F -q "[dns008f] \`/etc/powerdns/pdns.conf' lets anyone recurse (allow-recursion holds the whole Internet)" "$W/pdns.out" &&
+  ok "PowerDNS open through include-dir, auth open directly: dns008f" || { bad "pdns"; cat "$W/pdns.out"; }
+D=$W/pdnsclosed
+mkdir -p "$D/etc" "$D/etc/powerdns"
+printf 'nameserver 192.0.2.1\nnameserver 192.0.2.2\n' > "$D/etc/resolv.conf"
+printf 'allow-from=127.0.0.0/8, 10.0.0.0/8\n' > "$D/etc/powerdns/recursor.conf"
+printf '# defaults: localhost and the private networks\n' > "$D/etc/powerdns/pdns.conf"
+run "$D" "$W/pdnsclosed.out"
+grep -q 'dns008f' "$W/pdnsclosed.out" && { bad "pdnsclosed"; cat "$W/pdnsclosed.out"; } || ok "PowerDNS closed and defaulted: nothing"
 
 # an offline root (TIGRIS_ROOT, as tigris --root sets it)
 R=$W/img

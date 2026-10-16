@@ -1,0 +1,13 @@
+Id: dns008f
+Severity: FAIL
+Category: network
+Check: check_dns
+Fix: Allow localhost and the local networks only.
+References: PowerDNS settings (allow-from)
+Controls: CIS 4.8; NIST SC-5, SC-7; ISO 8.20; CE Firewalls
+
+PowerDNS answers recursion to anyone: allow-from in the recursor,
+or allow-recursion in the authoritative server, holds 0.0.0.0/0 or
+::/0. An open resolver serves the whole Internet, including
+spoofed queries that turn it into an amplifier for denial-of-
+service attacks against others.

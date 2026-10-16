@@ -196,6 +196,7 @@ id:dns004i                | -                  | -                        | 8.14
 id:dns005f                | 4.8                | SC-5, SC-7               | 8.20                | Firewalls
 id:dns006f                | 4.8                | SC-5, SC-7               | 8.20                | Firewalls
 id:dns007w                | 4.1                | CM-6                     | 8.9                 | Secure configuration
+id:dns008f                | 4.8                | SC-5, SC-7               | 8.20                | Firewalls
 
 # ---- doas and disk encryption
 id:dos001w                | 5.4                | AC-6, IA-2               | 8.2, 8.5            | User access control

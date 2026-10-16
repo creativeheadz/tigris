@@ -19,8 +19,8 @@
 #                 without a usable nameserver (dns001f), with more than
 #                 three (dns002w), with lines that are not addresses
 #                 (dns003w), or with a single one (dns004i); unbound
-#                 (dns005f) or bind (dns006f) answering recursion to the
-#                 whole Internet.
+#                 (dns005f), bind (dns006f) or PowerDNS (dns008f)
+#                 answering recursion to the whole Internet.
 #
 # 10/07/2026 atrimbitas - Initial version. One level of includes, which
 #                 is what both daemons' packaged configurations use; a
@@ -28,9 +28,13 @@
 #                 level too. A named.conf with 'recursion no' anywhere is
 #                 authoritative-only and is not analyzed (a view turning
 #                 recursion back on is missed). dnsmasq is not covered.
+# 10/16/2026 - PowerDNS: allow-from in the recursor, allow-recursion
+#                 in the authoritative server, each with one level of
+#                 include-dir. What is not set is not judged: the
+#                 defaults allow localhost and the private networks.
 #
 # References:
-#   resolv.conf(5), unbound.conf(5), named.conf(5)
+#   resolv.conf(5), unbound.conf(5), named.conf(5), PowerDNS settings (allow-from)
 #
 # Tigris: offline
 #
@@ -218,6 +222,64 @@ do
       [ -n "$open" ] &&
         message FAIL dns006f "" "\`$f' lets anyone recurse: allow-recursion $open. It answers the whole Internet, and amplifies denial-of-service attacks against others. Allow localhost and the local networks only."
     done
+  done
+done
+
+# PowerDNS: allow-from in the recursor, allow-recursion in the
+# authoritative server, holding 0.0.0.0/0 or ::/0. One level of
+# include-dir, which is what the packaged configurations use.
+for main in /etc/powerdns/recursor.conf /etc/pdns-recursor/recursor.conf
+do
+  [ -f "`rootfile $main`" ] || continue
+  {
+    echo "$main"
+    $SED 's/#.*//' "`rootfile $main`" |
+      $SED -n 's/^[ 	]*include-dir[ 	]*=[ 	]*//p' | $SED 's/[ 	]*$//' |
+      while IFS= read -r g
+      do
+        case "$g" in /*) ;; *) g=${main%/*}/$g ;; esac
+        rootls "$g" 2>/dev/null
+      done
+  } | $SORT -u | while IFS= read -r f
+  do
+    here=`rootfile "$f"`
+    [ -f "$here" ] || continue
+    $SED 's/#.*//' "$here" |
+      $AWK 'tolower($0) ~ /^[ \t]*allow-from[ \t]*=/ {
+        v = $0; sub(/^[^=]*=/, "", v); gsub(/[,;]/, " ", v)
+        n = split(v, w, /[ \t]+/)
+        for (i = 1; i <= n; i++)
+          if (w[i] == "0.0.0.0/0" || w[i] == "::/0") { open = 1 }
+      } END { if (open) print "open" }' |
+      $GREP -q open &&
+      message FAIL dns008f "" "\`$f' lets anyone use this recursor (allow-from holds the whole Internet): it answers everyone, and amplifies denial-of-service attacks against others. Allow localhost and the local networks only."
+  done
+done
+for main in /etc/powerdns/pdns.conf /etc/pdns/pdns.conf
+do
+  [ -f "`rootfile $main`" ] || continue
+  {
+    echo "$main"
+    $SED 's/#.*//' "`rootfile $main`" |
+      $SED -n 's/^[ \t]*include-dir[ \t]*=[ \t]*//p' | $SED 's/[ \t]*$//' |
+      while IFS= read -r g
+      do
+        case "$g" in /*) ;; *) g=${main%/*}/$g ;; esac
+        rootls "$g" 2>/dev/null
+      done
+  } | $SORT -u | while IFS= read -r f
+  do
+    here=`rootfile "$f"`
+    [ -f "$here" ] || continue
+    $SED 's/#.*//' "$here" |
+      $AWK 'tolower($0) ~ /^[ \t]*allow-recursion[ \t]*=/ {
+        v = $0; sub(/^[^=]*=/, "", v); gsub(/[,;]/, " ", v)
+        n = split(v, w, /[ \t]+/)
+        for (i = 1; i <= n; i++)
+          if (w[i] == "0.0.0.0/0" || w[i] == "::/0") { open = 1 }
+      } END { if (open) print "open" }' |
+      $GREP -q open &&
+      message FAIL dns008f "" "\`$f' lets anyone recurse (allow-recursion holds the whole Internet): it answers everyone, and amplifies denial-of-service attacks against others. Allow localhost and the local networks only."
   done
 done
 
