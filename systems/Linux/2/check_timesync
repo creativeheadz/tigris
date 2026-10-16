@@ -29,6 +29,11 @@
 #                 Tiger_Sysctl_Root prefixes /proc and the container
 #                 markers; Tiger_Timedatectl_Cmd and Tiger_Chronyc_Cmd
 #                 replace the two commands, for the tests.
+# 10/16/2026 - Protocol depth for chronyd and ntpd: too few sources
+#                 (time005w), falsetickers (time006w), and the stratum
+#                 in time003i. Tiger_Chronyc_Sources_Cmd and
+#                 Tiger_Ntpq_Cmd replace 'chronyc -n sources' and
+#                 'ntpq -pn', for the tests.
 #
 # References:
 #   man 1 timedatectl, man 1 chronyc, man 8 systemd-timesyncd
@@ -118,8 +123,93 @@ case "$daemons" in
     ;;
 esac
 
+# judge_sources DAEMON VERDICT: time005w and time006w from the verdict
+# lines the two awk programs below print: 'count TOTAL GOOD', one
+# 'falseticker NAME' per source the daemon rejects, and 'refclock'
+# when a reference clock (not a network source) is in the list. No
+# count line means the output did not parse, and nothing is judged.
+judge_sources()
+{
+  __d=$1 __v=$2
+  __counts=`printf '%s\n' "$__v" | $SED -n 's/^count \([0-9][0-9]*\) \([0-9][0-9]*\)$/\1 \2/p'`
+  [ -z "$__counts" ] && return 0
+  __total=`printf '%s\n' "$__counts" | $AWK '{ print $1 }'`
+  __good=`printf '%s\n' "$__counts" | $AWK '{ print $2 }'`
+  case $__d in
+    chronyd) __where="'pool' or 'server' lines in chrony.conf" ;;
+    *) __where="'server' lines in ntp.conf" ;;
+  esac
+  if [ "$__total" = 0 ]; then
+    case "$__v" in
+      *refclock*) : ;; # a reference clock disciplines it: nothing to outvote
+      *) message WARN time005w "Give it some: $__where." "$__d has no time sources configured: nothing disciplines the clock." ;;
+    esac
+  elif [ "$__good" -lt 3 ]; then
+    __noun=sources; [ "$__total" = 1 ] && __noun=source
+    message WARN time005w "Give it at least three that answer (four is the usual): $__where." "$__d has only $__good of its $__total time $__noun answering: one bad source cannot be outvoted, so a failing or spoofed server sets the clock."
+  fi
+  printf '%s\n' "$__v" | $SED -n 's/^falseticker //p' | while IFS= read -r __s
+  do
+    [ -n "$__s" ] && message WARN time006w "Find whether $__s is the one that is wrong (a failing clock, or time fed to lie), then drop or replace that source." "$__d calls $__s a falseticker: it disagrees with the other sources, so it is not used."
+  done
+}
+
+# Protocol depth, for the daemons that choose between sources. chronyd
+# and ntpd compare their sources and can be outvoted or lied to;
+# systemd-timesyncd follows one server, and OpenNTPD and ptp4l expose
+# no selection state worth judging, so they are left alone. Both
+# commands ask for numeric addresses, so no reverse lookup leaves
+# the box.
+stratum_n=
+case " $daemons " in
+  *" chronyd "*)
+    srccmd=${Tiger_Chronyc_Sources_Cmd:-}
+    [ -z "$srccmd" ] && c=`findtool chronyc` && srccmd="$c -n sources"
+    if [ -n "$srccmd" ]; then
+      srcout=`$srccmd 2>/dev/null | $AWK '
+        /^=+$/ { seen = 1; next }
+        seen && NF >= 6 {
+          if (substr($1, 1, 1) == "#") { clock = 1; next }
+          if ($2 ~ /[.:]/) { total++
+            if (substr($1, 2, 1) == "x") print "falseticker " $2
+            else if ($5 != "0") good++ }
+        }
+        END { if (seen) { printf "count %d %d\n", total, good; if (clock) print "refclock" } }'`
+      judge_sources chronyd "$srcout"
+    fi
+    ;;
+esac
+case " $daemons " in
+  *" ntpd "*)
+    ntpqcmd=${Tiger_Ntpq_Cmd:-}
+    [ -z "$ntpqcmd" ] && c=`findtool ntpq` && ntpqcmd="$c -pn"
+    if [ -n "$ntpqcmd" ]; then
+      ntpqout=`$ntpqcmd 2>/dev/null | $AWK '
+        /^=+$/ { seen = 1; next }
+        seen && NF >= 8 {
+          tally = substr($1, 1, 1); remote = $1
+          if (tally ~ /[.x+#*o-]/) remote = substr($1, 2)
+          if (remote ~ /^[A-Za-z]/) { clock = 1
+            if ((tally == "*") || (tally == "o")) {
+              if ($3 ~ /^[0-9][0-9]*$/) stratum = $3 + 1 } }
+          else {
+            total++
+            if (tally == "x") print "falseticker " remote
+            else if ($7 != "0") { good++
+              if ((tally == "*") || (tally == "o")) {
+                if ($3 ~ /^[0-9][0-9]*$/) stratum = $3 + 1 } } }
+        }
+        END { if (seen) { printf "count %d %d\n", total, good
+          if (clock) print "refclock"
+          if (stratum != "") printf "stratum %d\n", stratum } }'`
+      judge_sources ntpd "$ntpqout"
+      stratum_n=`printf '%s\n' "$ntpqout" | $SED -n 's/^stratum \([0-9][0-9]*\)$/\1/p'`
+    fi
+    ;;
+esac
+
 # Synchronised? chronyc for chronyd, timedatectl for the rest
-synced= source=
+synced= source= stratum=
 case " $daemons " in
   *" chronyd "*)
     cmd=${Tiger_Chronyc_Cmd:-}
@@ -129,7 +219,8 @@ case " $daemons " in
       case "$out" in
         *"Leap status"*"Not synchronised"*) synced=no ;;
         *"Leap status"*) synced=yes
-          source=`echo "$out" | $SED -n 's/^Reference ID *: [0-9A-Fa-f]* (\(.*\))$/\1/p'` ;;
+          source=`echo "$out" | $SED -n 's/^Reference ID *: [0-9A-Fa-f]* (\(.*\))$/\1/p'`
+          stratum=`echo "$out" | $SED -n 's/^Stratum[^0-9]*\([0-9][0-9]*\).*/\1/p'` ;;
       esac
     fi
     by=chronyd
@@ -144,11 +235,18 @@ case " $daemons " in
       esac
     fi
     by=`echo "$daemons" | $SED 's/ .*//'`
+    stratum=$stratum_n
     ;;
 esac
 
 case "$synced" in
-  yes) message INFO time003i "" "The clock is synchronised by $by${source:+ (from $source)}." ;;
+  yes)
+    detail=
+    [ -n "$source" ] && detail="from $source"
+    [ -n "$stratum" ] && detail="${detail:+$detail, }stratum $stratum"
+    [ -n "$detail" ] && detail=" ($detail)"
+    message INFO time003i "" "The clock is synchronised by $by$detail."
+    ;;
   no)  message WARN time002w "See 'chronyc sources' or 'timedatectl timesync-status': the servers may be unreachable (a firewall blocking UDP port 123 outbound), or none is configured." "$by is running, but the clock is not synchronised." ;;
 esac
 

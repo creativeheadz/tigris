@@ -1,0 +1,13 @@
+Id: time005w
+Severity: WARN
+Category: services
+Check: check_timesync
+Fix: Give the daemon at least three sources that answer; four is the usual.
+References: chrony.conf(5); ntp.conf(5)
+Controls: CIS 8.4; NIST AU-8, SC-45; ISO 8.17
+
+Fewer than three of the time daemon's sources answer. NTP finds a
+bad source by voting: with three, one liar is outvoted; with fewer,
+a failing or spoofed server sets the clock and nothing disagrees.
+Give chronyd 'pool' or 'server' lines, or ntpd 'server' lines, until
+at least three answer; four is the usual number.

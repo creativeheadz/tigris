@@ -1,0 +1,13 @@
+Id: time006w
+Severity: WARN
+Category: services
+Check: check_timesync
+Fix: Find whether the named source is wrong, then drop or replace it.
+References: chronyc(1); ntp.conf(5)
+Controls: CIS 8.4; NIST AU-8, SC-45; ISO 8.17
+
+The time daemon calls the named source a falseticker: its time
+disagrees with the other sources, so the daemon does not use it.
+Usually the source's own clock is failing, but a source fed false
+time on purpose looks the same. Find which it is, then drop or
+replace that source.
