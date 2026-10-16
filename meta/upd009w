@@ -1,0 +1,12 @@
+Id: upd009w
+Severity: WARN
+Category: packages
+Check: check_repos
+Fix: Refresh the source, or drop it if it stays expired.
+References: sources.list(5), apt-secure(8)
+Controls: CIS 7.3, 7.4; NIST SI-2; ISO 8.8; CE Security update management
+
+An apt source's Valid-Until passed: the package manager refuses
+its indexes, so nothing installs or updates from it until it
+publishes again. Refresh the source, or drop it if it stays
+expired.

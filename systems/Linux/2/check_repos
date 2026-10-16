@@ -1,0 +1,315 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# check_repos: package sources that stopped publishing, lists never
+#             refreshed, and apt's expired Valid-Until. A repository
+#             can go quiet without an error (packager.io moved host
+#             in 2026 and left the old repositories answering): the
+#             installed release then sits unpatched while the manager
+#             says it is up to date. The last-published date is read
+#             from what the manager has on disk: apt's Date: in
+#             *_InRelease and *_Release, dnf's and zypper's repomd.xml
+#             timestamp. A repository whose files still re-fetch is
+#             still served, so a group counts as stale only when no
+#             suite of it is fresh: some publishers never bump Date:.
+#             Pacman sync databases and apk APKINDEX files carry no
+#             publish date, so their download time stands in: one
+#             older than the age counts as stale only while a
+#             sibling index is fresh, which proves refreshes run;
+#             otherwise the refresh finding says that instead. A
+#             repository is judged by its newest suite: a release
+#             pocket never changes by design, its -updates and
+#             -security do. APKINDEX names carry a hash of the URL,
+#             not the URL, so apk findings name the file and point at
+#             /etc/apk/repositories. Tiger_Repos_MaxAge (90 days)
+#             sets the age; Tiger_Repos_Now replaces the clock, for
+#             the tests.
+#
+# 10/16/2026 - Initial version. apt (Date, Valid-Until, refresh),
+#             dnf and zypper (repomd, refresh), pacman and apk
+#             (mtime-gated, refresh).
+#
+# References:
+#   sources.list(5), dnf(8), zypper(8), pacman.conf(5), apk(8)
+#
+# Tigris: offline
+#   the root's package indexes and repository configuration.
+#
+#-----------------------------------------------------------------------------
+#
+TigerInstallDir='.'
+
+#
+# Set default base directory.
+# Order or preference:
+#      -B option
+#      TIGERHOMEDIR environment variable
+#      TigerInstallDir installed location
+#
+basedir=${TIGERHOMEDIR:=$TigerInstallDir}
+
+for parm
+do
+   case $parm in
+   -B) basedir=$2; break;;
+   esac
+done
+
+#
+# Verify that a config file exists there, and if it does
+# source it.
+#
+[ ! -r $basedir/config ] && {
+  echo "--ERROR-- [init002e] No 'config' file in \`$basedir'."
+  exit 1
+}
+
+. $basedir/config
+
+. $BASEDIR/initdefs
+#
+# If run in test mode (-t) this will verify that all required
+# elements are set.
+#
+[ "$Tiger_TESTMODE" = 'Y' ] && {
+  haveallcmds AWK FIND SED SORT || exit 1
+  haveallfiles BASEDIR WORKDIR || exit 1
+
+  echo "--CONFIG-- [init003c] $0: Configuration ok..."
+  exit 0
+}
+
+#------------------------------------------------------------------------
+
+haveallcmds AWK FIND SED SORT || exit 1
+
+MaxAge=${Tiger_Repos_MaxAge:-90}
+case "$MaxAge" in *[!0-9]*|"") MaxAge=90 ;; esac
+now=${Tiger_Repos_Now:-`date +%s`}
+case "$now" in *[!0-9]*|"") now=`date +%s` ;; esac
+nowdays=`expr $now / 86400`
+
+# repourl ID: the first baseurl, metalink or mirrorlist for a yum or
+# zypper repository id, from its .repo file
+repourl()
+{
+  for __rf in `rootls /etc/yum.repos.d 2>/dev/null` `rootls /etc/zypp/repos.d 2>/dev/null`
+  do
+    case "$__rf" in *.repo) ;; *) continue ;; esac
+    __u=`$AWK -v id="$1" '
+      /^\[.*\]$/ { cur = $0; gsub(/^\[|\]$/, "", cur) }
+      cur == id && /^[ \t]*(baseurl|metalink|mirrorlist)[ \t]*=/ {
+        sub(/^[^=]*=[ \t]*/, ""); sub(/[ \t]+.*$/, ""); print; exit }' "\`rootfile "$__rf"\`" 2>/dev/null`
+    [ -n "$__u" ] && { echo "$__u"; return 0; }
+  done
+  return 1
+}
+
+# pacmanurl REPO: the first Server for a pacman repository, following
+# one Include into its mirrorlist
+pacmanurl()
+{
+  __c=`rootfile /etc/pacman.conf`
+  [ -f "$__c" ] || return 1
+  __v=`$AWK -v repo="$1" '
+    /^\[.*\]$/ { cur = $0; gsub(/^\[|\]$/, "", cur); next }
+    cur == repo && /^[ \t]*Server[ \t]*=/ { sub(/^[^=]*=[ \t]*/, ""); print; exit }
+    cur == repo && /^[ \t]*Include[ \t]*=/ { sub(/^[^=]*=[ \t]*/, ""); print "INCLUDE:" $0; exit }' "$__c" 2>/dev/null`
+  case "$__v" in
+    INCLUDE:*)
+      __m=`rootfile "${__v#INCLUDE:}"`
+      [ -f "$__m" ] && $SED -n 's/^[ \t]*Server[ \t]*=[ \t]*//p' "$__m" 2>/dev/null | $SED -n 1p ;;
+    *) [ -n "$__v" ] && echo "$__v" ;;
+  esac
+  return 0
+}
+
+# The date library, for apt's RFC 2822 dates: days_from_civil is
+# Howard Hinnant's algorithm, good for any year apt names.
+datelib='
+function ymd_to_days(y, m, d,   era, yoe, mp, doy, doe) {
+  y -= (m <= 2); era = int((y >= 0 ? y : y-399) / 400)
+  yoe = y - era*400; mp = (m + 9) % 12
+  doy = int((153*mp+2)/5) + d-1; doe = yoe*365 + int(yoe/4) - int(yoe/100) + doy
+  return era*146097 + doe - 719468
+}
+function date_age(str,   n, w, i, dd, mon, yyyy, m) {
+  n = split(str, w, /[ \t]+/); _datestr = ""
+  for (i = 1; i <= n; i++) {
+    if (w[i] ~ /^[0-9][0-9]?$/) dd = w[i]
+    else if (w[i] ~ /^[A-Za-z][a-z][a-z]$/) mon = w[i]
+    else if (w[i] ~ /^[0-9][0-9][0-9][0-9]$/) yyyy = w[i]
+  }
+  m = int((index("JanFebMarAprMayJunJulAugSepOctNovDec", mon) + 2) / 3)
+  if (dd == "" || m < 1 || m > 12 || yyyy == "") return -1
+  _datestr = dd " " mon " " yyyy
+  return nowdays - ymd_to_days(yyyy, m, dd)
+}'
+
+stale=$WORKDIR/repostale.$$
+expired=$WORKDIR/repoexpired.$$
+safe_temp $stale $expired
+trap 'delete $stale $expired; exit 1' 1 2 3 15
+: > $stale; : > $expired
+
+echo
+echo "# Checking package sources (stale, expired, unrefreshed)..."
+
+#
+# apt: Date, Valid-Until and refresh, from the lists on disk
+#
+lists=`rootfile /var/lib/apt/lists`
+if [ -d "$lists" ]; then
+  if [ -z "`$FIND "$lists" -type f ! -path "$lists/partial/*" -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ]; then
+    message WARN upd008w "Run 'apt update'." "The apt package lists were last refreshed over $MaxAge days ago (nothing newer under /var/lib/apt/lists): install nothing from them until they are."
+  fi
+  for idx in "$lists"/*_InRelease "$lists"/*_Release
+  do
+    [ -f "$idx" ] || continue
+    base=${idx##*/}
+    sysf=/var/lib/apt/lists/$base
+    key=$base
+    case "$key" in *_InRelease) key=${key%_InRelease};; *_Release) key=${key%_Release};; *) continue;; esac
+    case "$key" in *_dists_*) key=${key%_dists_*};; esac
+    url=`printf '%s' "$key" | $SED 's/_/\//g'`
+    if [ -n "`$FIND "$idx" -mtime -$MaxAge 2>/dev/null`" ]; then isfresh=1; else isfresh=0; fi
+    $AWK -v nowdays=$nowdays -v fresh=$isfresh -v key="$key" -v url="$url" -v sysf="$sysf" "$datelib"'
+    /^[Dd]ate:/ { pub = date_age(substr($0, index($0, ":") + 1)); pubdate = _datestr }
+    /^[Vv]alid-[Uu]ntil:/ { vu = date_age(substr($0, index($0, ":") + 1)); vudate = _datestr }
+    /^[Oo]rigin:/ { origin = substr($0, index($0, ":") + 1); gsub(/^[ \t]+|[ \t]+$/, "", origin) }
+    /^[Ss]uite:/ { suite = substr($0, index($0, ":") + 1); gsub(/^[ \t]+|[ \t]+$/, "", suite) }
+    /^[Cc]odename:/ { if (suite == "") { suite = substr($0, index($0, ":") + 1); gsub(/^[ \t]+|[ \t]+$/, "", suite) } }
+    BEGIN { pub = -1; vu = -1; origin = ""; suite = "" }
+    END {
+      if (pub >= 0) printf "PUB\t%s\t%d\t%s\t%s\t%s\t%s\t%d\n", key, pub, origin, suite, sysf, pubdate, fresh
+      if (vu > 0) printf "EXP\t%s\t%s\t%s\t%s\t%d\n", key, vudate, sysf, origin, vu
+    }' "$idx" 2>/dev/null | while IFS='	' read -r tag a b c d e f g
+    do
+      case "$tag" in
+        PUB) printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$a" "$b" "$c" "$d" "$e" "$f" "$g" "$url" >> $stale ;;
+        EXP) printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$a" "$b" "$c" "$d" "$e" "$url" >> $expired ;;
+      esac
+    done
+  done
+fi
+
+#
+# dnf and zypper: repomd timestamps and refresh
+#
+for cache in /var/cache/dnf /var/cache/zypp/raw
+do
+  dhere=`rootfile $cache`
+  repomds=
+  [ -d "$dhere" ] && repomds=`$FIND "$dhere" -name repomd.xml 2>/dev/null`
+  case "$cache" in
+    /var/cache/dnf) rdir=/etc/yum.repos.d; mgr="dnf"; refresher="dnf makecache" ;;
+    *) rdir=/etc/zypp/repos.d; mgr="zypper"; refresher="zypper refresh" ;;
+  esac
+  haveconf=
+  for rf in `rootls $rdir 2>/dev/null`
+  do
+    case "$rf" in *.repo) haveconf=1; break ;; esac
+  done
+  { [ -n "$repomds" ] || [ -n "$haveconf" ]; } || continue
+  if [ -z "`$FIND "$dhere" -name repomd.xml -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ]; then
+    message WARN upd008w "Run '$refresher'." "The $mgr package lists were last refreshed over $MaxAge days ago: install nothing from them until they are."
+  fi
+  for repomd in $repomds
+  do
+    rd=${repomd%/repomd.xml}; rd=${rd%/repodata}; rb=${rd##*/}
+    id=$rb
+    [ "$mgr" = dnf ] && case "$rb" in *-????????????????) id=${rb%-????????????????};; esac
+    ts=`$SED -n 's/.*<timestamp>\([0-9][0-9]*\)<.*/\1/p' "$repomd" 2>/dev/null | $SED -n 1p`
+    case "$ts" in *[!0-9]*|"") continue ;; esac
+    age=`expr \( $now - $ts \) / 86400`
+    sysf=$cache/${repomd#$dhere/}
+    url=`repourl "$id"` || url=
+    [ -n "$url" ] || url="see $rdir"
+    [ "$age" -gt "$MaxAge" ] &&
+      message WARN upd007w "Drop the repo or fix its URL in $rdir." "Repository '$id' ($url) published $age days ago ($sysf): it may have moved or died."
+  done
+done
+
+#
+# pacman: sync databases, gated on refreshes running
+#
+syncd=`rootfile /var/lib/pacman/sync`
+if [ -d "$syncd" ] || [ -f "`rootfile /etc/pacman.conf`" ]; then
+  freshany=
+  [ -n "`$FIND "$syncd" -name '*.db' -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ] && freshany=1
+  if [ -z "$freshany" ]; then
+    message WARN upd008w "Run 'pacman -Sy'." "The pacman package lists were last refreshed over $MaxAge days ago: install nothing from them until they are."
+  else
+    for db in "$syncd"/*.db
+    do
+      [ -f "$db" ] || continue
+      [ -n "`$FIND "$db" -mtime -$MaxAge 2>/dev/null`" ] && continue
+      repo=${db##*/}; repo=${repo%.db}
+      url=`pacmanurl "$repo"`; [ -n "$url" ] || url="see /etc/pacman.conf"
+      message WARN upd007w "Refresh from another mirror, or drop the repo." "Repository '$repo' has no index newer than $MaxAge days (/var/lib/pacman/sync/${repo}.db from $url): it stopped publishing, or the mirror lags."
+    done
+  fi
+fi
+
+#
+# apk: APKINDEX files, gated on refreshes running
+#
+apkcache=`rootfile /var/cache/apk`
+if [ -d "$apkcache" ] || [ -f "`rootfile /etc/apk/repositories`" ]; then
+  freshany=
+  [ -n "`$FIND "$apkcache" -name 'APKINDEX*' -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ] && freshany=1
+  if [ -z "$freshany" ]; then
+    message WARN upd008w "Run 'apk update'." "The apk package lists were last refreshed over $MaxAge days ago: install nothing from them until they are."
+  else
+    for idx in "$apkcache"/APKINDEX*.tar.gz
+    do
+      [ -f "$idx" ] || continue
+      [ -n "`$FIND "$idx" -mtime -$MaxAge 2>/dev/null`" ] && continue
+      message WARN upd007w "Drop the source from /etc/apk/repositories." "\`${idx##*/}' is older than $MaxAge days while other indexes refresh: the repository stopped publishing."
+    done
+  fi
+fi
+
+#
+# apt, grouped: each repository judged by its newest suite
+#
+$AWK -F'\t' '{ k = $1; if (!(k in best) || $2 < best[k]) { best[k] = $2; bl[k] = $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $8 } if (!(k in fr)) fr[k] = 0; if ($7 > fr[k]) fr[k] = $7 } END { for (k in bl) print fr[k] "\t" bl[k] }' $stale 2>/dev/null | $SORT | while IFS='	' read -r new key age origin suite sysf datestr url
+do
+  [ -n "$key" ] || continue
+  { [ "$age" -gt "$MaxAge" ] && [ "$new" = 0 ]; } || continue
+  [ "$age" = 1 ] && u=day || u=days
+  [ -n "$origin" ] && src=$origin || src=$url
+  [ -n "$suite" ] && suite=", suite $suite" || suite=
+  message WARN upd007w "Drop the source, move to its successor, or track its -updates suite too (sources in /etc/apt/sources.list and /etc/apt/sources.list.d)." "\`$sysf' (from $src$suite) published $age $u ago (dated $datestr): the repository may have moved or died."
+done
+
+#
+# apt, expired: each repository once, on its oldest expiry
+#
+$AWK -F'\t' '{ n[$1]++; if (!($1 in first) || $5 > firstage[$1]) { first[$1] = $0; firstage[$1] = $5 } } END { for (k in first) print n[k] "\t" first[k] }' $expired 2>/dev/null | $SORT | while IFS='	' read -r count key datestr sysf origin age url
+do
+  [ -n "$key" ] || continue
+  [ -n "$origin" ] && src=$origin || src=$url
+  if [ "$count" = 1 ]; then
+    message WARN upd009w "Refresh the source, or drop it if it stays expired." "\`$sysf' (from $src) expired on $datestr (Valid-Until): the package manager refuses it."
+  else
+    message WARN upd009w "Refresh the source, or drop it if it stays expired." "$count indexes from $src expired, oldest on $datestr (e.g. \`$sysf'): the package manager refuses them."
+  fi
+done
+
+delete $stale $expired
+exit 0

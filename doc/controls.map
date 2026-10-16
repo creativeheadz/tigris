@@ -134,6 +134,7 @@ check:deb_checkmd5sums    | 2.3                | SI-7                     | 8.19
 check:deb_nopackfiles     | 2.3                | SI-7, CM-11              | 8.19                | -
 check:deb_statoverride    | 3.3                | AC-3, CM-6               | 8.3                 | Secure configuration
 check:check_updates       | 7.3, 7.4           | SI-2                     | 8.8                 | Security update management
+check:check_repos         | 7.3, 7.4           | SI-2                     | 8.8                 | Security update management
 check:check_patches       | 7.3, 7.4           | SI-2                     | 8.8                 | Security update management
 check:check_release       | 2.2                | SA-22                    | 8.8                 | Security update management
 id:upd004i                | 7.3                | SI-2                     | 8.8                 | Security update management

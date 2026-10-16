@@ -1,0 +1,15 @@
+Id: upd007w
+Severity: WARN
+Category: packages
+Check: check_repos
+Fix: Drop the source or move to its successor.
+References: sources.list(5), dnf(8), zypper(8), pacman.conf(5), apk(8)
+Controls: CIS 7.3, 7.4; NIST SI-2; ISO 8.8; CE Security update management
+
+A package source stopped publishing: its newest index is older
+than Tiger_Repos_MaxAge days (90 by default) and no suite of it
+re-fetched since, so the packages installed from it sit unpatched
+while the manager says the system is up to date. Each repository
+is judged by its newest suite: a release pocket never changes by
+design, its updates do. Drop the source, move to its successor,
+or track its -updates suite too.

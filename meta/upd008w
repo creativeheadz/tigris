@@ -1,0 +1,12 @@
+Id: upd008w
+Severity: WARN
+Category: packages
+Check: check_repos
+Fix: Refresh the lists (apt update; dnf makecache; zypper refresh; pacman -Sy; apk update).
+References: sources.list(5), dnf(8), zypper(8), pacman.conf(5), apk(8)
+Controls: CIS 7.3, 7.4; NIST SI-2; ISO 8.8; CE Security update management
+
+The package lists were last refreshed over Tiger_Repos_MaxAge
+days ago (90 by default): every update count and every staleness
+judgment reads stale data until they run again. Refresh them, on
+a timer if they keep lapsing.

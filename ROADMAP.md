@@ -67,7 +67,7 @@ Settled, so they do not have to be argued again:
 |----------------------|-----------------------------------------------------------------|------------------------------------------|
 | Language             | POSIX shell, no dependencies                                    | POSIX shell                              |
 | Licence              | GPL-2.0-or-later                                                | GPL-3.0                                  |
-| Checks               | 100 check scripts, 540 finding ids in 15 categories, each explained | ~470 test ids in 42 categories        |
+| Checks               | 101 check scripts, 543 finding ids in 15 categories, each explained | ~470 test ids in 42 categories        |
 | Platforms            | Linux: Debian/Ubuntu, Fedora/RHEL/SUSE, Alpine, Arch            | Linux, macOS, BSD, Solaris, AIX          |
 | Machine output       | JSON Lines with a versioned schema, next to the text report     | `report.dat` (key=value)                 |
 | Explanations         | `tigris explain ID`, one metadata file per id (severity, category, checks) | Suggestions linked to the CISOfy website |
@@ -75,7 +75,7 @@ Settled, so they do not have to be argued again:
 | Change over time     | `tigris-diff` and `tigris-accept`; `tigercron`                  | Mostly point-in-time                     |
 | Package integrity    | dpkg, rpm, apk, pacman, one finding id per kind of problem      | Limited                                  |
 | Offline audit        | `tigris --root`: every check reads an image except the ten that need the running system, nothing in it is run; a container image with every distribution's package tools | None |
-| Tests                | 110 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
+| Tests                | 111 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
 | Lynis parity         | Linux groups covered in Phase A (see below); macOS, BSD done; Solaris backlogged, AIX not planned | 43 test groups across Linux, macOS, BSD, Solaris |
 
 Lynis is broad, maintained and popular (16k GitHub stars). Tigris
@@ -688,24 +688,17 @@ what scripts and cron see.
   (MySQL/MariaDB, PostgreSQL, Redis), DNS resolvers, remote logging,
   certificate expiry. Static configuration analysis, offline-capable;
   no credentials, no live probing.
-- [ ] **Package sources that stopped publishing.** A repository can go
+- [x] **Package sources that stopped publishing.** A repository can go
   quiet without an error: packager.io moved to a new host in 2026 and
   left its old repositories in place, so a Zammad server installed from
   the old one sat on 7.0.2, two releases and every fix behind, while apt
   said it was up to date and check_updates (upd003f) had nothing to
-  report (found on the home fleet, 12 October 2026). Read the date each
-  repository last published from what the package manager has on disk
-  (apt's `*_InRelease` and `*_Release` `Date:` under
-  `/var/lib/apt/lists`, dnf's and zypper's `repomd.xml` timestamp,
-  pacman's sync databases, apk's APKINDEX), and report one whose
-  newest index is older than a configurable age (90 days, say), naming
-  the source file and the URL. Judge a repository by its newest suite:
-  a distribution's release pocket (Ubuntu's `noble`, Debian's
-  `trixie`) never changes after release by design, while its `-updates`
-  and `-security` do. Also say when the lists themselves were last
-  refreshed (an `apt update` that has not run in weeks hides the same
-  thing), and when a source's `Valid-Until` has passed. Offline-capable:
-  everything read is on disk.
+  report (found on the home fleet, 12 October 2026). Done 2026-10-16
+  as check_repos (upd007w/008w/009w): apt's `Date:` and `Valid-Until`,
+  dnf/zypper repomd timestamps, pacman/apk download times (gated on
+  refreshes running, since they carry no publish date), newest suite
+  wins, refresh age per manager, `Tiger_Repos_MaxAge` configurable.
+  Offline-capable: everything read is on disk.
 - [ ] **Rename the internals** in one release, with shims for old
   configurations: `tigerrc` to `tigris.conf`, `Tiger_*` to `Tigris_*`,
   `/etc/tiger` to `/etc/tigris`, `tigexp` to `tigris explain` (which

@@ -94,6 +94,11 @@ Tiger_Check_AUDIT=Y             # Fast - auditd with rules, logs kept across reb
 Tiger_Check_ACCOUNTING=Y        # Fast - sysstat and snoopy collecting
 Tiger_Check_TIMESYNC=Y          # Fast - one time daemon, and the clock synchronised
 Tiger_Check_UPDATES=Y           # Fast - security updates waiting, automatic, reboot (offline)
+Tiger_Check_REPOS=Y             # Fast - repos that stopped publishing (offline)
+# How old a repository's newest index may be, in days, before
+# check_repos reports it stopped publishing (upd007w). The same age
+# judges unrefreshed lists (upd008w).
+Tiger_Repos_MaxAge=90
 Tiger_Check_SUDO=Y              # Fast - sudo rules without a password or with wildcards
 Tiger_Check_PKG=Y               # Fast - package notices (FreeBSD updating, Solaris verify)
 Tiger_Check_ACCOUNTING=Y        # Fast - process accounting (FreeBSD only)
