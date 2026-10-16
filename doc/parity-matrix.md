@@ -54,7 +54,7 @@ re-running the inventory and updating the counts below.
 | scheduling | 5 | check_crontabs, check_cron | verify `at` jobs coverage; DONE 2026-10-09: macOS half (tabs, periodic, full pathnames; cron008f/008w/009w/001w reused; orphans and at-allow cut) |
 | shells | 4 | login shells, umask in shell configs | console TTYs (verify), idle-session killing |
 | storage_nfs | 8 | check_exports | DONE 2026-10-09: check_nfsd (nfs015w/016i; daemon consistency) |
-| usb | 3 | check_storage (USB storage) | authorization detail |
+| usb | 3 | check_storage (USB storage) | DONE 2026-10-16: USBGuard (stor014i/015w/016w; running, dead, bare allow), uas required with usb-storage, authorized_default=0 counts, connected storage named |
 
 ## Gap (10 groups)
 

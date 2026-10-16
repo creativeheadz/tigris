@@ -98,9 +98,61 @@ go desk "Tiger_Storage_NoUSB=Y"
 has '--WARN-- [stor008w] USB storage can be used' && ok "Tiger_Storage_NoUSB=Y, nothing blocks it: stor008w" || { bad "usb"; cat "$W/out"; }
 mkdir -p "$W/desk/etc/modprobe.d"; printf 'install usb-storage /bin/false\nblacklist usb-storage\n' > "$W/desk/etc/modprobe.d/usb.conf"
 go desk "Tiger_Storage_NoUSB=Y"
-[ "`count stor008w`" = 0 ] && ok "usb-storage blocked in modprobe.d: nothing" || { bad "usb blocked"; cat "$W/out"; }
+has '--WARN-- [stor008w] USB storage can be used' && ok "uas not blocked: stor008w still" || { bad "usb uas"; cat "$W/out"; }
+printf 'install uas /bin/false\nblacklist uas\n' >> "$W/desk/etc/modprobe.d/usb.conf"
+go desk "Tiger_Storage_NoUSB=Y"
+[ "`count stor008w`" = 0 ] && ok "usb-storage and uas blocked in modprobe.d: nothing" || { bad "usb blocked"; cat "$W/out"; }
 rm -f "$W/desk/etc/modprobe.d/usb.conf"; go desk
 [ "`count stor008w`" = 0 ] && ok "by default USB storage is not looked at" || { bad "usb default"; cat "$W/out"; }
+
+# New devices unauthorized by default counts as no-USB enforcement
+mkdir -p "$W/desk/sys/module/usbcore/parameters"; echo 0 > "$W/desk/sys/module/usbcore/parameters/authorized_default"
+go desk "Tiger_Storage_NoUSB=Y"
+[ "`count stor008w`" = 0 ] && ok "authorized_default=0, no modprobe: nothing" || { bad "usb authdefault"; cat "$W/out"; }
+echo 1 > "$W/desk/sys/module/usbcore/parameters/authorized_default"
+go desk "Tiger_Storage_NoUSB=Y"
+has '--WARN-- [stor008w] USB storage can be used' && ok "authorized_default=1: stor008w" || { bad "usb authdefault1"; cat "$W/out"; }
+rm -rf "$W/desk/sys/module"
+
+# A storage device connected although the policy says none
+mkdir -p "$W/desk/etc/modprobe.d" "$W/desk/sys/bus/usb/devices/1-2:1.0" "$W/desk/sys/bus/usb/devices/1-3:1.0"
+printf 'blacklist usb-storage\nblacklist uas\n' > "$W/desk/etc/modprobe.d/usb.conf"
+echo 08 > "$W/desk/sys/bus/usb/devices/1-2:1.0/bInterfaceClass"; echo "Ultra Stick" > "$W/desk/sys/bus/usb/devices/1-2:1.0/product"
+echo 03 > "$W/desk/sys/bus/usb/devices/1-3:1.0/bInterfaceClass"
+go desk "Tiger_Storage_NoUSB=Y"
+has "--WARN-- [stor008w] A USB storage device ('Ultra Stick') is connected" && [ "`count stor008w`" = 1 ] &&
+  ok "a connected stick, blocked on paper: stor008w names it; the keyboard is not storage" || { bad "usb connected"; cat "$W/out"; }
+go desk
+[ "`count stor008w`" = 0 ] && ok "no policy: a connected stick is not judged" || { bad "usb connected default"; cat "$W/out"; }
+rm -rf "$W/desk/sys/bus" "$W/desk/etc/modprobe.d/usb.conf"
+
+# USB authorization: USBGuard running, dead, and wide open
+tree guard <<'EOF'
+/dev/nvme0n1p2 / ext4 rw,relatime 0 0
+EOF
+blockdev guard nvme0n1p2
+mkdir -p "$W/guard/proc/1" "$W/guard/etc/usbguard"
+echo usbguard-daemon > "$W/guard/proc/1/comm"
+printf 'allow id 1234:5678 serial "ABC"\nblock\n' > "$W/guard/etc/usbguard/rules.conf"
+go guard
+has '--INFO-- [stor014i] USBGuard authorizes USB devices (2 rules in /etc/usbguard/rules.conf).' &&
+  [ "`count stor015w`" = 0 ] && [ "`count stor016w`" = 0 ] &&
+  ok "USBGuard running with scoped rules: stor014i" || { bad "guard"; cat "$W/out"; }
+cp -r "$W/guard" "$W/dead"; rm -rf "$W/dead/proc/1"
+go dead
+has '--WARN-- [stor015w] USBGuard is configured but its daemon is not running' && [ "`count stor016w`" = 0 ] &&
+  ok "USBGuard configured and dead: stor015w" || { bad "dead"; cat "$W/out"; }
+printf '# everything\nallow\n' > "$W/dead/etc/usbguard/rules.conf"
+go dead
+has "--WARN-- [stor016w] USBGuard allows every USB device (a bare 'allow' in /etc/usbguard/rules.conf)" &&
+  has '--WARN-- [stor015w]' &&
+  ok "bare allow with a dead daemon: stor016w and stor015w" || { bad "allow"; cat "$W/out"; }
+printf 'RuleFile=/etc/usbguard/custom.rules\n' > "$W/dead/etc/usbguard/usbguard-daemon.conf"
+printf 'allow\n' > "$W/dead/etc/usbguard/custom.rules"
+printf 'block\n' > "$W/dead/etc/usbguard/rules.conf"
+go dead
+has "--WARN-- [stor016w] USBGuard allows every USB device (a bare 'allow' in /etc/usbguard/custom.rules)" &&
+  ok "RuleFile elsewhere: that file is judged" || { bad "rulefile"; cat "$W/out"; }
 
 # FireWire storage, when the policy says none
 go desk "Tiger_Storage_NoFireWire=Y"
@@ -145,7 +197,7 @@ printf 'root UUID=2222 none luks\ncswap /dev/sda4 /dev/urandom swap\n' > "$B/etc
 printf '[Mount]\nWhat=tmpfs\nWhere=/tmp\nType=tmpfs\nOptions=mode=1777,strictatime,nosuid,nodev,size=50%%\n' > "$B/usr/lib/systemd/system/tmp.mount"
 ln -s ../tmp.mount "$B/usr/lib/systemd/system/local-fs.target.wants/tmp.mount"
 echo 'kernel.core_pattern=|/usr/lib/systemd/systemd-coredump %P %u %g %s %t' > "$B/etc/sysctl.d/50-coredump.conf"
-echo 'blacklist usb-storage' > "$B/etc/modprobe.d/usb.conf"
+printf 'blacklist usb-storage\nblacklist uas\n' > "$B/etc/modprobe.d/usb.conf"
 printf 'blacklist firewire-core\nblacklist firewire-ohci\n' > "$B/etc/modprobe.d/firewire.conf"
 
 offline "$A"
@@ -162,6 +214,15 @@ offline "$B"
 has '[stor006w]' && has 'Swap: /dev/sda3' && [ "`count 'cswap'`" = 0 ] &&
   ok "offline root: a swap partition outside crypttab: stor006w; the crypttab one is fine" || { bad "offline stor006w"; cat "$W/out"; }
 [ "`count stor007w`" = 0 ] && [ "`count stor008w`" = 0 ] && [ "`count stor009i`" = 0 ] && [ "`count stor010w`" = 0 ] && ok "offline root: a core handler, USB and FireWire blacklisted, a crypttab: nothing" || { bad "offline B"; cat "$W/out"; }
+U=$W/rootC
+mkdir -p "$U/etc" "$U/etc/modprobe.d" "$U/etc/usbguard"
+printf 'UUID=1111 / ext4 defaults 0 1\n' > "$U/etc/fstab"
+printf 'options usbcore authorized_default=0\n' > "$U/etc/modprobe.d/usb.conf"
+printf 'allow id 1234:5678\nallow\n' > "$U/etc/usbguard/rules.conf"
+offline "$U"
+[ "`count stor008w`" = 0 ] && has '--WARN-- [stor016w]' &&
+  [ "`count stor014i`" = 0 ] && [ "`count stor015w`" = 0 ] &&
+  ok "offline: authorized_default counts, bare allow judged, running state not" || { bad "offline C"; cat "$W/out"; }
 
 # Second phase: LVM metadata, ACLs past the mode, the locate database
 L=$W/second

@@ -1,0 +1,12 @@
+Id: stor015w
+Severity: WARN
+Category: filesystem
+Check: check_storage
+Fix: Start the daemon (systemctl enable --now usbguard) or remove the configuration.
+References: usbguard-daemon(8)
+Controls: NIST MP-7; ISO 7.10
+
+USBGuard is configured but its daemon is not running: no
+authorization is enforced, and every USB device works as if the
+guard were not there. Start the daemon, or remove the
+configuration that promises what nothing delivers.

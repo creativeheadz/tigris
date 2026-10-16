@@ -1,0 +1,12 @@
+Id: stor016w
+Severity: WARN
+Category: filesystem
+Check: check_storage
+Fix: Replace the bare allow with rules naming the permitted devices.
+References: usbguard-rules.conf(5)
+Controls: NIST MP-7; ISO 7.10
+
+USBGuard's rules hold a bare 'allow': every USB device is
+authorized, and the guard changes nothing. Replace it with rules
+naming the permitted devices (allow with id, serial or parent
+conditions), so unknown devices stay blocked.

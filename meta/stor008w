@@ -2,14 +2,17 @@ Id: stor008w
 Severity: WARN
 Category: filesystem
 Check: check_storage
-Fix: Blacklist usb-storage and uas in /etc/modprobe.d and rebuild the initramfs.
+Fix: Blacklist usb-storage and uas in /etc/modprobe.d, or set usbcore authorized_default=0; then rebuild the initramfs.
 References: modprobe.d(5)
 Controls: NIST MP-7; ISO 7.10
 
 The policy is to allow no USB storage (Tiger_Storage_NoUSB=Y in
-tigerrc), but the usb-storage driver is neither blacklisted nor
-replaced in /etc/modprobe.d, so a USB stick plugged in is mounted and
-data can be copied off or on.
+tigerrc), but neither driver is blocked in /etc/modprobe.d (both
+usb-storage and uas must be: USB3 sticks use uas when it loads),
+and new devices are not left unauthorized either
+(usbcore authorized_default), so a USB stick plugged in is mounted
+and data can be copied off or on. The same id reports a storage
+device already connected.
 
 To fix it, add to a file in /etc/modprobe.d:
 

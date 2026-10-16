@@ -86,6 +86,8 @@ id:stor006w               | 3.11               | SC-28                    | 8.24
 id:stor009i               | 3.11               | SC-28                    | 8.24                | -
 id:stor008w               | -                  | MP-7                     | 7.10                | -
 id:stor010w               | -                  | MP-7                     | 7.10                | -
+id:stor015w               | -                  | MP-7                     | 7.10                | -
+id:stor016w               | -                  | MP-7                     | 7.10                | -
 
 # ---- the firewall
 check:check_firewall      | 4.4, 4.5           | SC-7                     | 8.20, 8.22          | Firewalls
@@ -270,6 +272,8 @@ id:dos002i                | -                  | -                        | -   
 id:ids003i                | -                  | -                        | -                   | -
 # int003i: names the file-integrity watcher in place; not a gap.
 id:int003i                | -                  | -                        | -                   | -
+# stor014i: names the USB authorization in place; not a gap.
+id:stor014i               | -                  | -                        | -                   | -
 # av002i: names the antivirus in place with fresh signatures; not a gap.
 id:av002i                 | -                  | -                        | -                   | -
 # rlog001i: forwarding is the arrangement to have; the finding only records where the copies go.

@@ -1,0 +1,9 @@
+Id: stor014i
+Severity: INFO
+Category: filesystem
+Check: check_storage
+References: usbguard-daemon(8)
+
+USBGuard authorizes USB devices: its daemon is running, allowing
+only what its rules name. This is the arrangement to have where
+USB devices must be told apart rather than forbidden outright.
