@@ -1,5 +1,9 @@
 name: CI
 
+# CI runs on the project's own Gitea runners; the jobs below skip on
+# GitHub. Releases and Pages stay on GitHub (release.yml and pages.yml
+# carry the same guard the other way around).
+
 on:
   push:
     branches: [master]
@@ -8,6 +12,7 @@ on:
 jobs:
   lint:
     name: Syntax and ShellCheck
+    if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -199,6 +204,7 @@ jobs:
 
   build:
     name: Build C helpers and docs
+    if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -222,6 +228,7 @@ jobs:
 
   smoke:
     name: Full run on Ubuntu
+    if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -232,6 +239,7 @@ jobs:
 
   awks:
     name: Fixture suites under ${{ matrix.awk }}
+    if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -254,6 +262,7 @@ jobs:
 
   container:
     name: Container image, auditing a root
+    if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -283,6 +292,7 @@ jobs:
 
   package-managers:
     name: Package integrity (${{ matrix.image }})
+    if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -303,6 +313,7 @@ jobs:
 
   debian-checks:
     name: Debian checks (${{ matrix.image }})
+    if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -320,6 +331,7 @@ jobs:
 
   packages:
     name: Package (${{ matrix.format }})
+    if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:

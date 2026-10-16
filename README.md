@@ -8,7 +8,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/creativeheadz/tigris/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/creativeheadz/tigris/ci.yml?branch=master&style=flat-square&label=CI&labelColor=0f1822" alt="CI"></a>
   <a href="https://github.com/creativeheadz/tigris/releases/latest"><img src="https://img.shields.io/github/v/release/creativeheadz/tigris?style=flat-square&label=release&color=ffb02e&labelColor=0f1822" alt="Latest release"></a>
   <a href="COPYING"><img src="https://img.shields.io/badge/licence-GPL--2.0--or--later-52c7e8?style=flat-square&labelColor=0f1822" alt="Licence: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/written%20in-POSIX%20sh%20%2B%20awk-4fd67f?style=flat-square&labelColor=0f1822" alt="Written in POSIX sh and awk">
