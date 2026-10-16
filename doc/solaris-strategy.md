@@ -1,5 +1,8 @@
 # Solaris runner and fixture strategy (Phase D, Solaris leg)
 
+> Backlogged 16 October 2026 in favour of mainstream work; the plan
+> below stands for when it resumes.
+
 How Tigris covers Solaris 11.4 on x86 without owning a Sun: the
 macOS playbook a third time, plus something new — this host runs
 QEMU with KVM, so a Solaris VM can validate what fixtures cannot.

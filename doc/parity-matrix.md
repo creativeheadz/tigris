@@ -26,8 +26,8 @@ re-running the inventory and updating the counts below.
 | Lynis group | Tests | Tigris cover | Remaining |
 |---|---|---|---|
 | authentication | 36 | accounts, passwd, group, pam, sudo, neverlogin, umask | DONE 2026-10-09: check_doas (dos001w/002i/003w; nopass rules, conf writable past root; macOS phase, BSD port later); DONE 2026-10-09: macOS check_passwd/check_group shadows (dscl/dslocal, pass001w/002w/014w/015w/017w + grp001w/002w reused; hashes and grpck cut); LDAP-in-PAM (see ldap) |
-| boot_services | 27 | check_lilo (GRUB 2), check_single, check_secureboot, systemd units | verify GRUB password check; other bootloaders ride the platform phases |
-| containers | 7 | check_containers (10 ids) | zones/Xen ride the platform phases; verify Docker file-permission depth |
+| boot_services | 27 | check_lilo (GRUB 2), check_single, check_secureboot, systemd units | verify GRUB password check; other bootloaders backlogged with Solaris |
+| containers | 7 | check_containers (10 ids) | zones backlogged with Solaris; verify Docker file-permission depth |
 | filesystems | 23 | fstab/crypttab, mount options, scan, check_storage | DONE 2026-10-09: LVM layout (stor011i), ACL extras (stor012w), locate db (stor013w) |
 | firewalls | 17 | check_firewall (nft/iptables/ufw/firewalld, Docker ports) | verify firewall logging; DONE 2026-10-09: macOS half (pf + application firewall, fire001w/002w reused; ipfw is long dead, no check); DONE 2026-10-09: FreeBSD half (pf status/rules + ipfw default-only, one voice, fire001w/002w reused; strict pf.conf consistency cut) |
 | logging | 23 | check_logfiles, check_remotelog, journald persistence | metalog, RFC 3195; DONE 2026-10-09: macOS half (log writability logf005f, readable trail logf009w new; absence not judged, unified era); DONE 2026-10-09: FreeBSD half (newsyslog managed/missing/writable/loose-mode, logf001f/005f reused + logf010w new; remote judgment cut); wazuh-agent (see tooling) |
@@ -40,7 +40,7 @@ re-running the inventory and updating the counts below.
 
 | Lynis group | Tests | Tigris cover | Missing |
 |---|---|---|---|
-| accounting | 17 | check_audit (auditd) | sysstat, snoopy; Solaris/BSD daemons ride platforms; DONE 2026-10-09: macOS half (audit_control flags, aud001w/002w reused; running-state is the watchdog's, unified log persists by default) |
+| accounting | 17 | check_audit (auditd) | sysstat, snoopy; Solaris daemons backlogged with Phase D; DONE 2026-10-09: macOS half (audit_control flags, aud001w/002w reused; running-state is the watchdog's, unified log persists by default) |
 | crypto | 8 | check_certs (expiry), check_storage (LUKS, swap) | DONE 2026-10-09: check_crypto (cry001w/002w/003i; rngd source, key perms, pool level). DONE 2026-10-09: check_filevault (fde001w; macOS phase) |
 | databases | 16 | check_databases (MySQL/MariaDB, PostgreSQL, Redis) | DONE 2026-10-09: MongoDB (dbs011f/012w/013w/014f), Oracle sqlnet.ora (dbs015w/016w). DB2 not coverable offline (binary dbm config) |
 | file_integrity | 18 | aide/tripwire runners | DONE 2026-10-09: check_integrity (int001w/002w/003i; AIDE/AFICK databases, watcher inventory; OSSEC stays in check_ids) |
@@ -95,10 +95,10 @@ the ten gap groups (Kerberos, LDAP, PHP, SNMP, Squid, CUPS, IDS
 presence, compilers, FireWire, guest detection), second phases
 for databases, mail, MAC frameworks, crypto, file integrity, and
 filesystems, and the verify-marked items above. Phases B (macOS) and
-C (BSDs) finished 2026-10-09 and shipped in 3.8.0. What remains is
-Phase D (Solaris and AIX, each only with a maintainer and a CI runner),
-the verify-marked items and the depth gaps in the tables above, and
-the groups the deliberate exceptions name.
+C (BSDs) finished 2026-10-09 and shipped in 3.8.0. Solaris is
+backlogged and AIX is not planned (decided 2026-10-16), so what
+remains is the verify-marked items and the depth gaps in the
+tables above, and the groups the deliberate exceptions name.
 
 Every finding that can show a gap maps to its compliance controls, or
 is declared unmapped in doc/controls.map with a reason, and
