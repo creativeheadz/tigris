@@ -1,6 +1,6 @@
 pkgbase = tigris
 	pkgdesc = Security auditor for Linux, macOS and the BSDs, descended from TIGER
-	pkgver = 3.8.1
+	pkgver = 3.9.0
 	pkgrel = 1
 	url = https://github.com/creativeheadz/tigris
 	arch = x86_64
@@ -10,7 +10,7 @@ pkgbase = tigris
 	makedepends = make
 	backup = etc/tigris/tigerrc
 	backup = etc/tigris/cronrc
-	source = tigris-3.8.1.tar.gz::https://github.com/creativeheadz/tigris/archive/refs/tags/version_3_8_1.tar.gz
+	source = tigris-3.9.0.tar.gz::https://github.com/creativeheadz/tigris/archive/refs/tags/version_3_9_0.tar.gz
 	sha256sums = SKIP
 
 pkgname = tigris

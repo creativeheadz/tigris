@@ -5,12 +5,12 @@
 | Version | Supported |
 | ------- | --------- |
 | `master` | Yes |
-| 3.8.1 | Yes |
-| 3.8.0 and older, including all TIGER releases | No |
+| 3.9.0 | Yes |
+| 3.8.1 and older, including all TIGER releases | No |
 
-3.8.1 fixes code execution on the auditing machine when `tigris --root`
-audits a hostile image (3.5.0 to 3.8.0 are affected): upgrade if you
-audit images you did not build yourself.
+3.9.0 completes the fix 3.8.1 started: code execution on the auditing
+machine when `tigris --root` audits a hostile image (3.5.0 to 3.8.1
+are affected): upgrade if you audit images you did not build yourself.
 
 Tigris is an independent fork. The official TIGER is maintained on
 GNU Savannah; vulnerabilities in TIGER itself belong to its maintainer

@@ -1,5 +1,5 @@
 # End of security support per release, read by check_release.
-# From https://endoflife.date on 2026-10-10 by util/mkeol; do not edit,
+# From https://endoflife.date on 2026-10-15 by util/mkeol; do not edit,
 # run sh util/mkeol before a release instead.
 #
 # os-release ID  cycle  end of security support  end of paid extended support

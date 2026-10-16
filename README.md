@@ -15,7 +15,7 @@
   <br>
   <img src="https://img.shields.io/badge/finding%20ids-522-e8833a?style=flat-square&labelColor=0f1822" alt="522 finding ids">
   <img src="https://img.shields.io/badge/categories-15-e8833a?style=flat-square&labelColor=0f1822" alt="15 categories">
-  <img src="https://img.shields.io/badge/test%20suites-105-e8833a?style=flat-square&labelColor=0f1822" alt="105 test suites">
+  <img src="https://img.shields.io/badge/test%20suites-106-e8833a?style=flat-square&labelColor=0f1822" alt="106 test suites">
   <img src="https://img.shields.io/badge/CI-Debian%20%C2%B7%20Ubuntu%20%C2%B7%20Fedora%20%C2%B7%20Rocky%20%C2%B7%20openSUSE%20%C2%B7%20Alpine%20%C2%B7%20Arch-c6d6e2?style=flat-square&labelColor=0f1822" alt="Tested on Debian, Ubuntu, Fedora, Rocky, openSUSE, Alpine and Arch">
 </p>
 
@@ -342,8 +342,10 @@ archive, not this fork.
 ## Where it is going
 
 [ROADMAP.md](ROADMAP.md) has the decisions, the status and what is next.
-3.8.1 makes sure nothing an audited image holds can run as code, and
-gives every finding a one-line fix and references; 3.8.0 carries the
+3.9.0 completes the hostile-image fix, judges setuid files and shared
+directories one by one, and ends each run with a summary; 3.8.1 began
+making sure nothing an audited image holds can run as code, and gave
+every finding a one-line fix and references; 3.8.0 carries the
 audit to macOS and FreeBSD, from fixture roots on any machine; 3.7.0
 finished the offline audit, so an image reads as fully as a running
 system, and brought the packages; 3.6.0 the compliance mapping, the

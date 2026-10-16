@@ -23,7 +23,7 @@ body:
     attributes:
       label: Tigris version
       description: Commit hash if running from master
-      placeholder: "3.8.1, or master @ ..."
+      placeholder: "3.9.0, or master @ ..."
     validations:
       required: true
   - type: input

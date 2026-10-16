@@ -1,6 +1,6 @@
 # Maintainer: Andrei Trimbitas <a.trimbitas@oldforge.tech>
 pkgname=tigris
-pkgver=3.8.1
+pkgver=3.9.0
 pkgrel=1
 pkgdesc='Security auditor for Linux, macOS and the BSDs, descended from TIGER'
 arch=('x86_64' 'aarch64')

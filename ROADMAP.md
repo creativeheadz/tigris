@@ -7,9 +7,9 @@ is the reference point because it is the tool people compare against:
 everything Lynis checks on a platform Tigris supports, Tigris checks
 too, tracked group by group in `doc/parity-matrix.md`.
 
-*Last updated 10 October 2026.* `[x]` done, `[ ]` to do, `[~]` started.
+*Last updated 16 October 2026.* `[x]` done, `[ ]` to do, `[~]` started.
 Everything marked done is on `master`; "released" means tagged (the last
-tag is `version_3_8_1`).
+tag is `version_3_9_0`).
 
 ## Contents
 
@@ -62,7 +62,7 @@ Settled, so they do not have to be argued again:
 
 ## Where things stand
 
-|                      | Tigris 3.8.1 (October 2026)                                     | Lynis 3.1.7 (June 2026)                  |
+|                      | Tigris 3.9.0 (October 2026)                                     | Lynis 3.1.7 (June 2026)                  |
 |----------------------|-----------------------------------------------------------------|------------------------------------------|
 | Language             | POSIX shell, no dependencies                                    | POSIX shell                              |
 | Licence              | GPL-2.0-or-later                                                | GPL-3.0                                  |
@@ -74,7 +74,7 @@ Settled, so they do not have to be argued again:
 | Change over time     | `tigris-diff` and `tigris-accept`; `tigercron`                  | Mostly point-in-time                     |
 | Package integrity    | dpkg, rpm, apk, pacman, one finding id per kind of problem      | Limited                                  |
 | Offline audit        | `tigris --root`: every check reads an image except the ten that need the running system, nothing in it is run; a container image with every distribution's package tools | None |
-| Tests                | 105 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
+| Tests                | 106 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
 | Lynis parity         | Linux groups covered in Phase A (see below); macOS, BSD, Solaris-AIX ride the platform phases | 43 test groups across Linux, macOS, BSD, Solaris |
 
 Lynis is broad, maintained and popular (16k GitHub stars). Tigris
@@ -143,6 +143,16 @@ fast the disks can be walked (a bare `find` over the same disks takes
    with 16,000 lines of dangling symlinks hides the few that matter.
 
 ## What has shipped
+
+**Released: 3.9.0 (16 October 2026).** A security release again: 3.8.1's
+hostile-image fix was incomplete, and a second review found more paths
+where a name from the audited system ran as code; every release with
+`--root`, 3.5.0 to 3.8.1, is affected. With it: setuid, setgid and
+shared directories judged file by file against what the packages made
+so, world-writable files reported, releases judged against their end
+of security support, the false findings gone from stock hosts, and a
+run that starts with one line and ends with a summary. The full list
+is in `CHANGES`.
 
 **Released: 3.8.1 (10 October 2026).** A security release: a hostile
 image audited with `--root` could run a command as root on the auditing

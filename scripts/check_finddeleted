@@ -133,8 +133,10 @@ trap 'delete $WORKDIR/deleted.$$ $WORKDIR/lsof.$$ ; exit 1' 1 2 3 15
 # (such as PPID)
 $LSOF -b -w -n >>$WORKDIR/lsof.$$
 # It can be deleted if name includes (deleted) or
-# TYPE = DEL
-$CAT $WORKDIR/lsof.$$ | $GREP "(deleted)" >>$WORKDIR/deleted.$$
+# TYPE = DEL. memfd files are anonymous memory, unlinked by design, so
+# lsof always marks them "(deleted)"; a desktop holds thousands. They
+# are not deleted files in use and never reach the per-process probes.
+$CAT $WORKDIR/lsof.$$ | $GREP "(deleted)" | $GREP -v "memfd:" >>$WORKDIR/deleted.$$
 $CAT $WORKDIR/lsof.$$ | $GREP "DEL" >>$WORKDIR/deleted.$$
 delete $WORKDIR/lsof.$$
 

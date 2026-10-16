@@ -1,6 +1,90 @@
 NOTE: To read changes made to the Debian package (since
 August 23rd 2001) see the changelog.Debian file
 
+Changes (v 3.9.0)
+--------------------
+
+A security release again, and a bigger one. 3.8.1 took the audited
+system's values out of eval in twelve files, but with every check on,
+as root, an image still ran commands on the auditing machine: an
+account's name, password hash and shell and a line of /etc/shells
+through check_passwd's eval, a program's path spliced into an awk
+program, a directory's name and a home directory spliced into sed
+scripts, and a process's name through eval. Every release with --root,
+3.5.0 to 3.8.1, is affected; upgrade if you audit images you did not
+build yourself. The sweep read every file as text and looked for data
+spliced into eval, awk, sed and sh -c, and tests/hostile_root_check.sh
+turns every check on and plants a command in twelve places, in CI as a
+user and as root: on 3.8.1 six of them run.
+
+A second review, with every check on and against what an unprivileged
+user controls on a running system, found more. The mount points find
+scans went through eval, and a user can mount a FUSE filesystem named
+with a command substitution; check_path sourced users' shell start-up
+files; apt read the image's apt.conf.d, which names programs apt runs;
+systemd-analyze followed unit links out of the root; and rpm, dnf and
+zypper wrote where the image's links led. The C realpath helper, which
+overran fixed buffers on paths a local user chooses, is gone:
+util/realpath resolves every link. The report is closed too: finding
+text is escaped in the HTML report, backslash spellings can no longer
+forge lines in the text report or end mailed diffs early, and names
+from the audited system are compared, never expanded. Tigris trusts
+only its own now: the base, working and log directories must be the
+runner's alone, every tigerrc, accept list and cronrc is checked
+before it is read, installs strip group and other write bits, and the
+hash helpers compute the right digests again and build hardened.
+
+What the checks say is closer to true. On the 37 Ubuntu servers of the
+home fleet, half ran almost no Linux check for want of strings, which
+nothing needs; yescrypt hashes read as locked; an empty lastlog
+condemned every account; and two sysctl findings misread the kernel's
+rules: all fixed. Six more false findings are gone from every stock
+Ubuntu and Debian host, and the services list knows netbase 6.3 to
+6.5. Setuid, setgid and shared directories are judged file by file:
+dpkg_special_list says what Debian and Ubuntu packages make so, 180
+files of 120 packages, surveyed in containers before each release, and
+a sticky shared directory is not reported. The world-writable files
+the scan never looked for are listed where root or a server reads them
+(fsys020f) and counted elsewhere (fsys021w). check_release reads
+os-release and judges each release against its end of security
+support. And findings keep secrets now: a cron finding names the job's
+file, an alias finding its program, never the command line that
+carried a database password into the JSON.
+
+A run starts with one line and ends with a summary, in colour on a
+terminal and plain in pipes and cron mail. The findings and compliance
+reference is a website now, built from the tree with sh and awk, and
+the README and ROADMAP numbers are generated from the tree, with a
+test failing on drift. Every release can be verified: pinned actions
+and base images, a source tarball with SHA256SUMS over all attachments,
+and build-provenance attestations for the packages, the tarball and
+the image. The tests, fixtures and documentation name nobody's
+machine.
+
+On the reference machine (Linux Mint 22.3, kernel 7.0), as root: a full
+run takes 2:05 (112 s user, 89 s system) and peaks at 138 MB, against
+3.8.1's 2:01 (109 s user, 87 s system) and 131 MB.
+
+Changes you will see
+
+- No fsys004a, fsys011a or fsys008f on a stock host. Setuid and setgid
+  findings come one per file, with its mode and owner; on dpkg the
+  detail names the package it came from, or says no package did.
+- World-writable files: one FAIL per file under the system trees, one
+  WARN per directory with the count elsewhere.
+- Releases judged by support: "Debian GNU/Linux 11 has had no security
+  updates since 2026-08-31" (osv002f); osv004w for testing and unstable
+  only; nothing for Arch or Tumbleweed.
+- A group-writable checkout is refused with what to do (chmod -R go-w),
+  and a -c file that fails its checks stops the run (con016e). In a
+  container a bind-mounted log directory is allowed with a note.
+- The setuid-copy signatures only run with Tiger_Check_SIGNATURES: no
+  more init001e on a run from a source tree.
+- Rootless Podman image stores are pruned like /var/lib/containers.
+- check_finddeleted no longer reports memfd files, which lsof always
+  marks "(deleted)": on a desktop that was tens of thousands of bogus
+  kis012w findings, and the per-process probes each of them triggered.
+
 Changes (v 3.8.1)
 --------------------
 
