@@ -716,8 +716,9 @@ what scripts and cron see.
 
 Full functional parity, tracked group by group in
 `doc/parity-matrix.md` against Lynis 3.1.8-dev (43 test groups, 477
-real tests): 6 groups covered, 10 strong with minor gaps, 15 partial,
-10 gap, 2 not applicable. New checks follow the standing rules:
+real tests): 27 groups covered, 14 strong with minor gaps, none
+partial or gap, 2 not applicable (recounted 2026-10-16). New checks
+follow the standing rules:
 written from the upstream documentation of the thing being checked,
 each with a metadata file per finding id and a fixture suite, offline
 capable where honesty allows.
