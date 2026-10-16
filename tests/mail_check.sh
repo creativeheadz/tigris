@@ -2,15 +2,19 @@
 #
 # tests/mail_check.sh - check_mail on offline roots
 #
-# Five roots: Postfix with AUTH in clear, the world relaying, and
+# Eleven roots: Postfix with AUTH in clear, the world relaying, and
 # the default banner; Exim with a plaintext authenticator, a
 # wildcard relay, and no banner set (via conf.d fragments); Dovecot
 # with plaintext allowed, TLS off, and a versioned greeting; a
 # tight root (AUTH under TLS, named relay nets, quiet banners, a
-# TLS-gated Exim authenticator); and an empty root, where there is
-# no mail and nothing is said. INFO findings only show with
-# Tiger_Show_INFO_Msgs=Y. Runs as a user and as root; the fixtures
-# read the same for both.
+# TLS-gated Exim authenticator); Qmail relaying for the world with
+# a versioned greeting; Qmail scoped to its own addresses, quiet;
+# Qmail with no rules source, where relaying is not judged;
+# OpenSMTPD with AUTH in clear and an open relay; OpenSMTPD tight
+# (tls-require, authenticated and table-scoped relays); and an
+# empty root, where there is no mail and nothing is said. INFO
+# findings only show with Tiger_Show_INFO_Msgs=Y. Runs as a user
+# and as root; the fixtures read the same for both.
 #
 TIGER=${TIGER:-`cd "\`dirname \"$0\"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -109,6 +113,63 @@ EOF
 run "$T" "$W/out"
 grep -q 'mail001w\|mail002w\|mail003i' "$W/out" && { bad "tight"; cat "$W/out"; } ||
   ok "AUTH under TLS, named relays, quiet banners, gated Exim: nothing"
+
+Q=$W/qmail; mkdir -p "$Q/var/qmail/control" "$Q/etc"
+printf 'example.com\n' > "$Q/var/qmail/control/rcpthosts"
+printf 'mail.example.com ESMTP qmail 1.03\n' > "$Q/var/qmail/control/smtpgreeting"
+cat > "$Q/etc/tcp.smtp" <<'EOF'
+# our own nets relay; the last line ruins it
+127.:allow,RELAYCLIENT=""
+192.0.2.:allow,RELAYCLIENT=""
+:allow,RELAYCLIENT=""
+EOF
+run "$Q" "$W/out"
+has '--WARN-- [mail002w] Qmail relays for the whole world' "$W/out" &&
+has '--INFO-- [mail003i] Qmail advertises its version' "$W/out" &&
+! grep -q 'mail001w' "$W/out" &&
+  ok "Qmail open relay and versioned greeting; AUTH not judged" || { bad "qmail"; cat "$W/out"; }
+
+N=$W/qmailtight; mkdir -p "$N/var/qmail/control" "$N/etc"
+printf 'example.com\n' > "$N/var/qmail/control/rcpthosts"
+printf 'mail.example.com ESMTP\n' > "$N/var/qmail/control/smtpgreeting"
+cat > "$N/etc/tcp.smtp" <<'EOF'
+127.:allow,RELAYCLIENT=""
+192.0.2.:allow,RELAYCLIENT=""
+:allow
+EOF
+run "$N" "$W/out"
+grep -q 'mail001w\|mail002w\|mail003i' "$W/out" && { bad "qmailtight"; cat "$W/out"; } ||
+  ok "Qmail scoped rules, quiet greeting: nothing"
+
+C=$W/qmailnorules; mkdir -p "$C/var/qmail/control" "$C/etc"
+printf 'example.com\n' > "$C/var/qmail/control/rcpthosts"
+printf 'mail.example.com ESMTP\n' > "$C/var/qmail/control/smtpgreeting"
+run "$C" "$W/out"
+grep -q 'mail001w\|mail002w\|mail003i' "$W/out" && { bad "qmailnorules"; cat "$W/out"; } ||
+  ok "Qmail with no rules source: relaying not judged"
+
+S=$W/smtpd; mkdir -p "$S/etc/mail"
+cat > "$S/etc/mail/smtpd.conf" <<'EOF'
+listen on egress port 587 auth
+accept from any for any relay
+EOF
+run "$S" "$W/out"
+has '--WARN-- [mail001w] OpenSMTPD takes passwords with TLS optional or off' "$W/out" &&
+has '--WARN-- [mail002w] OpenSMTPD relays for the whole world' "$W/out" &&
+  ok "OpenSMTPD clear AUTH and open relay" || { bad "smtpd"; cat "$W/out"; }
+
+G=$W/smtpdtight; mkdir -p "$G/etc/mail"
+cat > "$G/etc/mail/smtpd.conf" <<'EOF'
+table locals { example.com }
+listen on egress port 587 tls-require auth
+listen on egress port 465 smtps auth
+accept auth from any for any relay
+accept from <locals> for any relay
+accept from any for local deliver to mbox
+EOF
+run "$G" "$W/out"
+grep -q 'mail001w\|mail002w' "$W/out" && { bad "smtpdtight"; cat "$W/out"; } ||
+  ok "OpenSMTPD tight: tls-require, authed and scoped relays"
 
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"

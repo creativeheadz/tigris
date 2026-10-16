@@ -2,8 +2,8 @@ Id: mail001w
 Severity: WARN
 Category: services
 Check: check_mail
-Fix: Require TLS for authentication (smtpd_tls_auth_only=yes; disable_plaintext_auth=yes).
-References: postconf(5), exim(8), doveconf(1)
+Fix: Require TLS for authentication (smtpd_tls_auth_only=yes; tls-require in smtpd.conf; disable_plaintext_auth=yes).
+References: postconf(5), exim(8), doveconf(1), smtpd.conf(5)
 Controls: CIS 3.10; NIST SC-8; ISO 5.14, 8.24
 
 Mail passwords cross in clear: SMTP AUTH or a plaintext

@@ -2,8 +2,8 @@ Id: mail002w
 Severity: WARN
 Category: services
 Check: check_mail
-Fix: Relay for mynetworks only (relay_from_hosts in Exim).
-References: postconf(5), exim(8)
+Fix: Relay for your own networks only (mynetworks; relay_from_hosts; RELAYCLIENT rules).
+References: postconf(5), exim(8), smtpd.conf(5)
 Controls: CIS 4.4, 4.8; NIST SC-7, CM-7; ISO 8.20, 8.21; CE Firewalls
 
 The mail server relays for the whole world. Spam goes out in

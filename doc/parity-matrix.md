@@ -47,7 +47,7 @@ re-running the inventory and updating the counts below.
 | insecure_services | 21 | legacy services retired deliberately | verify client-side tools (telnet/rsh/TFTP clients) |
 | kernel | 13 | check_sysctl, core dumps, pending-reboot | I/O scheduler and module detail (mostly informational) |
 | mac_frameworks | 8 | check_mac (AppArmor, SELinux) | DONE 2026-10-09: TOMOYO (mac007w/008i), PaX softmode (mac005w/006i) |
-| mail_messaging | 11 | check_sendmail | DONE 2026-10-09: check_mail (mail001w/002w/003i; Exim, Postfix, Dovecot). Qmail/OpenSMTPD depth open |
+| mail_messaging | 11 | check_sendmail | DONE 2026-10-09: check_mail (mail001w/002w/003i; Exim, Postfix, Dovecot). DONE 2026-10-16: Qmail (RELAYCLIENT rules, smtpgreeting) and OpenSMTPD (accept rules, auth without tls-require), same three ids |
 | malware | 11 | check_rootkit | DONE 2026-10-16: check_antivirus (av001w/002i; ClamAV signatures judged, freshness inventoried; rkhunter stays in check_compilers, chkrootkit runs in check_rootkit) |
 | memory_processes | 5 | check_runprocs, check_finddeleted | prelink handled (Oct 2026: no longer called for checksums, no longer shipped); zombie/heavy-IO are informational |
 | nameservices | 27 | check_dns (resolvers, unbound, BIND) | PowerDNS; verify hosts duplicates; NIS retired deliberately |
