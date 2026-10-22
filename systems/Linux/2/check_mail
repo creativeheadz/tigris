@@ -19,13 +19,13 @@
 #             their configuration files alone: no server is queried.
 #             Passwords that cross in clear (SASL or plaintext
 #             authenticators with no TLS to protect them, Dovecot
-#             with plaintext allowed or TLS off, OpenSMTPD auth
-#             without tls-require) belong to whoever listens
-#             (mail001w). A relay open to the world sends spam in your
-#             name (mail002w). A banner carrying the version tells
-#             attackers what to try (mail003i). Sendmail stays in
-#             check_sendmail, its historic home. No mail config files
-#             means no mail here, and there is nothing to say.
+#             with plaintext allowed or TLS off) belong to whoever
+#             listens (mail001w). A relay open to the world sends
+#             spam in your name (mail002w). A banner carrying the
+#             version tells attackers what to try (mail003i).
+#             Sendmail stays in check_sendmail, its historic home. No
+#             mail config files means no mail here, and there is
+#             nothing to say.
 #
 # 10/09/2026 - Initial version. Postfix main.cf; Exim's generated
 #             config, else its conf.d fragments in order, else
@@ -37,6 +37,13 @@
 #             auth without tls-require). Stock qmail has no SMTP
 #             AUTH of its own, and OpenSMTPD's greeting carries no
 #             version, so those halves have nothing to judge.
+# 10/22/2026 - OpenSMTPD in the grammar it has had since 6.4: a match
+#             from any for any, without auth, whose action relays,
+#             on a listener that takes mail without auth and is not
+#             loopback (tags followed). The accept grammar is gone
+#             from smtpd, which refuses to start on it, and is not
+#             read. Listener auth without tls-require is not judged:
+#             smtpd takes AUTH only once the session is in TLS.
 #
 # References:
 #   postconf(5)
@@ -304,37 +311,62 @@ if [ -n "$qmail" ]; then
   done
 fi
 
-# OpenSMTPD: accept rules that relay for anyone, and listeners that
-# take AUTH with TLS optional or off. Only whole words count: a
-# table named openanywhere is not the any it would match as text.
+# OpenSMTPD: a match from any for any, without auth, whose action
+# relays, reachable on a listener that is not loopback and takes mail
+# without auth: it relays for the whole world. Actions are linked to
+# matches by name, listeners to matches by tag. AUTH is not judged:
+# smtpd offers it only once the session is in TLS, so passwords never
+# cross in clear whatever the listener says. Only whole words count:
+# a table named openanywhere is not the any it would match as text.
 for c in $smtpd
 do
   stripped "`rootfile $c`" | $AWK '
     { n = split(tolower($0), w, /[ \t]+/)
-      accept = 0; relay = 0; auth = 0; fromany = 0; forany = 0
-      listen = 0; lauth = 0; lsafe = 0
-      for (i = 1; i <= n; i++) {
-        if (w[i] == "accept") accept = 1
-        else if (w[i] == "relay") relay = 1
-        else if (w[i] == "auth" || w[i] == "auth-optional") auth = 1
-        else if (w[i] == "from" && (w[i+1] == "any" || w[i+1] == "all")) fromany = 1
-        else if (w[i] == "for" && (w[i+1] == "any" || w[i+1] == "all")) forany = 1
-        else if (w[i] == "listen") listen = 1
-        else if (w[i] == "socket") listen = 0
-        else if (w[i] == "tls-require" || w[i] == "smtps") lsafe = 1
+      j = 1; while (j < n && w[j] == "") j++
+      if (w[j] == "action" && j + 2 <= n) {
+        a = w[j + 1]; gsub(/"/, "", a)
+        if (w[j + 2] == "relay") relays[a] = 1
+        next
       }
-      # auth on a listener is the same word as auth on a rule
-      if (listen && auth) lauth = 1
-      if (accept && relay && !auth && fromany && forany) open = 1
-      if (listen && lauth && !lsafe) clear = 1
+      if (w[j] == "listen" && w[j + 1] == "on") {
+        loop = (w[j + 2] ~ /^(localhost|lo|lo0|127\.0\.0\.1|::1|socket)$/)
+        authed = 0; tag = ""
+        for (i = j + 3; i <= n; i++) {
+          if (w[i] == "auth") authed = 1
+          else if (w[i] == "tag") { tag = w[i + 1]; gsub(/"/, "", tag) }
+        }
+        if (!loop && !authed) { exposed[tag] = 1; anyexposed = 1 }
+        next
+      }
+      if (w[j] == "match") {
+        fromany = 0; forany = 0; auth = 0; act = ""; mtag = ""
+        for (i = j + 1; i <= n; i++) {
+          neg = (w[i - 1] == "!")
+          if (w[i] == "from") {
+            if (w[i + 1] == "any" && !neg) fromany = 1
+            if (w[i + 1] == "auth" && !neg) auth = 1
+            i++
+          } else if (w[i] == "for") {
+            if (w[i + 1] == "any" && !neg) forany = 1
+            i++
+          } else if (w[i] == "auth") { if (!neg) auth = 1 }
+          else if (w[i] == "tag") { mtag = w[i + 1]; gsub(/"/, "", mtag); i++ }
+          else if (w[i] == "action") { act = w[i + 1]; gsub(/"/, "", act); i++ }
+        }
+        if (fromany && forany && !auth && act != "") { m++; mact[m] = act; mtg[m] = mtag }
+      }
     }
-    END { if (open) print "relay-world"; if (clear) print "clear-auth" }' | {
+    END {
+      for (k = 1; k <= m; k++) {
+        if (!(mact[k] in relays)) continue
+        if (mtg[k] == "") { if (anyexposed) open = 1 }
+        else if (mtg[k] in exposed) open = 1
+      }
+      if (open) print "relay-world"
+    }' | {
     while IFS= read -r fact
     do
-      case "$fact" in
-        relay-world) message WARN mail002w "Relay for your own networks only: scope the accept rule in $c (from your tables, not from any)." "OpenSMTPD relays for the whole world (accept from any for any relay in $c): spam goes out in your name." ;;
-        clear-auth) message WARN mail001w "Ask for AUTH only where TLS is required ('tls-require' on the listener, in $c)." "OpenSMTPD takes passwords with TLS optional or off (auth without tls-require on a listener in $c): whoever listens owns the mailboxes." ;;
-      esac
+      [ "$fact" = relay-world ] && message WARN mail002w "Relay for your own networks only: in $c, match from local or from a table of your networks, or require auth, before an action that relays." "OpenSMTPD relays for the whole world (a match from any for any, without auth, leads to a relay action in $c, on a listener open to the network): spam goes out in your name."
     done
   }
 done

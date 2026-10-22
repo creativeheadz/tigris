@@ -2,7 +2,7 @@
 #
 # tests/mail_check.sh - check_mail on offline roots
 #
-# Eleven roots: Postfix with AUTH in clear, the world relaying, and
+# Thirteen roots: Postfix with AUTH in clear, the world relaying, and
 # the default banner; Exim with a plaintext authenticator, a
 # wildcard relay, and no banner set (via conf.d fragments); Dovecot
 # with plaintext allowed, TLS off, and a versioned greeting; a
@@ -10,9 +10,12 @@
 # TLS-gated Exim authenticator); Qmail relaying for the world with
 # a versioned greeting; Qmail scoped to its own addresses, quiet;
 # Qmail with no rules source, where relaying is not judged;
-# OpenSMTPD with AUTH in clear and an open relay; OpenSMTPD tight
-# (tls-require, authenticated and table-scoped relays); and an
-# empty root, where there is no mail and nothing is said. INFO
+# OpenSMTPD relaying for the world through a named action, with
+# AUTH on a STARTTLS listener (not judged: smtpd takes AUTH only in
+# TLS); OpenSMTPD tight (authenticated and table-scoped relays, a
+# from-any-for-any match whose action delivers); OpenSMTPD relaying
+# by tag, for an authenticated listener and then for an open one;
+# OpenSMTPD listening on loopback only; and an empty root, where there is no mail and nothing is said. INFO
 # findings only show with Tigris_Show_INFO_Msgs=Y. Runs as a user
 # and as root; the fixtures read the same for both.
 #
@@ -148,28 +151,61 @@ run "$C" "$W/out"
 grep -q 'mail001w\|mail002w\|mail003i' "$W/out" && { bad "qmailnorules"; cat "$W/out"; } ||
   ok "Qmail with no rules source: relaying not judged"
 
-S=$W/smtpd; mkdir -p "$S/etc/mail"
-cat > "$S/etc/mail/smtpd.conf" <<'EOF'
-listen on egress port 587 auth
-accept from any for any relay
+S=$W/smtpd; mkdir -p "$S/etc/smtpd"
+cat > "$S/etc/smtpd/smtpd.conf" <<'EOF'
+pki mx.example.com cert "/etc/ssl/mx.crt"
+listen on 0.0.0.0
+listen on eth0 port 587 tls pki mx.example.com auth
+action "outbound" relay
+match from any for any action "outbound"
 EOF
 run "$S" "$W/out"
-has '--WARN-- [mail001w] OpenSMTPD takes passwords with TLS optional or off' "$W/out" &&
 has '--WARN-- [mail002w] OpenSMTPD relays for the whole world' "$W/out" &&
-  ok "OpenSMTPD clear AUTH and open relay" || { bad "smtpd"; cat "$W/out"; }
+! grep -q 'mail001w' "$W/out" &&
+  ok "OpenSMTPD open relay through a named action; AUTH under STARTTLS not judged" || { bad "smtpd"; cat "$W/out"; }
 
 G=$W/smtpdtight; mkdir -p "$G/etc/mail"
 cat > "$G/etc/mail/smtpd.conf" <<'EOF'
-table locals { example.com }
+table nets { 192.0.2.0/24 }
+listen on egress
 listen on egress port 587 tls-require auth
-listen on egress port 465 smtps auth
-accept auth from any for any relay
-accept from <locals> for any relay
-accept from any for local deliver to mbox
+action "local" maildir
+action "relay" relay
+match from any for domain example.com action "local"
+match from src <nets> for any action "relay"
+match auth from any for any action "relay"
+match from any for any action "local"
 EOF
 run "$G" "$W/out"
 grep -q 'mail001w\|mail002w' "$W/out" && { bad "smtpdtight"; cat "$W/out"; } ||
-  ok "OpenSMTPD tight: tls-require, authed and scoped relays"
+  ok "OpenSMTPD tight: authed and scoped relays, from any for any only delivers"
+
+T=$W/smtpdtag; mkdir -p "$T/etc/mail"
+cat > "$T/etc/mail/smtpd.conf" <<'EOF'
+listen on egress tag MX
+listen on egress port 587 tls-require auth tag SUBMIT
+action "local" mbox
+action relay relay
+match tag MX from any for domain example.com action "local"
+match tag SUBMIT from any for any action relay
+EOF
+run "$T" "$W/out"
+grep -q 'mail001w\|mail002w' "$W/out" && { bad "smtpdtag"; cat "$W/out"; } ||
+  ok "OpenSMTPD relay tagged to an authenticated listener: nothing"
+printf 'match tag MX from any for any action relay\n' >> "$T/etc/mail/smtpd.conf"
+run "$T" "$W/out"
+has '--WARN-- [mail002w] OpenSMTPD relays for the whole world' "$W/out" &&
+  ok "OpenSMTPD relay tagged to an open listener: mail002w" || { bad "smtpdtag open"; cat "$W/out"; }
+
+L=$W/smtpdlocal; mkdir -p "$L/etc/mail"
+cat > "$L/etc/mail/smtpd.conf" <<'EOF'
+listen on localhost
+action "relay" relay host smtp+tls://smarthost.example.com
+match from any for any action "relay"
+EOF
+run "$L" "$W/out"
+grep -q 'mail001w\|mail002w' "$W/out" && { bad "smtpdlocal"; cat "$W/out"; } ||
+  ok "OpenSMTPD on loopback only: nothing"
 
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
