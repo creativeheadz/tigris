@@ -18,7 +18,7 @@
 # check_release: verifies that system meets minimum release requirements
 # 10.26.2001
 # Paul Telford <paul_telford@hp.com>
-# 07/25/2002 jfs       Changed TigrisInstallDir to .
+# 07/25/2002 jfs       Changed TigerInstallDir to .
 # 10/01/2003 jfs       Fixed message calls
 # 11/09/2003 jfs       Removed typeset bashism and updated RedHat versions so
 #            only 7.1 or greater are consider current (Debian Bug 219764)

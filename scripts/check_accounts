@@ -57,7 +57,7 @@
 #            massaged it to work again (changed while read in function
 #            to explicit parameter calling). Also added a check to
 #            avoid going through all the filesystem if $home is not defined.
-# 09/19/2003 jfs  Add root to Tigris_Admin_Accounts if already defined.
+# 09/19/2003 jfs  Add root to Tiger_Admin_Accounts if already defined.
 #                 Also permit empty USERDOTFILES and fix dependancies.
 # 08/15/2003 jfs  ETCSHELLS is not indispensable to running this script.
 # 08/14/2003 jfs  Included ARSC changes including an update for Linux
@@ -85,7 +85,7 @@
 #
 # 07/25/2002 jfs Added a sanity check for password files
 #
-# 12/26/2001 jfs  Added Tigris_Accounts_Trust to define valid users which will
+# 12/26/2001 jfs  Added Tiger_Accounts_Trust to define valid users which will
 #		not be so thoroughly checked. Useful for UN*X systems that
 #		ship with a default number of administrative (but disabled) users 
 #		for services/files (like Debian GNU/Linux)

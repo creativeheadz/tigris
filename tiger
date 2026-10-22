@@ -41,7 +41,7 @@
 # 04/27/93 dls check_passwd is now check_accounts
 # 04/15/2003 jfs Added new year
 # 05/26/2002 jfs Added check_tcpd test
-# 04/29/93 dls Added support for 'tigris.conf' file.
+# 04/29/93 dls Added support for 'tigerrc' file.
 #
 #-----------------------------------------------------------------------------
 #
@@ -287,10 +287,21 @@ export TigrisCheckEmbedded
 }
 
 # Say so when the scan is off, so that no fsys* findings is not read as a
-# clean file system (the quick profile turns it off)
+# clean file system (the quick profile turns it off). The setting is
+# named as the file that turned it off spells it (an old file has the
+# pre-4.0 name), and that file is the last of the tigris.conf, the
+# profile and the site file to set it, the order config reads them.
 [ "$Tigris_Check_FILESYSTEM" = 'N' ] && [ "$Tigris_TESTMODE" != 'Y' ] && {
-  echo "`$TIMECMD`> Filesystem scan not run (Tigris_Check_FILESYSTEM=N in $RCFILE)."
-  echo "# Filesystem scan not run (Tigris_Check_FILESYSTEM=N in $RCFILE): setuid, device, symlink, unowned and odd-name findings (fsys*) are absent because they were not looked for, not because there are none." >> $logtmp
+  fsname=Tigris_Check_FILESYSTEM; fsfrom="the environment"
+  __pf=; [ -n "$PROFILE" ] && __pf=$pfile
+  for __f in "$RCFILE" "$__pf" "$SITECONFIG"
+  do
+    [ -n "$__f" ] && [ -r "$__f" ] || continue
+    __n=`$SED -n 's/^[[:space:]]*\(Tig[a-z]*_Check_FILESYSTEM\)=.*/\1/p' "$__f" | $SED -n '$p'`
+    [ -n "$__n" ] && { fsname=$__n; fsfrom=$__f; }
+  done
+  echo "`$TIMECMD`> Filesystem scan not run ($fsname=N in $fsfrom)."
+  echo "# Filesystem scan not run ($fsname=N in $fsfrom): setuid, device, symlink, unowned and odd-name findings (fsys*) are absent because they were not looked for, not because there are none." >> $logtmp
 }
 
 # Auditing an offline root: its symbolic links, listed once for every
@@ -397,7 +408,7 @@ aidepid=
   progress_end
 }
 
-# Note: TARA calls this script with Tigris_Check_ROOT so we keep it
+# Note: TARA calls this script with Tiger_Check_ROOT so we keep it
 # there for compatibility purposes
 [ \( "$Tigris_Check_ROOT" != 'N' -a -n "$Tigris_Check_ROOT" \) -o "$Tigris_Check_ROOT_ACCESS" != 'N' ] && {
   progress_start "Checking ttytab, securetty, and login configuration files..."

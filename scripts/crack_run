@@ -22,7 +22,7 @@
 # 08/14/2003 - jfs - Preserve, for backwards compatibility the definition
 #                    of CRACK, REPORTER and CRACKDIR if available
 #                    (exported through the site configuration)
-# 08/13/2003 - jfs - Use Location overrides in the tigris.conf configuration file
+# 08/13/2003 - jfs - Use Location overrides in the tigerrc configuration file
 # 08/09/2003 - jfs - Added RM to dependancies.
 # 08/08/2003 - jfs - Improved temporary file creation.
 # 05/01/2003 - jfs - Fixed dependancies.

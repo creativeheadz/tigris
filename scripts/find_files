@@ -48,7 +48,7 @@
 #
 # 08/08/2003 jfs Improved creation of temporary files and removal.
 #
-# 04/29/93 dls Added support for 'tigris.conf' file variable FS_FILES
+# 04/29/93 dls Added support for 'tigerrc' file variable FS_FILES
 #
 # 04/28/93 dls Added search for device files...
 #

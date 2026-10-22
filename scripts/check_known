@@ -39,7 +39,7 @@
 # 11/19/2003 jfs Linux: accurate, per interface, promiscuous mode detection
 #                Contributed by unspawn with some changes to make it POSIX
 #                correct.
-# 10/01/2003 jfs Do not delete passwd files if the Tigris_PasswdFiles is
+# 10/01/2003 jfs Do not delete passwd files if the Tiger_PasswdFiles is
 #                defined, otherwise checks relying on it will break
 # 09/19/2003 jfs Fixed deletion of temporary files thanks to a patch
 #                provided by Nicolas François 

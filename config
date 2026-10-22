@@ -33,7 +33,7 @@
 # 08/13/2004 jfs  Setup all locales as 'C' (Debian bug  #270108)
 # 04/28/2004 jfs  Changed -f RCFILE check to -r to allow use through ssh
 #                 as suggested by Falk Siemonsmeier:
-#                  cat /etc/tigris/tigris.conf | ssh tiger -c /dev/stdin
+#                  cat /etc/tiger/tigerrc | ssh tiger -c /dev/stdin
 # 01/13/2004 jfs  Added check when running with -f since on some (unconfigured)
 #		  systems this might fail.
 # 08/19/2003 jfs  tara -> Tiger in the usage
@@ -51,7 +51,7 @@
 # 04/21/2003 jfs  Modified to only use hostname -f for Linux _and_
 #		  moved hostname check after RCFILE parsing!
 # 04/15/2003 jfs  Modified to support -B to work in the local dir 
-# 04/29/93 dls  Added support for 'tigris.conf' file.
+# 04/29/93 dls  Added support for 'tigerrc' file.
 #
 #-----------------------------------------------------------------------------
 #
@@ -599,7 +599,7 @@ tigris_readconf()
     for file in '/etc/tigris/tigerrc' '/etc/tigris/tigris.conf' '/usr/local/etc/tigerrc' '/usr/local/etc/tigris.conf' './.tigerrc' './.tigris.conf' './tigerrc' './tigris.conf' '$BASEDIR/tigerrc' '$BASEDIR/tigris.conf' '$HOME/.tigerrc' '$HOME/.tigris.conf'
   # TODO: Check with ARSC if there is a preference on their behalf
   # for this ordering since Tara 3.0.3 uses
-  # for file in './.tigris.conf' './tigris.conf' '$HOME/.tigris.conf' '$BASEDIR/tigris.conf'
+  # for file in './.tigerrc' './tigerrc' '$HOME/.tigerrc' '$BASEDIR/tigerrc'
     do
       eval rc=$file
       # the rejected preset again, under another name: said once

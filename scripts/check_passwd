@@ -51,11 +51,11 @@
 # 01/21/2004 jfs Moved comment from check_accounts to here and expanded
 #       shell list definition to be equivalent to the one there.
 # 03/03/2004 jfs Check if users do not have a shell defined
-# 05/03/2004 jfs Define Tigris_Passwd_Hashes if not defined (Debian bug #246885)
+# 05/03/2004 jfs Define Tiger_Passwd_Hashes if not defined (Debian bug #246885)
 # 12/27/2004 jfs Delete temporary passwd files only on exit (Debian bug #284899)
 # 03/31/2005 jfs Recognise old xxxxxxxxxxxxx as a valid password hash
 #                Add /bin/true as valid shell as well as Solaris shells
-# 05/20/2006 jfs Add quotation marks to Tigris_Admin_Accounts to prevent
+# 05/20/2006 jfs Add quotation marks to Tiger_Admin_Accounts to prevent
 #                errors if empty (Debian bug #342181)
 # 01/09/2013 jfs Added /usr/sbin/nologin to list of valid nologin shells
 #               (Debian bug #734775, #717218)

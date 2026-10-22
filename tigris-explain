@@ -15,13 +15,13 @@
 #
 #     Please see the file `COPYING' for the complete copyright notice.
 #
-# tigris-explain  - 06/13/93
-# tigris-explain  - 05/23/2003 - changed so that it is managed by autoconf
-# tigris-explain  - 11/27/2008 - Proper handling of errors and existance (or
+# tigexp  - 06/13/93
+# tigexp  - 05/23/2003 - changed so that it is managed by autoconf
+# tigexp  - 11/27/2008 - Proper handling of errors and existance (or
 #                        lack of) idx file. Also, regenerate the index
 #                        file only if running as root.
-# tigris-explain  - 04/25/2009 - proper wording for error messages
-# tigris-explain  - 10/07/2026 - atrimbitas - Explanations are read from meta/<id>,
+# tigexp  - 04/25/2009 - proper wording for error messages
+# tigexp  - 10/07/2026 - atrimbitas - Explanations are read from meta/<id>,
 #                        one file per finding id with its severity,
 #                        category and the checks that report it, instead
 #                        of doc/*.txt through an index that had to be

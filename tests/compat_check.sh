@@ -173,6 +173,19 @@ printf 'basedir=$TIGERHOMEDIR\n. $basedir/config\necho "OLD=${__old-unset} NEW=$
 grep -q '^OLD=unset NEW=unset SH=unset$' "$W/out" &&
   ok "the shim unsets its loop variables" || { bad "shim leaks"; grep '^OLD=' "$W/out"; }
 
+# a run with the scan off names the setting as the file that turned it
+# off spells it, and that file
+sed 's/^\(Tigris_\(Check\|Run\|Deb\)_[A-Za-z0-9_]*\)=.*/\1=N/; s/^Tigris_/Tiger_/' "$TIGER/tigris.conf" > "$W/old.conf"
+chmod 600 "$W/old.conf"
+( cd "$W" && sh ./tigris -c old.conf ) > "$W/out" 2>&1
+grep -q 'Filesystem scan not run (Tiger_Check_FILESYSTEM=N in old.conf)' "$W/out" &&
+  ok "the scan-off line says Tiger_Check_FILESYSTEM for a file that does" || { bad "scan-off line"; grep 'Filesystem scan' "$W/out"; }
+sed 's/^\(Tigris_\(Check\|Run\|Deb\)_[A-Za-z0-9_]*\)=.*/\1=N/; s/^Tigris_Check_FILESYSTEM=.*/Tigris_Check_FILESYSTEM=Y/' "$TIGER/tigris.conf" > "$W/new.conf"
+chmod 600 "$W/new.conf"
+( cd "$W" && sh ./tigris -c new.conf --profile quick ) > "$W/out" 2>&1
+grep -q 'Filesystem scan not run (Tigris_Check_FILESYSTEM=N in \./profiles/quick)' "$W/out" &&
+  ok "... and names the profile when the profile turned it off" || { bad "scan-off line with a profile"; grep 'Filesystem scan' "$W/out"; }
+
 # /etc/tiger is never searched: no Tigris package used it, and beside
 # the distribution's tiger its tigerrc is that package's
 ! grep -q "'/etc/tiger/" "$TIGER/config" &&
@@ -202,25 +215,59 @@ grep -q 'Severity:' "$W/out" &&
 grep -q -- '--with-tigerconfig=/etc/tiger ' "$TIGER/debian/rules" && ! grep -rq '/etc/tigris' "$TIGER/debian" &&
   ok "debian/ keeps /etc/tiger" || bad "debian/ names /etc/tigris: `grep -rl '/etc/tigris' \"$TIGER/debian\" | head -3`"
 
+# TIGER's RPM spec (tiger.spec, the tiger package) keeps /etc/tiger too,
+# and installs tiger.ignore where the run reads it: in each
+# configuration directory it configures
+sp="$TIGER/tiger.spec"; spok=Y
+for d in `sed -n 's/.*--with-tigerconfig=\([^ ]*\).*/\1/p' "$sp"`
+do
+  grep -q "debian.ignore \${DESTDIR}$d/tiger.ignore\$" "$sp" || spok="$d"
+done
+[ "$spok" = Y ] && ! grep -q '/etc/tigris' "$sp" &&
+  ok "tiger.spec keeps /etc/tiger and puts tiger.ignore in its configuration directories" || bad "tiger.spec: tiger.ignore is not in $spok, or it names /etc/tigris"
+
+# every setting a finding's explanation names is one Tigris reads (the
+# rename carried two that never existed: Check_ISSUE, Check_PATCHES)
+missing=
+for n in `cat "$TIGER"/meta/* | grep -o 'Tigris_[A-Za-z0-9_]*' | sort -u`
+do
+  ( cd "$TIGER" && grep -rqw -- "$n" tiger config initdefs scripts systems util ) || missing="$missing $n"
+done
+[ -z "$missing" ] && ok "every setting meta/ names is read by the code" || bad "meta/ names settings nothing reads:$missing"
+
 # nothing else still says the old names: code, shipped configuration,
 # tests and metadata use the new ones, except the shims themselves, the
 # old-report fixtures, make install's and install_check's upgrade legs,
 # and this suite. debian/ is TIGER's Debian packaging, the tiger
 # package's own /etc/tiger and tigerrc: not searched.
 D='systems scripts tiger tigercron tigris-diff tigris-accept tigris-explain config initdefs util profiles tigris.conf tigris-quick.conf tests meta Makefile.in configure configure.in install.sh cronrc packaging .github tigris.spec Dockerfile check.d site-sample site-saturn'
-( cd "$TIGER" && grep -rln 'Tiger_[A-Za-z0-9]\|Tiger[A-Z]' $D 2>/dev/null ) > "$W/vars.txt"
+# The history is exempt: the dated change notes in the file headers, and
+# three undated lines as old, name things as they were called then.
+history() {
+  grep -v -e '^Binary' -e '^[^:]*:[0-9]*:[[:space:]]*#.*[0-9][0-9]*/[0-9][0-9]*/[0-9][0-9]' \
+    -e 'cat /etc/tiger/tigerrc | ssh tiger -c' -e 'TARA calls this script with Tiger_Check_ROOT' \
+    -e "# for file in './.tigerrc' './tigerrc'" | sed 's/:.*//' | sort -u
+}
+( cd "$TIGER" && grep -rn 'Tiger_[A-Za-z0-9]\|Tiger[A-Z]' $D 2>/dev/null ) | history > "$W/vars.txt"
 left=`grep -v -x -e config -e tests/compat_check.sh -e tests/install_check.sh "$W/vars.txt"`
 [ -z "$left" ] && ok "no Tiger_* stragglers outside the shim" || { bad "Tiger_ stragglers: $left"; }
-( cd "$TIGER" && grep -rln 'tigerrc' $D 2>/dev/null ) > "$W/rc.txt"
+( cd "$TIGER" && grep -rn 'tigerrc' $D 2>/dev/null ) | history > "$W/rc.txt"
 # the packages' upgrade from 3.x names the file it carries over
 left=`grep -v -x -e config -e tigris-accept -e Makefile.in -e meta/con020c -e profiles/quick -e tests/compat_check.sh -e tests/diff_check.sh -e tests/nonroot_check.sh -e tests/schema_check.sh -e tests/install_check.sh -e packaging/mkdeb.sh -e packaging/tigris.spec -e packaging/tigris.install -e packaging/tigris.post-upgrade -e packaging/README.md "$W/rc.txt"`
 [ -z "$left" ] && ok "no tigerrc stragglers outside the shims, old-report fixtures and package upgrades" || { bad "tigerrc stragglers: $left"; }
-( cd "$TIGER" && grep -rln '/etc/tiger' $D 2>/dev/null ) > "$W/etc.txt"
+( cd "$TIGER" && grep -rn '/etc/tiger' $D 2>/dev/null ) | history > "$W/etc.txt"
 left=`grep -v -x -e config -e tests/compat_check.sh -e tests/install_check.sh "$W/etc.txt"`
 [ -z "$left" ] && ok "no /etc/tiger stragglers outside the fallbacks" || { bad "/etc/tiger stragglers: $left"; }
-( cd "$TIGER" && grep -rn 'tigexp' $D 2>/dev/null ) | grep -v 'tigris-explain' | grep -v '^Binary' | sed 's/:.*//' | sort -u > "$W/exp.txt"
+( cd "$TIGER" && grep -rn 'tigexp' $D 2>/dev/null ) | grep -v 'tigris-explain' | history > "$W/exp.txt"
 left=`grep -v -x -e tests/compat_check.sh -e tests/install_check.sh "$W/exp.txt"`
 [ -z "$left" ] && ok "no bare tigexp outside this suite" || { bad "tigexp stragglers: $left"; }
+
+# ... and stays as it was: no change note older than the fork names a
+# 4.0 name
+( cd "$TIGER" && grep -rn '^[[:space:]]*#.*[0-9][0-9]*/[0-9][0-9]*/[0-9][0-9]' $D 2>/dev/null ) |
+  grep -v '/2026' | grep -e '^[^:]*:[0-9]*:.*Tigris_' -e '^[^:]*:[0-9]*:.*Tigris[A-Z]' -e '^[^:]*:[0-9]*:.*tigris\.conf' \
+    -e '^[^:]*:[0-9]*:.*tigris-explain' -e '^[^:]*:[0-9]*:.*/etc/tigris' > "$W/hist.txt"
+[ ! -s "$W/hist.txt" ] && ok "pre-fork change notes keep the names of their time" || { bad "change notes renamed:"; sed 's/^/     /' "$W/hist.txt" | head -5; }
 
 [ $fail -eq 0 ] && echo PASS || echo FAIL
 exit $fail

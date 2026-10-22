@@ -24,11 +24,11 @@
 #                the $OS/$REL/$ARCH
 #                Safer creation of the temporary file which includes the
 #                scripts' results.
-# 04/23/2003 jfs Sanity check for the existance of ctrfile, use TigrisConfigDir
+# 04/23/2003 jfs Sanity check for the existance of ctrfile, use TigerConfigDir
 #               instead of CONFIGDIR
 # 10/28/2002 jfs Added check of non-comments in output (only available if
 #                egrep is installed)
-# 07/25/2002 jfs Changed TigrisInstallDir to .
+# 07/25/2002 jfs Changed TigerInstallDir to .
 # 12/26/2001 jfs Modified to provide new ways to compare against previous
 #                runs: per policy (template) or per run.
 # 12/02/2001 jfs Fixed script to properly send out mails with valid

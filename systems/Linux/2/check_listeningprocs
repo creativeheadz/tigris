@@ -49,7 +49,7 @@
 #   use of NETSTAT and LSOF. Information gathered by both is piped to
 #   the same block to generated the report.
 #   Reordered changelog.
-# 04/23/2003 - jfs - Changed TigrisInstallDir to '.'
+# 04/23/2003 - jfs - Changed TigerInstallDir to '.'
 # 10/16/2002 - jfs - Changed the case statement into an eval in order
 #   to properly work for more than two processes or users
 #   (i.e. with "process1|process2")

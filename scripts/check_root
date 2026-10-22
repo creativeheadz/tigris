@@ -35,7 +35,7 @@
 #            and site configuration of the SSHD_CONFIG file location)
 # 05/26/2003 jfs Fixed calls to test (worked in Linux but not in other OS due
 #     to -n not being implicit)
-# 07/25/2002 jfs  Changed TigrisInstallDir to .
+# 07/25/2002 jfs  Changed TigerInstallDir to .
 # 05/30/1999  Added feature to check for no console root logins
 #
 # Tigris: offline

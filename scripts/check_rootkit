@@ -32,7 +32,7 @@
 #                               messages that netstat might output (See Debian
 #                               Bug 223847)
 # 08/31/2006            jfs     Fix typo in script
-# 08/30/2006            jfs     Introduce Tigris_CHKROOTKIT_ARGS so that 
+# 08/30/2006            jfs     Introduce Tiger_CHKROOTKIT_ARGS so that 
 #                               admins can ajust the behaviour of CHKROOTKIT
 #                               Output the lines of infected errors
 # 01/13/2004            jfs     Avoid which error on stdout if it's not found
