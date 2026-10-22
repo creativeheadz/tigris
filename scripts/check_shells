@@ -19,13 +19,19 @@
 #             startup (/etc/profile, /etc/profile.d, /etc/bashrc,
 #             /etc/bash.bashrc) or autologout in the C-shell startup
 #             (/etc/csh.login, /etc/csh.cshrc). None set anywhere is
-#             an idle session that never dies (shl001w); set is
+#             an idle session that never dies (shl001i); set is
 #             inventoried with its values (shl002i). A zero disables,
 #             like being unset. Only the system files are read: what
 #             users set in their own dotfiles is their business.
 #
 # 10/16/2026 - Initial version. Presence only: any positive timeout
 #             counts, and the value is reported for the assessor.
+# 10/22/2026 - No timeout is INFO (shl001i, was shl001w): no stock
+#             system sets one, and it is a site's policy, not a
+#             fault. A quoted value (TMOUT="900") counts; file names
+#             are read a line at a time, so one with a blank is one
+#             file, and reach awk through the environment, which
+#             does not read backslash escapes as -v does.
 #
 # References:
 #   bash(1), tcsh(1)
@@ -93,27 +99,30 @@ rootls /etc/profile.d 2>/dev/null | $GREP '\.sh$'; } | $SORT -u`
 echo
 echo "# Checking shell idle timeouts..."
 
-found=`for f in $files
+# (one name a line: a name with a blank in it is one file, not two
+# words, and the file name reaches awk through the environment)
+found=`printf '%s\n' "$files" | while IFS= read -r f
 do
-  $CAT "\`rootfile $f\`" 2>/dev/null | $AWK -v file="$f" '
+  [ -n "$f" ] || continue
+  $CAT "\`rootfile "$f"\`" 2>/dev/null | file="$f" $AWK '
     { sub(/#.*$/, "")
       line = tolower($0)
-      # TMOUT=600, TMOUT = 600, export TMOUT=600
+      # TMOUT=600, TMOUT = 600, export TMOUT=600, TMOUT="600"
       if (line ~ /(^|[^a-z_])tmout[ \t]*=/) {
-        v = line; sub(/^.*tmout[ \t]*=[ \t]*/, "", v); sub(/[^0-9].*$/, "", v)
-        if (v != "" && v + 0 > 0) print "TMOUT=" v " in " file
+        v = line; sub(/^.*tmout[ \t]*=[ \t]*/, "", v); sub(/^["\047]/, "", v); sub(/[^0-9].*$/, "", v)
+        if (v != "" && v + 0 > 0) print "TMOUT=" v " in " ENVIRON["file"]
       }
-      # set autologout=30, set autologout 30 (minutes)
+      # set autologout=30, set autologout 30 (minutes), set autologout="30"
       if (line ~ /(^|[^a-z_])autologout([ \t]*=[ \t]*|[ \t]+)/) {
-        v = line; sub(/^.*autologout([ \t]*=[ \t]*|[ \t]+)/, "", v); sub(/[^0-9].*$/, "", v)
-        if (v != "" && v + 0 > 0) print "autologout=" v " in " file
+        v = line; sub(/^.*autologout([ \t]*=[ \t]*|[ \t]+)/, "", v); sub(/^["\047]/, "", v); sub(/[^0-9].*$/, "", v)
+        if (v != "" && v + 0 > 0) print "autologout=" v " in " ENVIRON["file"]
       } }'
 done`
 
 if [ -z "$found" ]; then
-  message WARN shl001w "Set TMOUT in /etc/profile (TMOUT=600; readonly TMOUT; export TMOUT) and autologout in /etc/csh.login for the C shells." "No shell idle timeout is set: an idle session never dies, and whoever walks up to it is the user."
+  message INFO shl001i "Set TMOUT in /etc/profile (TMOUT=600; readonly TMOUT; export TMOUT) and autologout in /etc/csh.login for the C shells." "No shell idle timeout is set: an idle session never dies, and whoever walks up to it is the user."
 else
-  message INFO shl002i "" "Shell idle timeouts are set: `echo "$found" | $SORT -u | $AWK '{ printf "%s%s", (NR > 1 ? ", " : ""), $0 }'`."
+  message INFO shl002i "" "Shell idle timeouts are set: `printf '%s\n' "$found" | $SORT -u | $AWK '{ printf "%s%s", (NR > 1 ? ", " : ""), $0 }'`."
 fi
 
 exit 0

@@ -59,7 +59,7 @@ re-running the inventory and updating the counts below.
 | memory_processes | 5 | check_runprocs, check_finddeleted | prelink handled (Oct 2026: no longer called for checksums, no longer shipped); zombie/heavy-IO are informational (not judged) |
 | nameservices | 27 | check_dns (resolvers, unbound, BIND, PowerDNS dns008f) | verify hosts duplicates; NIS retired deliberately |
 | scheduling | 5 | check_crontabs, check_cron | verify `at` jobs coverage; DONE 2026-10-09: macOS half (tabs, periodic, full pathnames; cron008f/008w/009w/001w reused; orphans and at-allow cut) |
-| shells | 4 | login shells, umask in shell configs, idle killing (shl001w/002i TMOUT, autologout) | console TTYs (verify) |
+| shells | 4 | login shells, umask in shell configs, idle killing (shl001i/002i TMOUT, autologout) | console TTYs (verify) |
 
 ## N/A (2 files)
 

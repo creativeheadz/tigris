@@ -2,10 +2,12 @@
 #
 # tests/shells_check.sh - check_shells on offline roots
 #
-# Six roots: TMOUT in profile.d; autologout in csh.login; both,
+# Nine roots: TMOUT in profile.d; autologout in csh.login; both,
 # reported together; no timeout anywhere (a commented TMOUT does
-# not count); TMOUT=0, which disables; and an empty root, where no
-# startup files exist and nothing is said. INFO findings only show
+# not count), which is information, not a warning; TMOUT=0, which
+# disables; quoted values, which count; profile.d names with a
+# blank and with a backslash, each one file reported as named; and
+# an empty root, where no startup files exist and nothing is said. INFO findings only show
 # with Tigris_Show_INFO_Msgs=Y. Runs as a user and as root; the
 # fixtures read the same for both.
 #
@@ -34,7 +36,7 @@ printf 'TMOUT=600\nreadonly TMOUT\nexport TMOUT\n' > "$T/etc/profile.d/timeout.s
 run "$T" "$W/out"
 has '--INFO-- [shl002i]' "$W/out" &&
 has 'TMOUT=600 in /etc/profile.d/timeout.sh' "$W/out" &&
-! grep -q 'shl001w' "$W/out" &&
+! grep -q 'shl001' "$W/out" &&
   ok "TMOUT in profile.d: inventory with value" || { bad "tmout"; cat "$W/out"; }
 
 C=$W/csh; mkdir -p "$C/etc"
@@ -42,7 +44,7 @@ printf '# system profile\numask 022\n' > "$C/etc/profile"
 printf 'set autologout = 30\n' > "$C/etc/csh.login"
 run "$C" "$W/out"
 has 'autologout=30 in /etc/csh.login' "$W/out" &&
-! grep -q 'shl001w' "$W/out" &&
+! grep -q 'shl001' "$W/out" &&
   ok "autologout in csh.login: inventory" || { bad "csh"; cat "$W/out"; }
 
 B=$W/both; mkdir -p "$B/etc/profile.d"
@@ -58,15 +60,39 @@ has 'autologout=15 in /etc/csh.login' "$W/out" &&
 N=$W/none; mkdir -p "$N/etc"
 printf '# TMOUT=600 would go here\numask 022\n' > "$N/etc/profile"
 run "$N" "$W/out"
-has '--WARN-- [shl001w]' "$W/out" &&
-! grep -q 'shl002i' "$W/out" &&
-  ok "no timeout (commented one ignored): shl001w" || { bad "none"; cat "$W/out"; }
+has '--INFO-- [shl001i]' "$W/out" &&
+! grep -q 'shl002i\|WARN' "$W/out" &&
+  ok "no timeout (commented one ignored): shl001i, information only" || { bad "none"; cat "$W/out"; }
 
 Z=$W/zero; mkdir -p "$Z/etc"
 printf 'TMOUT=0\n' > "$Z/etc/profile"
 run "$Z" "$W/out"
-has '--WARN-- [shl001w]' "$W/out" &&
-  ok "TMOUT=0 disables: shl001w" || { bad "zero"; cat "$W/out"; }
+has '--INFO-- [shl001i]' "$W/out" &&
+  ok "TMOUT=0 disables: shl001i" || { bad "zero"; cat "$W/out"; }
+
+Q=$W/quoted; mkdir -p "$Q/etc/profile.d"
+printf 'umask 022\n' > "$Q/etc/profile"
+printf 'TMOUT="900"\nreadonly TMOUT\nexport TMOUT\n' > "$Q/etc/profile.d/tmout.sh"
+printf "set autologout='20'\n" > "$Q/etc/csh.login"
+run "$Q" "$W/out"
+has 'TMOUT=900 in /etc/profile.d/tmout.sh' "$W/out" &&
+has 'autologout=20 in /etc/csh.login' "$W/out" &&
+! grep -q 'shl001' "$W/out" &&
+  ok "quoted values count" || { bad "quoted"; cat "$W/out"; }
+
+# A name with a blank is one file, not two words (the second of
+# which, timeout.sh, would be read from the root's / instead); a
+# backslash in a name is shown as it is, not read as an escape
+S=$W/names; mkdir -p "$S/etc/profile.d"
+printf 'umask 022\n' > "$S/etc/profile"
+printf 'TMOUT=600\n' > "$S/etc/profile.d/my timeout.sh"
+printf 'TMOUT=777\n' > "$S/timeout.sh"
+printf 'TMOUT=300\n' > "$S/etc/profile.d/x\\101.sh"
+run "$S" "$W/out"
+has 'TMOUT=600 in /etc/profile.d/my timeout.sh' "$W/out" &&
+has 'TMOUT=300 in /etc/profile.d/x\101.sh' "$W/out" &&
+! grep -q '777\|xA\.sh' "$W/out" &&
+  ok "names with a blank or a backslash: one file each, named as they are" || { bad "names"; cat "$W/out"; }
 
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
