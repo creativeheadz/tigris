@@ -149,6 +149,38 @@ run "$K1" "$W/out"
 has '--WARN-- [upd008w] The apk package lists were last refreshed over 90 days ago' "$W/out" &&
   ok "lone dead APKINDEX: refresh, not stale" || { bad "apk1"; cat "$W/out"; }
 
+# an image's index that is a link is followed inside the image: one
+# pointing out of it (at a file of this host) is never read, one whose
+# absolute target is inside the image is read there
+mkdir -p "$W/hostside"
+release "$W/hostside/rel" HOST-SIDE-FILE host 'Tue, 16 Jun 2026 10:40:00 UTC' 'Wed, 17 Jun 2026 10:40:00 UTC'
+printf '<repomd><timestamp>1700000000</timestamp></repomd>\n' > "$W/hostside/repomd.xml"
+L=$W/links; mkdir -p "$L/etc" "$L/var/lib/apt/lists" "$L/srv/mirror" "$L/var/cache/dnf/x-0123456789abcdef/repodata"
+ln -s "$W/hostside/rel" "$L/var/lib/apt/lists/evil_example_com_dists_x_InRelease"
+ln -s "$W/hostside/repomd.xml" "$L/var/cache/dnf/x-0123456789abcdef/repodata/repomd.xml"
+release "$L/srv/mirror/rel" Inside inside 'Tue, 16 Jun 2026 10:40:00 UTC' 'Wed, 17 Jun 2026 10:40:00 UTC'
+ln -s /srv/mirror/rel "$L/var/lib/apt/lists/mirror_example_com_dists_x_InRelease"
+printf 'package list\n' > "$L/var/lib/apt/lists/mirror_example_com_Packages"
+run "$L" "$W/out"
+! grep -q 'HOST-SIDE-FILE' "$W/out" && ! grep -q "Repository 'x'" "$W/out" &&
+has '(from Inside) expired on 17 Jun 2026' "$W/out" &&
+  ok "linked indexes: read inside the root, never this host's" || { bad "links"; cat "$W/out"; }
+
+# names and fields are data: a backslash in a list file's or a cache
+# directory's name is not an escape, and a Release with no Origin or
+# Suite (apt-ftparchive's default) keeps every other field in place
+N=$W/names; mkdir -p "$N/etc/yum.repos.d" "$N/var/lib/apt/lists" "$N/var/cache/dnf/my\\101repo-0123456789abcdef/repodata"
+printf 'Date: Tue, 16 Jun 2026 10:40:00 UTC\n' > "$N/var/lib/apt/lists/repo.ex\\101mple.org_x_dists_stable_InRelease"
+touch -t 202001010000 "$N/var/lib/apt/lists/repo.ex\\101mple.org_x_dists_stable_InRelease"
+printf 'Date: Tue, 16 Jun 2026 10:40:00 UTC\n' > "$N/var/lib/apt/lists/fresh.example.org_x_dists_stable_InRelease"
+printf '[myArepo]\nbaseurl=https://wrong.example.com/\n[my\\101repo]\nbaseurl=https://right.example.com/\n' > "$N/etc/yum.repos.d/x.repo"
+printf '<repomd><timestamp>1781606400</timestamp></repomd>\n' > "$N/var/cache/dnf/my\\101repo-0123456789abcdef/repodata/repomd.xml"
+run "$N" "$W/out"
+has '`/var/lib/apt/lists/repo.ex\101mple.org_x_dists_stable_InRelease'"'"' (from repo.ex\101mple.org/x) published 120 days ago (dated 16 Jun 2026)' "$W/out" &&
+! grep -q 'fresh.example.org' "$W/out" &&
+has "Repository 'my\\101repo' (https://right.example.com/)" "$W/out" &&
+  ok "names are data, empty fields stay put" || { bad "names"; cat "$W/out"; }
+
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
 [ -s "$W/out" ] && { bad "empty"; cat "$W/out"; } ||

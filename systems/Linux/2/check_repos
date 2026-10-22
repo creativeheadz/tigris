@@ -42,6 +42,10 @@
 # 10/16/2026 - Initial version. apt (Date, Valid-Until, refresh),
 #             dnf and zypper (repomd, refresh), pacman and apk
 #             (mtime-gated, refresh).
+# 10/22/2026 - Every index is read where rootpaths finds it inside the
+#             root (a linked list or repomd.xml was followed onto this
+#             host); names reach awk through ENVIRON or not at all;
+#             records are US-separated, so an empty field holds.
 #
 # References:
 #   sources.list(5), dnf(8), zypper(8), pacman.conf(5), apk(8)
@@ -103,36 +107,71 @@ now=${Tigris_Repos_Now:-`date +%s`}
 case "$now" in *[!0-9]*|"") now=`date +%s` ;; esac
 nowdays=`expr $now / 86400`
 
-# repourl ID: the first baseurl, metalink or mirrorlist for a yum or
-# zypper repository id, from its .repo file
-repourl()
+# The records below join their fields with US (\037), which IFS does
+# not count as white space: an empty field stays empty instead of
+# letting the next one slide into its place, as a tab let it. A name
+# holding US or a tab is left out, and the text read from an index
+# has them turned into blanks, so no field can split.
+US=`printf '\037'`
+TAB='	'
+
+stale=$WORKDIR/repostale.$$
+expired=$WORKDIR/repoexpired.$$
+alist=$WORKDIR/repoalist.$$
+hlist=$WORKDIR/repohlist.$$
+repomap=$WORKDIR/repomap.$$
+rrec=$WORKDIR/reporrec.$$
+safe_temp $stale $expired $alist $hlist $repomap $rrec
+trap 'delete $stale $expired $alist $hlist $repomap $rrec; exit 1' 1 2 3 15
+: > $stale; : > $expired
+
+# indexes: the audited system's index paths on standard input go to
+# $alist, and where rootpaths finds each inside the root to $hlist,
+# line for line. Every index is read through $hlist, so a link in an
+# image's lists or caches is followed the way that system would
+# follow it, never onto this host.
+indexes()
 {
-  for __rf in `rootls /etc/yum.repos.d 2>/dev/null` `rootls /etc/zypp/repos.d 2>/dev/null`
+  while IFS= read -r __e
   do
-    case "$__rf" in *.repo) ;; *) continue ;; esac
-    __u=`$AWK -v id="$1" '
-      /^\[.*\]$/ { cur = $0; gsub(/^\[|\]$/, "", cur) }
-      cur == id && /^[ \t]*(baseurl|metalink|mirrorlist)[ \t]*=/ {
-        sub(/^[^=]*=[ \t]*/, ""); sub(/[ \t]+.*$/, ""); print; exit }' "\`rootfile "$__rf"\`" 2>/dev/null`
-    [ -n "$__u" ] && { echo "$__u"; return 0; }
-  done
-  return 1
+    case "$__e" in *"$US"*|*"$TAB"*) continue ;; esac
+    printf '%s\n' "$__e"
+  done > $alist
+  rootpaths < $alist > $hlist
 }
+
+# repomap: "ID US URL" for each section of each .repo file (yum's and
+# zypper's), its first baseurl, metalink or mirrorlist, read inside
+# the root
+{ rootls /etc/yum.repos.d; rootls /etc/zypp/repos.d; } 2>/dev/null | while IFS= read -r __rf
+do
+  case "$__rf" in *.repo) ;; *) continue ;; esac
+  __h=`rootfile "$__rf"`
+  [ -n "$__h" ] && [ -f "$__h" ] || continue
+  $AWK '
+    BEGIN { us = sprintf("%c", 31) }
+    /^\[.*\]$/ { cur = $0; gsub(/^\[|\]$/, "", cur); got = 0; next }
+    cur != "" && !got && /^[ \t]*(baseurl|metalink|mirrorlist)[ \t]*=/ {
+      v = $0; sub(/^[^=]*=[ \t]*/, "", v); sub(/[ \t]+.*$/, "", v); got = 1
+      if (v != "" && index(cur, us) == 0 && index(v, us) == 0) print cur us v
+    }' < "$__h" 2>/dev/null
+done > $repomap
 
 # pacmanurl REPO: the first Server for a pacman repository, following
 # one Include into its mirrorlist
 pacmanurl()
 {
   __c=`rootfile /etc/pacman.conf`
-  [ -f "$__c" ] || return 1
-  __v=`$AWK -v repo="$1" '
+  [ -n "$__c" ] && [ -f "$__c" ] || return 1
+  __v=`TIGRIS_PACMAN_REPO=$1 $AWK '
+    BEGIN { repo = ENVIRON["TIGRIS_PACMAN_REPO"] }
     /^\[.*\]$/ { cur = $0; gsub(/^\[|\]$/, "", cur); next }
     cur == repo && /^[ \t]*Server[ \t]*=/ { sub(/^[^=]*=[ \t]*/, ""); print; exit }
-    cur == repo && /^[ \t]*Include[ \t]*=/ { sub(/^[^=]*=[ \t]*/, ""); print "INCLUDE:" $0; exit }' "$__c" 2>/dev/null`
+    cur == repo && /^[ \t]*Include[ \t]*=/ { sub(/^[^=]*=[ \t]*/, ""); print "INCLUDE:" $0; exit }' < "$__c" 2>/dev/null`
   case "$__v" in
     INCLUDE:*)
       __m=`rootfile "${__v#INCLUDE:}"`
-      [ -f "$__m" ] && $SED -n 's/^[ \t]*Server[ \t]*=[ \t]*//p' "$__m" 2>/dev/null | $SED -n 1p ;;
+      [ -n "$__m" ] && [ -f "$__m" ] && $SED -n 's/^[ \t]*Server[ \t]*=[ \t]*//p' "$__m" 2>/dev/null | $SED -n 1p ;;
     *) [ -n "$__v" ] && echo "$__v" ;;
   esac
   return 0
@@ -160,12 +199,6 @@ function date_age(str,   n, w, i, dd, mon, yyyy, m) {
   return nowdays - ymd_to_days(yyyy, m, dd)
 }'
 
-stale=$WORKDIR/repostale.$$
-expired=$WORKDIR/repoexpired.$$
-safe_temp $stale $expired
-trap 'delete $stale $expired; exit 1' 1 2 3 15
-: > $stale; : > $expired
-
 echo
 echo "# Checking package sources (stale, expired, unrefreshed)..."
 
@@ -173,38 +206,36 @@ echo "# Checking package sources (stale, expired, unrefreshed)..."
 # apt: Date, Valid-Until and refresh, from the lists on disk
 #
 lists=`rootfile /var/lib/apt/lists`
-if [ -d "$lists" ]; then
+if [ -n "$lists" ] && [ -d "$lists" ]; then
   if [ -z "`$FIND "$lists" -type f ! -path "$lists/partial/*" -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ]; then
     message WARN upd008w "Run 'apt update'." "The apt package lists were last refreshed over $MaxAge days ago (nothing newer under /var/lib/apt/lists): install nothing from them until they are."
   fi
-  for idx in "$lists"/*_InRelease "$lists"/*_Release
+  rootls /var/lib/apt/lists 2>/dev/null | $SED -n '/_InRelease$/p; /_Release$/p' | indexes
+  while IFS= read -r sysf && IFS= read -r idx <&3
   do
-    [ -f "$idx" ] || continue
-    base=${idx##*/}
-    sysf=/var/lib/apt/lists/$base
-    key=$base
+    [ -n "$idx" ] && [ -f "$idx" ] || continue
+    key=${sysf##*/}
     case "$key" in *_InRelease) key=${key%_InRelease};; *_Release) key=${key%_Release};; *) continue;; esac
     case "$key" in *_dists_*) key=${key%_dists_*};; esac
     url=`printf '%s' "$key" | $SED 's/_/\//g'`
     if [ -n "`$FIND "$idx" -mtime -$MaxAge 2>/dev/null`" ]; then isfresh=1; else isfresh=0; fi
-    $AWK -v nowdays=$nowdays -v fresh=$isfresh -v key="$key" -v url="$url" -v sysf="$sysf" "$datelib"'
+    # what the file says, and nothing of where it is: the names stay
+    # in the shell
+    rec=`$AWK -v nowdays=$nowdays "$datelib"'
+    function field(s) { s = substr(s, index(s, ":") + 1); gsub(/^[ \t]+|[ \t]+$/, "", s); gsub(/\t/, " ", s); gsub(us, " ", s); return s }
+    BEGIN { us = sprintf("%c", 31); pub = -1; vu = -1; origin = ""; suite = "" }
     /^[Dd]ate:/ { pub = date_age(substr($0, index($0, ":") + 1)); pubdate = _datestr }
     /^[Vv]alid-[Uu]ntil:/ { vu = date_age(substr($0, index($0, ":") + 1)); vudate = _datestr }
-    /^[Oo]rigin:/ { origin = substr($0, index($0, ":") + 1); gsub(/^[ \t]+|[ \t]+$/, "", origin) }
-    /^[Ss]uite:/ { suite = substr($0, index($0, ":") + 1); gsub(/^[ \t]+|[ \t]+$/, "", suite) }
-    /^[Cc]odename:/ { if (suite == "") { suite = substr($0, index($0, ":") + 1); gsub(/^[ \t]+|[ \t]+$/, "", suite) } }
-    BEGIN { pub = -1; vu = -1; origin = ""; suite = "" }
-    END {
-      if (pub >= 0) printf "PUB\t%s\t%d\t%s\t%s\t%s\t%s\t%d\n", key, pub, origin, suite, sysf, pubdate, fresh
-      if (vu > 0) printf "EXP\t%s\t%s\t%s\t%s\t%d\n", key, vudate, sysf, origin, vu
-    }' "$idx" 2>/dev/null | while IFS='	' read -r tag a b c d e f g
-    do
-      case "$tag" in
-        PUB) printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$a" "$b" "$c" "$d" "$e" "$f" "$g" "$url" >> $stale ;;
-        EXP) printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$a" "$b" "$c" "$d" "$e" "$url" >> $expired ;;
-      esac
-    done
-  done
+    /^[Oo]rigin:/ { origin = field($0) }
+    /^[Ss]uite:/ { suite = field($0) }
+    /^[Cc]odename:/ { if (suite == "") suite = field($0) }
+    END { print pub us pubdate us vu us vudate us origin us suite }' < "$idx" 2>/dev/null`
+    IFS=$US read -r pub pubdate vu vudate origin suite <<EOF
+$rec
+EOF
+    case "$pub" in -*|"") ;; *) printf '%s\n' "$key$US$pub$US$origin$US$suite$US$sysf$US$pubdate$US$isfresh$US$url" >> $stale ;; esac
+    case "$vu" in -*|0|"") ;; *) printf '%s\n' "$key$US$vudate$US$sysf$US$origin$US$vu$US$url" >> $expired ;; esac
+  done < $alist 3< $hlist
 fi
 
 #
@@ -212,36 +243,42 @@ fi
 #
 for cache in /var/cache/dnf /var/cache/zypp/raw
 do
-  dhere=`rootfile $cache`
-  repomds=
-  [ -d "$dhere" ] && repomds=`$FIND "$dhere" -name repomd.xml 2>/dev/null`
   case "$cache" in
     /var/cache/dnf) rdir=/etc/yum.repos.d; mgr="dnf"; refresher="dnf makecache" ;;
     *) rdir=/etc/zypp/repos.d; mgr="zypper"; refresher="zypper refresh" ;;
   esac
-  haveconf=
-  for rf in `rootls $rdir 2>/dev/null`
+  dhere=`rootfile $cache`
+  : > $alist; : > $hlist
+  if [ -n "$dhere" ] && [ -d "$dhere" ]; then
+    $FIND "$dhere" -name repomd.xml 2>/dev/null | while IFS= read -r p
+    do
+      printf '%s\n' "$cache/${p#"$dhere"/}"
+    done | indexes
+  fi
+  haveconf=`rootls $rdir 2>/dev/null | $SED -n '/\.repo$/{p;q;}'`
+  { [ -s $alist ] || [ -n "$haveconf" ]; } || continue
+  : > $rrec
+  while IFS= read -r sysf && IFS= read -r repomd <&3
   do
-    case "$rf" in *.repo) haveconf=1; break ;; esac
-  done
-  { [ -n "$repomds" ] || [ -n "$haveconf" ]; } || continue
-  if [ -z "`$FIND "$dhere" -name repomd.xml -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ]; then
+    [ -n "$repomd" ] && [ -f "$repomd" ] || continue
+    [ -n "`$FIND "$repomd" -mtime -$MaxAge 2>/dev/null`" ] && echo fresh >> $rrec
+  done < $alist 3< $hlist
+  if [ ! -s $rrec ]; then
     message WARN upd008w "Run '$refresher'." "The $mgr package lists were last refreshed over $MaxAge days ago: install nothing from them until they are."
   fi
-  for repomd in $repomds
+  while IFS= read -r sysf && IFS= read -r repomd <&3
   do
-    rd=${repomd%/repomd.xml}; rd=${rd%/repodata}; rb=${rd##*/}
-    id=$rb
-    [ "$mgr" = dnf ] && case "$rb" in *-????????????????) id=${rb%-????????????????};; esac
+    [ -n "$repomd" ] && [ -f "$repomd" ] || continue
+    rd=${sysf%/repomd.xml}; rd=${rd%/repodata}; id=${rd##*/}
+    [ "$mgr" = dnf ] && case "$id" in *-????????????????) id=${id%-????????????????};; esac
     ts=`$SED -n 's/.*<timestamp>\([0-9][0-9]*\)<.*/\1/p' "$repomd" 2>/dev/null | $SED -n 1p`
     case "$ts" in *[!0-9]*|"") continue ;; esac
     age=`expr \( $now - $ts \) / 86400`
-    sysf=$cache/${repomd#$dhere/}
-    url=`repourl "$id"` || url=
+    url=`TIGRIS_REPO_ID=$id $AWK -F"$US" '$1 == ENVIRON["TIGRIS_REPO_ID"] { print $2; exit }' $repomap`
     [ -n "$url" ] || url="see $rdir"
     [ "$age" -gt "$MaxAge" ] &&
       message WARN upd007w "Drop the repo or fix its URL in $rdir." "Repository '$id' ($url) published $age days ago ($sysf): it may have moved or died."
-  done
+  done < $alist 3< $hlist
 done
 
 #
@@ -287,7 +324,13 @@ fi
 #
 # apt, grouped: each repository judged by its newest suite
 #
-$AWK -F'\t' '{ k = $1; if (!(k in best) || $2 < best[k]) { best[k] = $2; bl[k] = $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $8 } if (!(k in fr)) fr[k] = 0; if ($7 > fr[k]) fr[k] = $7 } END { for (k in bl) print fr[k] "\t" bl[k] }' $stale 2>/dev/null | $SORT | while IFS='	' read -r new key age origin suite sysf datestr url
+$AWK -F"$US" '
+  BEGIN { us = sprintf("%c", 31) }
+  { k = $1; a = $2 + 0
+    if (!(k in best) || a < best[k]) { best[k] = a; bl[k] = $1 us $2 us $3 us $4 us $5 us $6 us $8 }
+    if (!(k in fr)) fr[k] = 0
+    if ($7 + 0 > fr[k]) fr[k] = $7 + 0 }
+  END { for (k in bl) print fr[k] us bl[k] }' $stale 2>/dev/null | $SORT | while IFS=$US read -r new key age origin suite sysf datestr url
 do
   [ -n "$key" ] || continue
   { [ "$age" -gt "$MaxAge" ] && [ "$new" = 0 ]; } || continue
@@ -300,7 +343,10 @@ done
 #
 # apt, expired: each repository once, on its oldest expiry
 #
-$AWK -F'\t' '{ n[$1]++; if (!($1 in first) || $5 > firstage[$1]) { first[$1] = $0; firstage[$1] = $5 } } END { for (k in first) print n[k] "\t" first[k] }' $expired 2>/dev/null | $SORT | while IFS='	' read -r count key datestr sysf origin age url
+$AWK -F"$US" '
+  BEGIN { us = sprintf("%c", 31) }
+  { n[$1]++; if (!($1 in first) || $5 + 0 > firstage[$1]) { first[$1] = $0; firstage[$1] = $5 + 0 } }
+  END { for (k in first) print n[k] us first[k] }' $expired 2>/dev/null | $SORT | while IFS=$US read -r count key datestr sysf origin age url
 do
   [ -n "$key" ] || continue
   [ -n "$origin" ] && src=$origin || src=$url
@@ -311,5 +357,5 @@ do
   fi
 done
 
-delete $stale $expired
+delete $stale $expired $alist $hlist $repomap $rrec
 exit 0
