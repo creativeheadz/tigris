@@ -213,8 +213,8 @@ do
     code = $0; sub(/#.*/, "", code)
     tag = code; sub(/^[ \t]+/, "", tag)
     if (tag ~ /^</) {
-      closing = (tag ~ /^<[ \t]*[/]/)
-      t = tag; sub(/^<[ \t]*[/]?/, "", t); sub(/[ \t>].*$/, "", t); t = tolower(t)
+      closing = (tag ~ /^<[ \t]*\//)
+      t = tag; sub(/^<[ \t]*\/?/, "", t); sub(/[ \t>].*$/, "", t); t = tolower(t)
       if (t == "requireall" || t == "requireany" || t == "requirenone") next
       if (closing) {
         if (d > 0 && btype[d] == t) {
