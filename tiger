@@ -231,6 +231,11 @@ if use_colour; then printf '\033[1m%s\033[0m\n' "$banner"; else printf '%s\n' "$
   [ -n "$TIGRIS_ROOT" ] && {
     echo "# Auditing the system in $TIGRIS_ROOT, which is not running: its files are read from ${HOSTNAME}, with ${HOSTNAME}'s tools, and checks of a running system are skipped." >> $logtmp
   }
+  # two configuration files side by side (config says so on the terminal,
+  # unless -q): said here too, where a cron run's reader looks
+  [ -n "$rcother" ] && {
+    echo "# $RCFILE is read and $rcother beside it is not (con020c): merge what you want to keep into one of them and remove the other." >> $logtmp
+  }
   # The same findings as JSON Lines, next to the text report
   [ "$Tigris_Output_JSON" != 'N' ] && {
     Tigris_JSON_File="${LOGDIR%/}/security.report.${HOSTNAME}.$datestamp.jsonl"

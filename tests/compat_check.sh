@@ -20,6 +20,9 @@ W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
+# as root, the tree must be root's for Tigris to run its scripts (a
+# container extracts the copy with the checkout owner's uid)
+[ "`id -u`" = 0 ] && chown -R 0:0 "$W"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -124,6 +127,27 @@ run "$W/out"
 ! grep -q 'upd007w' "$W/out" &&
   ok "tigerrc beside tigris.conf: the old file wins" || { bad "old file does not win"; grep '^--' "$W/out" | head -3; }
 
+# ... and says so (con020c), naming the file read and the one that is
+# not; -q keeps it off the terminal, and the report has it either way
+printf 'basedir=$TIGERHOMEDIR\n. $basedir/config\n' > "$W/drive.sh"
+( cd "$W" && TIGERHOMEDIR=$W sh ./drive.sh ) > "$W/out" 2>&1
+grep -q -- '--CONFIG-- \[con020c\] \./tigerrc is read and \./tigris\.conf beside it is not' "$W/out" &&
+  ok "both in one directory: con020c names the file read and the other" || { bad "no con020c"; grep '^--' "$W/out"; }
+( cd "$W" && TIGERHOMEDIR=$W sh ./drive.sh -q ) > "$W/out" 2>&1
+! grep -q 'con020c' "$W/out" &&
+  ok "con020c is not printed with -q" || bad "con020c printed with -q"
+sed 's/^\(Tigris_\(Check\|Run\|Deb\)_[A-Za-z0-9_]*\)=.*/\1=N/' "$TIGER/tigris.conf" > "$W/tigerrc"
+( cd "$W" && sh ./tigris -q ) > "$W/out" 2>&1
+rep=`ls -t "$W"/log/security.report.* 2>/dev/null | grep -v jsonl | head -1`
+[ -n "$rep" ] && grep -q '^# \./tigerrc is read and \./tigris\.conf beside it is not (con020c)' "$rep" &&
+  ok "a -q run puts con020c in the report" || { bad "con020c not in the report"; cat "$W/out"; }
+mv "$W/tigris.conf" "$W/tigris.conf.away"
+( cd "$W" && TIGERHOMEDIR=$W sh ./drive.sh ) > "$W/out" 2>&1
+! grep -q 'con020c' "$W/out" &&
+  ok "a tigerrc alone: no con020c" || bad "con020c without a second file"
+mv "$W/tigris.conf.away" "$W/tigris.conf"
+printf '# old name\nTigris_Repos_Now=1791974400\nTiger_Repos_MaxAge=200\n' > "$W/tigerrc"
+
 # a rejected preset falls through to an old name later in the search
 chmod 664 "$W/tigerrc"
 rm "$W/tigris.conf"
@@ -181,7 +205,7 @@ left=`grep -v -x -e config -e tests/compat_check.sh "$W/vars.txt"`
 [ -z "$left" ] && ok "no Tiger_* stragglers outside the shim" || { bad "Tiger_ stragglers: $left"; }
 ( cd "$TIGER" && grep -rln 'tigerrc' $D 2>/dev/null ) | grep -v '^debian/changelog$' > "$W/rc.txt"
 # the packages' upgrade from 3.x names the file it carries over
-left=`grep -v -x -e config -e tigris-accept -e profiles/quick -e tests/compat_check.sh -e tests/diff_check.sh -e tests/nonroot_check.sh -e tests/schema_check.sh -e packaging/mkdeb.sh -e packaging/tigris.spec -e packaging/tigris.install -e packaging/tigris.post-upgrade -e packaging/README.md "$W/rc.txt"`
+left=`grep -v -x -e config -e tigris-accept -e meta/con020c -e profiles/quick -e tests/compat_check.sh -e tests/diff_check.sh -e tests/nonroot_check.sh -e tests/schema_check.sh -e packaging/mkdeb.sh -e packaging/tigris.spec -e packaging/tigris.install -e packaging/tigris.post-upgrade -e packaging/README.md "$W/rc.txt"`
 [ -z "$left" ] && ok "no tigerrc stragglers outside the shims, old-report fixtures and package upgrades" || { bad "tigerrc stragglers: $left"; }
 ( cd "$TIGER" && grep -rln '/etc/tiger' $D 2>/dev/null ) | grep -v '^debian/changelog$' > "$W/etc.txt"
 left=`grep -v -x -e config -e tests/compat_check.sh "$W/etc.txt"`

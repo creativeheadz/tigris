@@ -626,6 +626,25 @@ tigris_readconf()
     exit 1
   }
 
+  # Both names in one directory (a .deb upgraded from 3.9.0 keeps its
+  # tigerrc and gains a tigris.conf): one is read, the tigerrc unless it
+  # was not accepted, and edits to the other do nothing. Said, with what
+  # to do; tiger repeats it in the report, for runs that are -q.
+  rcother=
+  [ -n "$RCFILE" ] && [ "$RCFILE_GIVEN" != Y ] && {
+    case "$RCFILE" in */*) __rcdir=${RCFILE%/*} ;; *) __rcdir=. ;; esac
+    case "${RCFILE##*/}" in
+      tigerrc) rcother=$__rcdir/tigris.conf ;;
+      tigris.conf) rcother=$__rcdir/tigerrc ;;
+      .tigerrc) rcother=$__rcdir/.tigris.conf ;;
+      .tigris.conf) rcother=$__rcdir/.tigerrc ;;
+    esac
+    [ -n "$rcother" ] && [ -e "$rcother" ] || rcother=
+    unset __rcdir
+  }
+  [ -n "$rcother" ] && [ "$QUIET" != Y ] &&
+    echo "--CONFIG-- [con020c] $RCFILE is read and $rcother beside it is not: merge what you want to keep into one of them (tigris.conf is the name from 4.0 on) and remove the other."
+
   #
   # Preprocess the RC file, to export variables to environment (quoted
   # throughout: a path with a space failed the test unquoted, and the

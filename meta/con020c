@@ -1,0 +1,16 @@
+Id: con020c
+Severity: CONFIG
+Category: tigris
+Check: config tiger tigris
+Fix: Merge the settings you want to keep into tigris.conf and remove tigerrc (or keep tigerrc and remove tigris.conf).
+References: tigris(8)
+
+The configuration directory holds both tigerrc, the name before 4.0,
+and tigris.conf, and only one of them is read: the tigerrc, unless it
+was not accepted (con003c, con015c), in which case the tigris.conf.
+The old name wins so that an upgrade which installs a new tigris.conf
+beside a tigerrc the admin edited does not switch their settings back
+to the defaults; a .deb upgraded from 3.9.0 keeps /etc/tigris/tigerrc
+and adds /etc/tigris/tigris.conf, for instance. Edits to the file that
+is not read have no effect. Tiger_* settings copied from a tigerrc
+work in tigris.conf as they are.
