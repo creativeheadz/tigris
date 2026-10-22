@@ -9,4 +9,5 @@ Controls: CIS 7.3, 7.4; NIST SI-2; ISO 8.8; CE Security update management
 The package lists were last refreshed over Tigris_Repos_MaxAge
 days ago (90 by default): every update count and every staleness
 judgment reads stale data until they run again. Refresh them, on
-a timer if they keep lapsing.
+a timer if they keep lapsing. A manager with nothing cached at all,
+as in a container image built with its lists cleaned, is not judged.

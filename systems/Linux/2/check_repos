@@ -42,6 +42,8 @@
 # 10/16/2026 - Initial version. apt (Date, Valid-Until, refresh),
 #             dnf and zypper (repomd, refresh), pacman and apk
 #             (mtime-gated, refresh).
+# 10/22/2026 - No index at all (a container image) says nothing; dnf 5's
+#             /var/cache/libdnf5 is read beside dnf 4's cache.
 # 10/22/2026 - Every index is read where rootpaths finds it inside the
 #             root (a linked list or repomd.xml was followed onto this
 #             host); names reach awk through ENVIRON or not at all;
@@ -205,9 +207,11 @@ echo "# Checking package sources (stale, expired, unrefreshed)..."
 #
 # apt: Date, Valid-Until and refresh, from the lists on disk
 #
+# (no list at all, as in a container image, is no source to judge)
 lists=`rootfile /var/lib/apt/lists`
-if [ -n "$lists" ] && [ -d "$lists" ]; then
-  if [ -z "`$FIND "$lists" -type f ! -path "$lists/partial/*" -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ]; then
+if [ -n "$lists" ] && [ -d "$lists" ] &&
+   [ -n "`$FIND "$lists" -type f ! -name lock ! -path "$lists/partial/*" 2>/dev/null | $SED -n 1p`" ]; then
+  if [ -z "`$FIND "$lists" -type f ! -name lock ! -path "$lists/partial/*" -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ]; then
     message WARN upd008w "Run 'apt update'." "The apt package lists were last refreshed over $MaxAge days ago (nothing newer under /var/lib/apt/lists): install nothing from them until they are."
   fi
   rootls /var/lib/apt/lists 2>/dev/null | $SED -n '/_InRelease$/p; /_Release$/p' | indexes
@@ -239,24 +243,27 @@ EOF
 fi
 
 #
-# dnf and zypper: repomd timestamps and refresh
+# dnf and zypper: repomd timestamps and refresh. dnf 4 caches in
+# /var/cache/dnf, dnf 5 (Fedora 41 on) in /var/cache/libdnf5; a
+# manager with no repomd.xml cached at all (a container image, or
+# after a clean) has nothing to judge.
 #
-for cache in /var/cache/dnf /var/cache/zypp/raw
+for mgr in dnf zypper
 do
-  case "$cache" in
-    /var/cache/dnf) rdir=/etc/yum.repos.d; mgr="dnf"; refresher="dnf makecache" ;;
-    *) rdir=/etc/zypp/repos.d; mgr="zypper"; refresher="zypper refresh" ;;
+  case "$mgr" in
+    dnf) caches="/var/cache/dnf /var/cache/libdnf5"; rdir=/etc/yum.repos.d; refresher="dnf makecache" ;;
+    *) caches=/var/cache/zypp/raw; rdir=/etc/zypp/repos.d; refresher="zypper refresh" ;;
   esac
-  dhere=`rootfile $cache`
-  : > $alist; : > $hlist
-  if [ -n "$dhere" ] && [ -d "$dhere" ]; then
+  for cache in $caches
+  do
+    dhere=`rootfile $cache`
+    [ -n "$dhere" ] && [ -d "$dhere" ] || continue
     $FIND "$dhere" -name repomd.xml 2>/dev/null | while IFS= read -r p
     do
       printf '%s\n' "$cache/${p#"$dhere"/}"
-    done | indexes
-  fi
-  haveconf=`rootls $rdir 2>/dev/null | $SED -n '/\.repo$/{p;q;}'`
-  { [ -s $alist ] || [ -n "$haveconf" ]; } || continue
+    done
+  done | indexes
+  [ -s $alist ] || continue
   : > $rrec
   while IFS= read -r sysf && IFS= read -r repomd <&3
   do
@@ -285,7 +292,7 @@ done
 # pacman: sync databases, gated on refreshes running
 #
 syncd=`rootfile /var/lib/pacman/sync`
-if [ -d "$syncd" ] || [ -f "`rootfile /etc/pacman.conf`" ]; then
+if [ -n "$syncd" ] && [ -d "$syncd" ] && [ -n "`$FIND "$syncd" -name '*.db' 2>/dev/null | $SED -n 1p`" ]; then
   freshany=
   [ -n "`$FIND "$syncd" -name '*.db' -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ] && freshany=1
   if [ -z "$freshany" ]; then
@@ -306,7 +313,7 @@ fi
 # apk: APKINDEX files, gated on refreshes running
 #
 apkcache=`rootfile /var/cache/apk`
-if [ -d "$apkcache" ] || [ -f "`rootfile /etc/apk/repositories`" ]; then
+if [ -n "$apkcache" ] && [ -d "$apkcache" ] && [ -n "`$FIND "$apkcache" -name 'APKINDEX*' 2>/dev/null | $SED -n 1p`" ]; then
   freshany=
   [ -n "`$FIND "$apkcache" -name 'APKINDEX*' -mtime -$MaxAge 2>/dev/null | $SED -n 1p`" ] && freshany=1
   if [ -z "$freshany" ]; then

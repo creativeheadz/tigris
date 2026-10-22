@@ -181,6 +181,30 @@ has '`/var/lib/apt/lists/repo.ex\101mple.org_x_dists_stable_InRelease'"'"' (from
 has "Repository 'my\\101repo' (https://right.example.com/)" "$W/out" &&
   ok "names are data, empty fields stay put" || { bad "names"; cat "$W/out"; }
 
+# a stock container image: every manager configured, no index cached
+# (lists and caches cleaned at build), so there is nothing to judge
+I=$W/image; mkdir -p "$I/etc/yum.repos.d" "$I/etc/zypp/repos.d" "$I/etc/apk" "$I/var/lib/apt/lists/partial" \
+  "$I/var/cache/dnf" "$I/var/cache/libdnf5" "$I/var/cache/zypp/raw" "$I/var/lib/pacman/sync" "$I/var/cache/apk"
+: > "$I/var/lib/apt/lists/lock"; touch -t 202001010000 "$I/var/lib/apt/lists/lock"
+printf '[fedora]\nmetalink=https://mirrors.example.org/metalink?repo=fedora\n' > "$I/etc/yum.repos.d/fedora.repo"
+printf '[repo-oss]\nbaseurl=http://download.example.org/oss/\n' > "$I/etc/zypp/repos.d/repo-oss.repo"
+printf '[options]\n[core]\nServer = https://mirror.example.com/$repo/os/$arch\n' > "$I/etc/pacman.conf"
+printf 'https://alpine.example.com/v3.20/main\n' > "$I/etc/apk/repositories"
+run "$I" "$W/out"
+[ -s "$W/out" ] && { bad "image"; cat "$W/out"; } ||
+  ok "stock image, nothing cached: nothing said"
+
+# dnf 5 keeps its cache in /var/cache/libdnf5: read, and a fresh one is
+# a refresh
+D5=$W/dnf5; mkdir -p "$D5/etc/yum.repos.d" "$D5/var/cache/libdnf5/updates-0123456789abcdef/repodata" "$D5/var/cache/libdnf5/dead-abcdef0123456789/repodata"
+printf '<repomd><revision>2</revision><timestamp>1791110400</timestamp></repomd>\n' > "$D5/var/cache/libdnf5/updates-0123456789abcdef/repodata/repomd.xml"
+printf '<repomd><revision>1</revision><timestamp>1781606400</timestamp></repomd>\n' > "$D5/var/cache/libdnf5/dead-abcdef0123456789/repodata/repomd.xml"
+run "$D5" "$W/out"
+! grep -q 'upd008w' "$W/out" &&
+has "Repository 'dead' (see /etc/yum.repos.d) published 120 days ago (/var/cache/libdnf5/dead-abcdef0123456789/repodata/repomd.xml)" "$W/out" &&
+! grep -q "'updates'" "$W/out" &&
+  ok "dnf 5 cache read: refreshed, dead repo named" || { bad "dnf5"; cat "$W/out"; }
+
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
 [ -s "$W/out" ] && { bad "empty"; cat "$W/out"; } ||
