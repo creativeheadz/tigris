@@ -57,6 +57,14 @@
 #                 blacklists must cover uas too (USB3 sticks use it);
 #                 usbcore authorized_default=0 counts as no-USB
 #                 enforcement; a connected storage device is reported.
+# 10/22/2026 - authorized_default is the running kernel's (0, or 2 for
+#                 internal devices only), not modprobe.d's, which a
+#                 usbcore built into the kernel (Ubuntu's) never reads;
+#                 an offline root's boot command line is not read, so
+#                 there it is not credited. The connected device is
+#                 named by its product, which sysfs keeps on the
+#                 device, not on the interface. Mount points and swap
+#                 paths reach awk through the environment.
 #
 # Tigris: offline
 #   what the root sets up at boot: fstab, crypttab, sysctl.d,
@@ -124,30 +132,35 @@ usb_blocked()
       if ($2 == "uas") uas = 1 } END { exit !(stor && uas) }'
 }
 
-# usb_auth_default: whether new USB devices start unauthorized:
-# usbcore authorized_default is 0, live in sysfs or, for a root,
-# set for boot in its modprobe.d
+# usb_auth_default: whether new USB devices start unauthorized: the
+# running kernel's usbcore authorized_default is 0 (none) or 2
+# (internal devices only). sysfs holds what the kernel took, from its
+# command line or, for a usbcore module, from modprobe; modprobe.d
+# alone proves nothing, since a usbcore built into the kernel (as
+# Ubuntu builds it) never reads it. An offline root's boot command
+# line is not read, so there nothing is credited.
 usb_auth_default()
 {
-  if [ -n "$TIGRIS_ROOT" ]; then
-    { rootls /etc/modprobe.d; rootls /usr/lib/modprobe.d; rootls /lib/modprobe.d; } | $GREP '\.conf$' | rootcat 2>/dev/null |
-      $AWK '!/^[ \t]*#/ && $1 == "options" && $2 == "usbcore" {
-        for (i = 3; i <= NF; i++) if ($i == "authorized_default=0") { y = 1 } } END { exit !y }'
-  else
-    [ "`$CAT "$root/sys/module/usbcore/parameters/authorized_default" 2>/dev/null`" = 0 ]
-  fi
+  [ -n "$TIGRIS_ROOT" ] && return 1
+  case "`$CAT "$root/sys/module/usbcore/parameters/authorized_default" 2>/dev/null`" in
+    0|2) return 0 ;;
+  esac
+  return 1
 }
 
 # usb_storage_connected: a connected USB mass-storage interface, named
-# by its product string when it has one, its bus address otherwise.
-# Live systems only: an offline root has no live sysfs.
+# by its device's product string when it has one, its bus address
+# otherwise. The interface (1-2:1.0) carries the class; the product is
+# the device's (1-2), the directory above it. Live systems only: an
+# offline root has no live sysfs.
 usb_storage_connected()
 {
   for __c in "$root"/sys/bus/usb/devices/*/bInterfaceClass
   do
     [ "`$CAT "$__c" 2>/dev/null`" = 08 ] || continue
-    __p=`$CAT "${__c%/*}/product" 2>/dev/null`
-    if [ -n "$__p" ]; then echo "$__p"; else __d=${__c%/*}; echo "${__d##*/}"; fi
+    __i=${__c%/*}
+    __p=`$CAT "$__i/../product" 2>/dev/null`
+    if [ -n "$__p" ]; then printf '%s\n' "$__p"; else printf '%s\n' "${__i##*/}"; fi
     return 0
   done
   return 1
@@ -311,7 +324,7 @@ if [ -n "$TIGRIS_ROOT" ]; then
   if [ -n "$entries" ]; then
     for m in /tmp /dev/shm /var/tmp
     do
-      o=`echo "$entries" | $AWK -v m="$m" '$2 == m { o = $4 } END { print o }'`
+      o=`printf '%s\n' "$entries" | m="$m" $AWK '$2 == ENVIRON["m"] { o = $4 } END { print o }'`
       src=/etc/fstab
       if [ -z "$o" ] && [ "$m" = /tmp ]; then
         # systemd's tmp.mount, when it is enabled and not masked
@@ -397,9 +410,11 @@ echo
 echo "# Checking mount options, disk encryption and core dumps..."
 
 # opts MOUNTPOINT: its options, or nothing when it is not a mount of its own
+# (the path reaches awk through the environment: -v reads backslash
+# escapes, and /proc/mounts writes a blank in a path as \040)
 opts()
 {
-  echo "$mounts" | $AWK -v m="$1" '$2 == m { o = $4 } END { print o }'
+  printf '%s\n' "$mounts" | m="$1" $AWK '$2 == ENVIRON["m"] { o = $4 } END { print o }'
 }
 
 #
@@ -475,12 +490,12 @@ fi
 rootdev=`echo "$mounts" | $AWK '$2 == "/" { d = $1 } END { print d }'`
 rootblk=`blk "$rootdev"`
 if crypt "$rootblk"; then
-  $AWK 'NR > 1 { print $1, $2 }' "$root/proc/swaps" 2>/dev/null | while read sw type
+  $AWK 'NR > 1 { print $1, $2 }' "$root/proc/swaps" 2>/dev/null | while read -r sw type
   do
     case "$sw" in /dev/zram*) continue ;; esac
     if [ "$type" = file ]; then
       # the file system the swap file is on
-      dev=`echo "$mounts" | $AWK -v f="$sw" 'index(f, $2) == 1 && length($2) > l { l = length($2); d = $1 } END { print d }'`
+      dev=`printf '%s\n' "$mounts" | f="$sw" $AWK 'index(ENVIRON["f"], $2) == 1 && length($2) > l { l = length($2); d = $1 } END { print d }'`
     else
       dev=$sw
     fi

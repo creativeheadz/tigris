@@ -84,6 +84,16 @@ has '--WARN-- [stor006w] The root file system is encrypted but swap is not' && h
 printf 'Filename\tType\tSize\tUsed\tPriority\n/swapfile file 2097148 0 -2\n' > "$W/luks/proc/swaps"
 go luks
 [ "`count stor006w`" = 0 ] && ok "a swap file on the encrypted root: nothing" || { bad "swapfile"; cat "$W/out"; }
+# A swap file on a plain disk mounted at a path with a blank, which
+# /proc/mounts and /proc/swaps both write as \040: the two must be
+# compared as written, not with one of them unescaped
+cp "$W/luks/proc/mounts" "$W/luks/proc/mounts.keep"
+printf '/dev/nvme0n1p4 /srv/my\\040data ext4 rw,relatime 0 0\n' >> "$W/luks/proc/mounts"
+printf 'Filename\tType\tSize\tUsed\tPriority\n/srv/my\\040data/swapfile file 2097148 0 -2\n' > "$W/luks/proc/swaps"
+go luks
+has '--WARN-- [stor006w] The root file system is encrypted but swap is not' && has 'Swap: /srv/my\040data/swapfile.' &&
+  ok "a swap file on a plain disk whose mount point has a blank: stor006w" || { bad "swapfile blank"; cat "$W/out"; }
+mv "$W/luks/proc/mounts.keep" "$W/luks/proc/mounts"
 
 # Core dumps as files, then limited
 echo core > "$W/desk/proc/sys/kernel/core_pattern"
@@ -109,22 +119,39 @@ rm -f "$W/desk/etc/modprobe.d/usb.conf"; go desk
 mkdir -p "$W/desk/sys/module/usbcore/parameters"; echo 0 > "$W/desk/sys/module/usbcore/parameters/authorized_default"
 go desk "Tigris_Storage_NoUSB=Y"
 [ "`count stor008w`" = 0 ] && ok "authorized_default=0, no modprobe: nothing" || { bad "usb authdefault"; cat "$W/out"; }
+echo 2 > "$W/desk/sys/module/usbcore/parameters/authorized_default"
+go desk "Tigris_Storage_NoUSB=Y"
+[ "`count stor008w`" = 0 ] && ok "authorized_default=2 (internal devices only): nothing" || { bad "usb authdefault2"; cat "$W/out"; }
 echo 1 > "$W/desk/sys/module/usbcore/parameters/authorized_default"
 go desk "Tigris_Storage_NoUSB=Y"
 has '--WARN-- [stor008w] USB storage can be used' && ok "authorized_default=1: stor008w" || { bad "usb authdefault1"; cat "$W/out"; }
+echo -1 > "$W/desk/sys/module/usbcore/parameters/authorized_default"
+mkdir -p "$W/desk/etc/modprobe.d"; printf 'options usbcore authorized_default=0\n' > "$W/desk/etc/modprobe.d/usbcore.conf"
+go desk "Tigris_Storage_NoUSB=Y"
+has '--WARN-- [stor008w] USB storage can be used' && ok "modprobe.d says 0, the running kernel -1: stor008w" || { bad "usb authdefault modprobe"; cat "$W/out"; }
+rm -f "$W/desk/etc/modprobe.d/usbcore.conf"
 rm -rf "$W/desk/sys/module"
 
-# A storage device connected although the policy says none
-mkdir -p "$W/desk/etc/modprobe.d" "$W/desk/sys/bus/usb/devices/1-2:1.0" "$W/desk/sys/bus/usb/devices/1-3:1.0"
+# A storage device connected although the policy says none. As sysfs
+# lays it out: /sys/bus/usb/devices/1-2:1.0 links to the interface,
+# which sits in the device's directory (1-2), and the product is the
+# device's; the interface has none of its own
+U2=$W/desk/sys/devices/pci0000:00/0000:00:14.0/usb1
+mkdir -p "$W/desk/etc/modprobe.d" "$W/desk/sys/bus/usb/devices" "$U2/1-2/1-2:1.0" "$U2/1-3/1-3:1.0"
 printf 'blacklist usb-storage\nblacklist uas\n' > "$W/desk/etc/modprobe.d/usb.conf"
-echo 08 > "$W/desk/sys/bus/usb/devices/1-2:1.0/bInterfaceClass"; echo "Ultra Stick" > "$W/desk/sys/bus/usb/devices/1-2:1.0/product"
-echo 03 > "$W/desk/sys/bus/usb/devices/1-3:1.0/bInterfaceClass"
+echo 08 > "$U2/1-2/1-2:1.0/bInterfaceClass"; echo "Ultra Stick" > "$U2/1-2/product"
+echo 03 > "$U2/1-3/1-3:1.0/bInterfaceClass"; echo "Keyboard" > "$U2/1-3/product"
+for d in 1-2 1-2:1.0 1-3 1-3:1.0
+do
+  case $d in *:*) t=${d%:*}/$d ;; *) t=$d ;; esac
+  ln -s "../../../devices/pci0000:00/0000:00:14.0/usb1/$t" "$W/desk/sys/bus/usb/devices/$d"
+done
 go desk "Tigris_Storage_NoUSB=Y"
 has "--WARN-- [stor008w] A USB storage device ('Ultra Stick') is connected" && [ "`count stor008w`" = 1 ] &&
-  ok "a connected stick, blocked on paper: stor008w names it; the keyboard is not storage" || { bad "usb connected"; cat "$W/out"; }
+  ok "a connected stick, blocked on paper: stor008w names it from its device; the keyboard is not storage" || { bad "usb connected"; cat "$W/out"; }
 go desk
 [ "`count stor008w`" = 0 ] && ok "no policy: a connected stick is not judged" || { bad "usb connected default"; cat "$W/out"; }
-rm -rf "$W/desk/sys/bus" "$W/desk/etc/modprobe.d/usb.conf"
+rm -rf "$W/desk/sys/bus" "$W/desk/sys/devices" "$W/desk/etc/modprobe.d/usb.conf"
 
 # USB authorization: USBGuard running, dead, and wide open
 tree guard <<'EOF'
@@ -220,9 +247,9 @@ printf 'UUID=1111 / ext4 defaults 0 1\n' > "$U/etc/fstab"
 printf 'options usbcore authorized_default=0\n' > "$U/etc/modprobe.d/usb.conf"
 printf 'allow id 1234:5678\nallow\n' > "$U/etc/usbguard/rules.conf"
 offline "$U"
-[ "`count stor008w`" = 0 ] && has '--WARN-- [stor016w]' &&
+has '--WARN-- [stor008w] USB storage can be used' && has '--WARN-- [stor016w]' &&
   [ "`count stor014i`" = 0 ] && [ "`count stor015w`" = 0 ] &&
-  ok "offline: authorized_default counts, bare allow judged, running state not" || { bad "offline C"; cat "$W/out"; }
+  ok "offline: modprobe.d's authorized_default is not credited, bare allow judged, running state not" || { bad "offline C"; cat "$W/out"; }
 
 # Second phase: LVM metadata, ACLs past the mode, the locate database
 L=$W/second
