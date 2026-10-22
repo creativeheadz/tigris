@@ -112,8 +112,9 @@ D='systems scripts tiger tigercron tigris-diff tigris-accept tigris-explain conf
 left=`grep -v -x -e config -e tests/compat_check.sh "$W/vars.txt"`
 [ -z "$left" ] && ok "no Tiger_* stragglers outside the shim" || { bad "Tiger_ stragglers: $left"; }
 ( cd "$TIGER" && grep -rln 'tigerrc' $D 2>/dev/null ) | grep -v '^debian/changelog$' > "$W/rc.txt"
-left=`grep -v -x -e config -e tigris-accept -e profiles/quick -e tests/compat_check.sh -e tests/diff_check.sh -e tests/nonroot_check.sh -e tests/schema_check.sh "$W/rc.txt"`
-[ -z "$left" ] && ok "no tigerrc stragglers outside the shims and old-report fixtures" || { bad "tigerrc stragglers: $left"; }
+# the packages' upgrade from 3.x names the file it carries over
+left=`grep -v -x -e config -e tigris-accept -e profiles/quick -e tests/compat_check.sh -e tests/diff_check.sh -e tests/nonroot_check.sh -e tests/schema_check.sh -e packaging/mkdeb.sh -e packaging/tigris.spec -e packaging/tigris.install -e packaging/tigris.post-upgrade -e packaging/README.md "$W/rc.txt"`
+[ -z "$left" ] && ok "no tigerrc stragglers outside the shims, old-report fixtures and package upgrades" || { bad "tigerrc stragglers: $left"; }
 ( cd "$TIGER" && grep -rln '/etc/tiger' $D 2>/dev/null ) | grep -v '^debian/changelog$' > "$W/etc.txt"
 left=`grep -v -x -e config -e tigris-accept -e tests/compat_check.sh "$W/etc.txt"`
 [ -z "$left" ] && ok "no /etc/tiger stragglers outside the fallbacks" || { bad "/etc/tiger stragglers: $left"; }
