@@ -205,6 +205,75 @@ has "Repository 'dead' (see /etc/yum.repos.d) published 120 days ago (/var/cache
 ! grep -q "'updates'" "$W/out" &&
   ok "dnf 5 cache read: refreshed, dead repo named" || { bad "dnf5"; cat "$W/out"; }
 
+# rpm repositories are judged with the others from their host, by the
+# newest: Fedora's release repository is frozen at GA and its updates
+# repository says the release is alive (both through one metalink
+# host). A host serving many publishers is split by publisher (COPR
+# here), so one live project does not cover a dead one. openh264
+# repositories are not judged (one codec package, changed only when
+# Cisco releases), nor are local ones.
+repomd() {  # repomd FILE TIMESTAMP
+  mkdir -p "${1%/*}"; printf '<repomd><revision>1</revision><timestamp>%s</timestamp></repomd>\n' "$2" > "$1"
+}
+FG=$W/fedoragroup; C=$FG/var/cache/libdnf5; mkdir -p "$FG/etc/yum.repos.d"
+cat > "$FG/etc/yum.repos.d/fedora.repo" <<'EOF'
+[fedora]
+metalink=https://mirrors.fedoraproject.org/metalink?repo=fedora-$releasever&arch=$basearch
+[updates]
+metalink=https://mirrors.fedoraproject.org/metalink?repo=updates-released-f$releasever&arch=$basearch
+[fedora-cisco-openh264]
+metalink=https://mirrors.fedoraproject.org/metalink?repo=fedora-cisco-openh264-$releasever&arch=$basearch
+[thirdparty]
+baseurl=https://rpm.example.com/el/stable/
+[copr:alive]
+baseurl=https://download.copr.example.org/results/someone/alive/fedora-$releasever-$basearch/
+[copr:dead]
+baseurl=https://download.copr.example.org/results/someone/dead/fedora-$releasever-$basearch/
+[local]
+baseurl=file:///srv/localrepo
+EOF
+repomd "$C/fedora-0123456789abcdef/repodata/repomd.xml" 1776124800
+repomd "$C/updates-0123456789abcdef/repodata/repomd.xml" 1791110400
+repomd "$C/fedora-cisco-openh264-0123456789abcdef/repodata/repomd.xml" 1700000000
+repomd "$C/thirdparty-0123456789abcdef/repodata/repomd.xml" 1700000000
+repomd "$C/copr:alive-0123456789abcdef/repodata/repomd.xml" 1791110400
+repomd "$C/copr:dead-0123456789abcdef/repodata/repomd.xml" 1700000000
+repomd "$C/local-0123456789abcdef/repodata/repomd.xml" 1600000000
+run "$FG" "$W/out"
+! grep -q "'fedora'\|'updates'\|openh264\|'local'\|copr:alive" "$W/out" &&
+has "Repository 'thirdparty' (https://rpm.example.com/el/stable/) published 1064 days ago" "$W/out" &&
+has "Repository 'copr:dead'" "$W/out" &&
+[ "`grep -c 'upd007w' \"$W/out\"`" = 2 ] &&
+  ok "dnf: GA repo beside fresh updates fine; openh264, local not judged; COPR split" || { bad "fedoragroup"; cat "$W/out"; }
+
+# zypper the same: Leap's repo-oss frozen at release beside repo-update
+# on the same host; an OBS home project on that host still judged on
+# its own; a DVD repository not judged
+LG=$W/leapgroup; C=$LG/var/cache/zypp/raw; mkdir -p "$LG/etc/zypp/repos.d"
+printf '[repo-oss]\nbaseurl=http://download.opensuse.example/distribution/leap/$releasever/repo/oss/\n' > "$LG/etc/zypp/repos.d/repo-oss.repo"
+printf '[repo-update]\nbaseurl=http://download.opensuse.example/update/leap/$releasever/oss\n' > "$LG/etc/zypp/repos.d/repo-update.repo"
+printf '[repo-openh264]\nbaseurl=http://codecs.opensuse.example/openh264/openSUSE_Leap/\n' > "$LG/etc/zypp/repos.d/repo-openh264.repo"
+printf '[home_someone]\nbaseurl=http://download.opensuse.example/repositories/home:/someone/15.6/\n' > "$LG/etc/zypp/repos.d/home_someone.repo"
+printf '[dvd]\nbaseurl=cd:///?devices=/dev/sr0\n' > "$LG/etc/zypp/repos.d/dvd.repo"
+repomd "$C/repo-oss/repodata/repomd.xml" 1718236800
+repomd "$C/repo-update/repodata/repomd.xml" 1791110400
+repomd "$C/repo-openh264/repodata/repomd.xml" 1700000000
+repomd "$C/home_someone/repodata/repomd.xml" 1700000000
+repomd "$C/dvd/repodata/repomd.xml" 1718236800
+run "$LG" "$W/out"
+! grep -q "repo-oss\|repo-update\|openh264\|'dvd'" "$W/out" &&
+has "Repository 'home_someone' (http://download.opensuse.example/repositories/home:/someone/15.6/)" "$W/out" &&
+  ok "zypper: repo-oss beside repo-update fine; OBS project judged alone; DVD not judged" || { bad "leapgroup"; cat "$W/out"; }
+
+# an apt file: source (lists named _srv_...) is local: never stale
+AL=$W/aptlocal; mkdir -p "$AL/etc" "$AL/var/lib/apt/lists"
+printf 'Date: Tue, 16 Jun 2026 10:40:00 UTC\n' > "$AL/var/lib/apt/lists/_srv_repo_._Release"
+touch -t 202001010000 "$AL/var/lib/apt/lists/_srv_repo_._Release"
+printf 'package list\n' > "$AL/var/lib/apt/lists/fresh_example_com_Packages"
+run "$AL" "$W/out"
+! grep -q 'upd007w' "$W/out" &&
+  ok "apt local file: source never stale" || { bad "aptlocal"; cat "$W/out"; }
+
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
 [ -s "$W/out" ] && { bad "empty"; cat "$W/out"; } ||

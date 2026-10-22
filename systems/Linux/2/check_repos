@@ -33,7 +33,12 @@
 #             otherwise the refresh finding says that instead. A
 #             repository is judged by its newest suite: a release
 #             pocket never changes by design, its -updates and
-#             -security do. APKINDEX names carry a hash of the URL,
+#             -security do. dnf and zypper repositories are judged
+#             the same way with the others from their URL's host
+#             (Fedora's fedora and openSUSE's repo-oss are frozen at
+#             release, their updates repositories are not); local
+#             and openh264 repositories are not judged at all.
+#             APKINDEX names carry a hash of the URL,
 #             not the URL, so apk findings name the file and point at
 #             /etc/apk/repositories. Tigris_Repos_MaxAge (90 days)
 #             sets the age; Tigris_Repos_Now replaces the clock, for
@@ -42,6 +47,9 @@
 # 10/16/2026 - Initial version. apt (Date, Valid-Until, refresh),
 #             dnf and zypper (repomd, refresh), pacman and apk
 #             (mtime-gated, refresh).
+# 10/22/2026 - dnf and zypper repositories grouped by host, newest wins;
+#             local sources (apt file:, rpm file: cd: dvd: ...) and
+#             openh264 repositories never judged stale.
 # 10/22/2026 - No index at all (a container image) says nothing; dnf 5's
 #             /var/cache/libdnf5 is read beside dnf 4's cache.
 # 10/22/2026 - Every index is read where rootpaths finds it inside the
@@ -237,7 +245,9 @@ if [ -n "$lists" ] && [ -d "$lists" ] &&
     IFS=$US read -r pub pubdate vu vudate origin suite <<EOF
 $rec
 EOF
-    case "$pub" in -*|"") ;; *) printf '%s\n' "$key$US$pub$US$origin$US$suite$US$sysf$US$pubdate$US$isfresh$US$url" >> $stale ;; esac
+    # a file: or copy: source (its list names start with _) is local:
+    # only its owner refreshes it, and it cannot stop publishing
+    case "$pub" in -*|"") ;; *) case "$key" in _*) ;; *) printf '%s\n' "$key$US$pub$US$origin$US$suite$US$sysf$US$pubdate$US$isfresh$US$url" >> $stale ;; esac ;; esac
     case "$vu" in -*|0|"") ;; *) printf '%s\n' "$key$US$vudate$US$sysf$US$origin$US$vu$US$url" >> $expired ;; esac
   done < $alist 3< $hlist
 fi
@@ -268,24 +278,60 @@ do
   while IFS= read -r sysf && IFS= read -r repomd <&3
   do
     [ -n "$repomd" ] && [ -f "$repomd" ] || continue
-    [ -n "`$FIND "$repomd" -mtime -$MaxAge 2>/dev/null`" ] && echo fresh >> $rrec
-  done < $alist 3< $hlist
-  if [ ! -s $rrec ]; then
-    message WARN upd008w "Run '$refresher'." "The $mgr package lists were last refreshed over $MaxAge days ago: install nothing from them until they are."
-  fi
-  while IFS= read -r sysf && IFS= read -r repomd <&3
-  do
-    [ -n "$repomd" ] && [ -f "$repomd" ] || continue
     rd=${sysf%/repomd.xml}; rd=${rd%/repodata}; id=${rd##*/}
     [ "$mgr" = dnf ] && case "$id" in *-????????????????) id=${id%-????????????????};; esac
+    if [ -n "`$FIND "$repomd" -mtime -$MaxAge 2>/dev/null`" ]; then fr=1; else fr=0; fi
     ts=`$SED -n 's/.*<timestamp>\([0-9][0-9]*\)<.*/\1/p' "$repomd" 2>/dev/null | $SED -n 1p`
-    case "$ts" in *[!0-9]*|"") continue ;; esac
-    age=`expr \( $now - $ts \) / 86400`
-    url=`TIGRIS_REPO_ID=$id $AWK -F"$US" '$1 == ENVIRON["TIGRIS_REPO_ID"] { print $2; exit }' $repomap`
-    [ -n "$url" ] || url="see $rdir"
-    [ "$age" -gt "$MaxAge" ] &&
-      message WARN upd007w "Drop the repo or fix its URL in $rdir." "Repository '$id' ($url) published $age days ago ($sysf): it may have moved or died."
+    case "$ts" in *[!0-9]*|"") age= ;; *) age=`expr \( $now - $ts \) / 86400` ;; esac
+    printf '%s\n' "$id$US$age$US$sysf$US$fr" >> $rrec
   done < $alist 3< $hlist
+  $AWK -F"$US" '$4 == 1 { f = 1 } END { exit !f }' $rrec ||
+    message WARN upd008w "Run '$refresher'." "The $mgr package lists were last refreshed over $MaxAge days ago: install nothing from them until they are."
+  # Each repository is judged with the others from its origin, the
+  # host its URL names, by the newest of them, as apt's suites are: a
+  # distribution's release repository (Fedora's fedora, openSUSE's
+  # repo-oss and repo-non-oss) is frozen at release by design, and its
+  # updates repository on the same host says whether the release is
+  # alive. A host that serves many publishers is split by publisher
+  # (OBS projects under /repositories/, COPR projects under /results/).
+  # Not judged: a local repository (file:, dir:, cd:, dvd:, iso:, hd:),
+  # which only its owner refreshes, and an openh264 repository (Fedora's
+  # fedora-cisco-openh264, openSUSE's repo-openh264), whose one codec
+  # package changes only when Cisco releases one and whose host is not
+  # the distribution's.
+  { cat $repomap; printf '%s\n' "$US"; cat $rrec; } | $AWK -F"$US" -v maxage=$MaxAge '
+    function origin(u,   s, h, p, n, a, i, k) {
+      s = tolower(u)
+      if (s ~ /^(file|dir|cd|dvd|iso|hd):/) return ""
+      if (s !~ /^[a-z][a-z0-9+.-]*:\/\/[^\/]/) return "url " u
+      sub(/^[a-z][a-z0-9+.-]*:\/\//, "", s)
+      h = s; sub(/[\/?#].*$/, "", h); p = substr(s, length(h) + 1)
+      sub(/^.*@/, "", h); sub(/:[0-9]*$/, "", h)
+      k = h; n = split(p, a, "/")
+      if (a[2] == "repositories") {
+        k = k "/repositories"
+        for (i = 3; i <= n; i++) { k = k "/" a[i]; if (a[i] !~ /:$/) break }
+      } else if (a[2] == "results" && n >= 4) k = k "/results/" a[3] "/" a[4]
+      return k
+    }
+    BEGIN { us = sprintf("%c", 31) }
+    !past && $0 == us { past = 1; next }
+    !past { if (!($1 in url)) url[$1] = $2; next }
+    $2 == "" { next }
+    {
+      id = $1; age = $2 + 0; u = (id in url) ? url[id] : ""
+      k = (u == "") ? "id " id : origin(u)
+      if (k == "" || tolower(id " " u) ~ /openh264/) next
+      n[k]++
+      if (!(k in best) || age < best[k]) { best[k] = age; rec[k] = id us age us u us $3 }
+    }
+    END { for (k in rec) if (best[k] > maxage) print rec[k] us n[k] }' | $SORT |
+  while IFS=$US read -r id age url sysf count
+  do
+    [ -n "$url" ] || url="see $rdir"
+    if [ "$count" -gt 1 ]; then also=", the newest of $count from that host"; else also=; fi
+    message WARN upd007w "Drop the repo or fix its URL in $rdir." "Repository '$id' ($url) published $age days ago ($sysf$also): it may have moved or died."
+  done
 done
 
 #

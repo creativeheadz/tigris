@@ -11,5 +11,10 @@ than Tigris_Repos_MaxAge days (90 by default) and no suite of it
 re-fetched since, so the packages installed from it sit unpatched
 while the manager says the system is up to date. Each repository
 is judged by its newest suite: a release pocket never changes by
-design, its updates do. Drop the source, move to its successor,
-or track its -updates suite too.
+design, its updates do. dnf and zypper repositories are judged with
+the others from the same host, so Fedora's fedora and openSUSE's
+repo-oss, frozen at release, count as alive while their updates
+repositories are; a host serving many publishers (OBS, COPR) is
+split by project. Local repositories (file:, cd: and the like) and
+openh264 codec repositories are not judged. Drop the source, move
+to its successor, or track its -updates suite too.
