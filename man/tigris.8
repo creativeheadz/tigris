@@ -208,9 +208,17 @@ do not count.
 .I tigris.conf
 Which checks run, and how. A
 .I tigerrc
-kept beside it is read instead, and
+kept beside it is read instead. The old
 .I Tiger_*
-settings are still honored (an explicit new setting wins).
+and
+.I TigerFoo
+names are still read, as
+.I Tigris_*
+and
+.IR TigrisFoo :
+the tigris.conf, then the profile, then a site file
+override each other in that order whatever they spell, and a file
+overrides the environment.
 .TP
 .I profiles/
 Profiles, read on top of the tigris.conf.

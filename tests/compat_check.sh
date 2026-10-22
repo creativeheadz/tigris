@@ -7,10 +7,12 @@
 # A dead apt source (120 days, judged against Tigris_Repos_Now) proves
 # the settings legs: Tigris_Repos_MaxAge=200 silences it, 90 reports it.
 # An old file beats a new file in the same directory, so no new default
-# appearing beside an old file may silently switch the admin's settings;
-# an explicit new setting beats an old one. /etc/tiger itself is not
-# exercised (writing /etc is not a test's business); the search list
-# holding it is covered through $HOME instead.
+# appearing beside an old file may silently switch the admin's settings.
+# Old names are translated as each file is read, so the files override
+# each other in the order they are read (tigris.conf, profile, site file)
+# and a file beats the environment, as in 3.9.0, whatever the spelling;
+# in the environment, a new name beats an old one. The search list is
+# covered through $HOME (writing /etc is not a test's business).
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -31,7 +33,10 @@ Valid-Until: Fri, 13 Nov 2026 10:40:00 UTC
 EOF
 touch -t 202001010000 "$R/var/lib/apt/lists/old_packager_io_repo_dists_stable_Release"
 run() {  # run OUTFILE [EXTRA-ENV]: check_repos over the dead source
-  ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$R" ${2:+$2} sh ./systems/Linux/2/check_repos ) > "$1" 2>&1 || true
+  # (through env: an assignment that comes out of an expansion is a
+  # command name to the shell, and the leg then passed without a run)
+  ( cd "$W" && env TIGERHOMEDIR=$W TIGRIS_ROOT="$R" ${2:+"$2"} sh ./systems/Linux/2/check_repos ) > "$1" 2>&1 || true
+  ! grep -q 'not found' "$1" || bad "check_repos did not run: `grep 'not found' "$1" | head -1`"
 }
 
 # an old setting in the tigris.conf is honored
@@ -45,12 +50,25 @@ printf '# minimal\nTigris_Repos_Now=1791974400\n' > "$W/tigris.conf"
 run "$W/out" "Tiger_Repos_MaxAge=200"
 ! grep -q 'upd007w' "$W/out" &&
   ok "Tiger_Repos_MaxAge from the environment: honored" || { bad "old setting from env"; grep '^--' "$W/out" | head -3; }
+run "$W/out" "Tiger_Repos_MaxAge=90"
+grep -q -- '--WARN-- \[upd007w\]' "$W/out" &&
+  ok "Tiger_Repos_MaxAge=90 from the environment reaches the check" || { bad "environment does not reach the check"; grep '^--' "$W/out" | head -3; }
 
-# an explicit new setting beats an old one
+# inside one file the later assignment wins, whichever spelling it uses
 printf '# minimal\nTigris_Repos_Now=1791974400\nTiger_Repos_MaxAge=200\nTigris_Repos_MaxAge=90\n' > "$W/tigris.conf"
 run "$W/out"
 grep -q -- '--WARN-- \[upd007w\]' "$W/out" &&
-  ok "Tigris_Repos_MaxAge=90 beside Tiger_=200: the new spelling wins" || { bad "new does not win"; grep '^--' "$W/out" | head -3; }
+  ok "Tiger_=200 then Tigris_Repos_MaxAge=90 in one file: the later wins" || { bad "later new does not win"; grep '^--' "$W/out" | head -3; }
+printf '# minimal\nTigris_Repos_Now=1791974400\nTigris_Repos_MaxAge=90\nTiger_Repos_MaxAge=200\n' > "$W/tigris.conf"
+run "$W/out"
+! grep -q 'upd007w' "$W/out" &&
+  ok "Tigris_=90 then Tiger_Repos_MaxAge=200 in one file: the later wins" || { bad "later old does not win"; grep '^--' "$W/out" | head -3; }
+
+# a file beats the environment, whatever either spells
+printf '# minimal\nTigris_Repos_Now=1791974400\nTiger_Repos_MaxAge=200\n' > "$W/tigris.conf"
+run "$W/out" "Tigris_Repos_MaxAge=90"
+! grep -q 'upd007w' "$W/out" &&
+  ok "Tiger_ in the tigris.conf beats Tigris_ in the environment" || { bad "environment beats the file"; grep '^--' "$W/out" | head -3; }
 
 # an old profile is honored too
 printf '# minimal\nTigris_Repos_Now=1791974400\n' > "$W/tigris.conf"
@@ -59,6 +77,39 @@ printf 'basedir=$TIGERHOMEDIR\n. $basedir/config\necho "MAX=$Tigris_Repos_MaxAge
 ( cd "$W" && TIGERHOMEDIR=$W sh ./drive.sh --profile oldleg ) > "$W/out" 2>&1
 grep -q '^MAX=200$' "$W/out" &&
   ok "a profile saying Tiger_: honored" || { bad "old setting in profile"; cat "$W/out"; }
+
+# an old spelling in a later file beats a new one in an earlier file: the
+# profile beats the tigris.conf, the site file beats both
+printf '# minimal\nTigris_Repos_Now=1791974400\nTigris_Repos_MaxAge=90\n' > "$W/tigris.conf"
+( cd "$W" && TIGERHOMEDIR=$W sh ./drive.sh --profile oldleg ) > "$W/out" 2>&1
+grep -q '^MAX=200$' "$W/out" &&
+  ok "Tiger_ in a profile beats Tigris_ in the tigris.conf" || { bad "old profile loses to the new tigris.conf"; cat "$W/out"; }
+printf 'Tiger_Repos_MaxAge=300\n' > "$W/site"; chmod 644 "$W/site"
+( cd "$W" && TIGERHOMEDIR=$W sh ./drive.sh --profile oldleg ) > "$W/out" 2>&1
+grep -q '^MAX=300$' "$W/out" &&
+  ok "Tiger_ in the site file beats both" || { bad "old site file loses"; cat "$W/out"; }
+rm -f "$W/site"
+
+# old names used inside a file are translated with the assignments (the
+# 3.9.0 tigerrc sets one list from another, once through eval)
+printf '# minimal\nTiger_ROOT_PATH_OK_Owners="root bin"\nTiger_PATH_OK_Owners=$Tiger_ROOT_PATH_OK_Owners\nTiger_ROOT_PATH_OK_Group_Write=Y\neval Tiger_PATH_OK_Group_Write=${Tiger_ROOT_PATH_OK_Group_Write}\n' > "$W/tigris.conf"
+printf 'basedir=$TIGERHOMEDIR\n. $basedir/config\necho "OWN=$Tigris_PATH_OK_Owners GW=$Tigris_PATH_OK_Group_Write"\n' > "$W/drive.sh"
+( cd "$W" && TIGERHOMEDIR=$W sh ./drive.sh ) > "$W/out" 2>&1
+grep -q '^OWN=root bin GW=Y$' "$W/out" &&
+  ok "\$Tiger_ references and eval Tiger_ lines: translated" || { bad "references not translated"; grep '^OWN' "$W/out"; }
+
+# camelCase names (TigerNoBuild, TigerCron_Log_Keep_Max in the 3.9.0
+# tigerrc) become TigrisFoo, in a file and in the environment
+printf '# minimal\nTigerNoBuild=Y\nTigerCron_Log_Keep_Max=3\n' > "$W/tigris.conf"
+printf 'basedir=$TIGERHOMEDIR\n. $basedir/config\necho "NB=$TigrisNoBuild KEEP=$TigrisCron_Log_Keep_Max"\n' > "$W/drive.sh"
+( cd "$W" && TIGERHOMEDIR=$W sh ./drive.sh ) > "$W/out" 2>&1
+grep -q '^NB=Y KEEP=3$' "$W/out" &&
+  ok "TigerNoBuild, TigerCron_Log_Keep_Max in a file: honored" || { bad "camelCase in a file"; grep -e '^NB=' -e '^--' "$W/out"; }
+printf '# minimal\n' > "$W/tigris.conf"
+( cd "$W" && TIGERHOMEDIR=$W TigerNoBuild=Y TigerCron_Log_Keep_Max=3 sh ./drive.sh ) > "$W/out" 2>&1
+grep -q '^NB=Y KEEP=3$' "$W/out" &&
+  ok "TigerNoBuild, TigerCron_Log_Keep_Max from the environment: honored" || { bad "camelCase from the environment"; grep -e '^NB=' -e '^--' "$W/out"; }
+printf 'basedir=$TIGERHOMEDIR\n. $basedir/config\necho "MAX=$Tigris_Repos_MaxAge"\n' > "$W/drive.sh"
 
 # a tigerrc alone is found and read
 rm "$W/tigris.conf"

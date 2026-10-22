@@ -266,22 +266,49 @@ checkfile()
   return $_status
 }
 
-# The 4.0 rename, old settings: a tigris.conf, a profile, a site file or
-# the environment may still say Tiger_Foo. Each old setting fills its new
-# Tigris_Foo name unless that name is already set: an explicit new name
-# always wins. Called once, after the last file is read, so a profile
-# still beats the tigris.conf under either spelling.
-tigris_shim_compat()
+# The 4.0 rename, old settings in the environment: Tiger_Foo fills
+# Tigris_Foo, and TigerFoo (TigerNoBuild, TigerCron_Log_Keep_Max) fills
+# TigrisFoo, unless the new name is set there too. Run before any file
+# is read, so a file still beats the environment, as it always did.
+tigris_shim_env()
 {
-  __shimmed=`set | $SED -n 's/^\(Tiger_[A-Za-z0-9_]*\)=.*/\1/p; s/^\(Tiger[A-Z][A-Za-z0-9_]*\)=.*/\1/p'`
+  __shimmed=`set | sed -n 's/^\(Tiger[A-Z_][A-Za-z0-9_]*\)=.*/\1/p'`
   for __old in $__shimmed
   do
-    __new=Tigris_`printf '%s' "$__old" | $SED 's/^Tiger_//; s/^Tiger//'`
+    __new=Tigris${__old#Tiger}
     eval "[ -n \"\${$__new+set}\" ]" && continue
     eval "$__new=\"\$$__old\""
     export $__new
   done
   unset __old __new __shimmed
+}
+
+# Read a configuration file (the tigris.conf, a profile, a site file) as
+# it always was: its assignments, exported, run in this shell. Old names
+# are renamed on the way in, where they are assigned (at the start of a
+# line, or after eval or export) and where they are used ($Tiger_Foo,
+# ${Tiger_Foo}): Tiger_Foo to Tigris_Foo, TigerFoo to TigrisFoo. So the
+# files override each other in the order they are read (tigris.conf,
+# then the profile, then the site file) whichever spelling each uses,
+# and inside one file the later assignment wins.
+tigris_readconf()
+{
+  __rctmp=`mktemp "$WORKDIR/rcfile.XXXXXX" 2>/dev/null` || __rctmp=$WORKDIR/rcfile.$$
+  $GREP -v '^#' "$1" |
+  $SED -e 's/^\([[:space:]]*\)Tiger_/\1Tigris_/' \
+       -e 's/^\([[:space:]]*\)Tiger\([A-Z]\)/\1Tigris\2/' \
+       -e 's/^\([[:space:]]*eval[[:space:]][[:space:]]*\)Tiger_/\1Tigris_/' \
+       -e 's/^\([[:space:]]*eval[[:space:]][[:space:]]*\)Tiger\([A-Z]\)/\1Tigris\2/' \
+       -e 's/^\([[:space:]]*export[[:space:]][[:space:]]*\)Tiger_/\1Tigris_/' \
+       -e 's/^\([[:space:]]*export[[:space:]][[:space:]]*\)Tiger\([A-Z]\)/\1Tigris\2/' \
+       -e 's/\$Tiger_/$Tigris_/g' \
+       -e 's/\${Tiger_/${Tigris_/g' \
+       -e 's/\$Tiger\([A-Z]\)/$Tigris\1/g' \
+       -e 's/\${Tiger\([A-Z]\)/${Tigris\1/g' \
+       -e 's/^\(.*\)=/export \1; \1=/' > "$__rctmp"
+  . "$__rctmp"
+  $RM -f "$__rctmp"
+  unset __rctmp
 }
 
 [ "$CONFIGURED_ALREADY" != "YES" ] && {
@@ -290,9 +317,9 @@ tigris_shim_compat()
 
   CONFIGURED_ALREADY=YES
 
-  # An old-spelling install dir from the environment (the checks and the
-  # driver set the new one themselves, before this is read)
-  : ${TigrisInstallDir:=$TigerInstallDir}
+  # Old Tiger_* and TigerFoo settings in the environment, first
+  tigris_shim_env
+
   if [ -n "$TIGERHOMEDIR" -a "$TIGERHOMEDIR" != '.' ]; then
     BASEDIR="$TIGERHOMEDIR"
   elif [ -n "$TigrisInstallDir" -a "$TigrisInstallDir" != '.' ]; then
@@ -483,7 +510,7 @@ tigris_shim_compat()
   REL="$1"
   [ ! -n "$REL" ] && REL=$REV
 
-  [ ! -n "$BINDIR" ] &&  eval BINDIR=${TigrisBinDir:=${TigerBinDir:-$BASEDIR/bin}}
+  [ ! -n "$BINDIR" ] &&  eval BINDIR=${TigrisBinDir:=$BASEDIR/bin}
 
   SCRIPTDIR=$BASEDIR/scripts
   export SCRIPTDIR
@@ -601,13 +628,7 @@ tigris_shim_compat()
   # tigris.conf was then silently not read, so every check ran)
   #
 
-  [ -n "$RCFILE" ] && [ -r "$RCFILE" ] && {
-    tempfile=`mktemp "$WORKDIR/rcfile.XXXXXX" 2>/dev/null` || tempfile=$WORKDIR/rcfile.$$
-    $GREP -v '^#' "$RCFILE" |
-    $SED -e 's/^\(.*\)=/export \1; \1=/' > $tempfile
-    . $tempfile
-    $RM -f $tempfile
-  }
+  [ -n "$RCFILE" ] && [ -r "$RCFILE" ] && tigris_readconf "$RCFILE"
 
   #
   # A profile, read the same way after the tigris.conf, so its settings win:
@@ -624,17 +645,12 @@ tigris_shim_compat()
       [ -f "$dir/$PROFILE" ] && checkfile "$dir/$PROFILE" "$dir/$PROFILE" && { pfile="$dir/$PROFILE"; break; }
     done
     [ -n "$pfile" ] || { echo "--ERROR-- [con013e] There is no profile '$PROFILE' (in $rcdir/profiles or $BASEDIR/profiles)."; exit 1; }
-    tempfile=`mktemp "$WORKDIR/rcfile.XXXXXX" 2>/dev/null` || tempfile=$WORKDIR/rcfile.$$
-    $GREP -v '^#' "$pfile" |
-    $SED -e 's/^\(.*\)=/export \1; \1=/' > $tempfile
-    . $tempfile
-    $RM -f $tempfile
+    tigris_readconf "$pfile"
     export PROFILE
   }
 
   HOSTNAME=`$GETHOSTNAME`
-  # The shim runs after the site file, below, so this reads both spellings
-  if [ "${Tigris_Output_FQDN:-$Tiger_Output_FQDN}" = 'Y' -a "$OS" = "Linux" ]
+  if [ "$Tigris_Output_FQDN" = 'Y' -a "$OS" = "Linux" ]
   then
   # Linux hostname has the -f option for FQDN... (jfs)
   # (others?)
@@ -652,16 +668,7 @@ tigris_shim_compat()
     fi
   done
 
-  [ -n "$SITECONFIG" -a -r "$SITECONFIG" ] &&
-  {
-    $GREP -v '^#' $SITECONFIG |
-    $SED -e 's/^\(.*\)=/export \1; \1=/' > $WORKDIR/sitefile.$$
-    . $WORKDIR/sitefile.$$
-    $RM -f $WORKDIR/sitefile.$$
-  }
-
-  # Old Tiger_* settings, if any file or the environment still holds them
-  tigris_shim_compat
+  [ -n "$SITECONFIG" -a -r "$SITECONFIG" ] && tigris_readconf "$SITECONFIG"
 
   # The acceptance and ignore files decide what the report leaves out, so
   # they get the check a tigris.conf gets (not writable by group or others,

@@ -60,8 +60,9 @@ Settled, so they do not have to be argued again:
 - **Internal names renamed in 4.0.** `tigris.conf`, the `Tigris_*` settings,
   `/etc/tigris` and `tigris explain` are the names; the old `tigerrc`,
   `Tiger_*`, `/etc/tiger` and `tigexp` keep working through shims, an old
-  file beating a new file beside it and an explicit new setting beating
-  an old one. `./tigris` is the entry point.
+  file beating a new file beside it, and old names read as new ones as
+  each file is read, so the files override each other as in 3.9.0.
+  `./tigris` is the entry point.
 
 ## Where things stand
 
@@ -705,8 +706,10 @@ what scripts and cron see.
   configurations: `tigerrc` to `tigris.conf`, `Tiger_*` to `Tigris_*`,
   `/etc/tiger` to `/etc/tigris`, `tigexp` to `tigris explain`. Done
   2026-10-16: the old names keep working (an old file beats a new file
-  beside it, an explicit new setting beats an old one, `tigexp` is a
-  symlink to `tigris-explain`), covered by tests/compat_check.sh. The
+  beside it, old names are translated as each file is read so the
+  tigris.conf, the profile and a site file override each other in that
+  order whatever they spell, `tigexp` is a symlink to `tigris-explain`),
+  covered by tests/compat_check.sh. The
   `tiger` and `tigercron` commands, TIGERHOMEDIR/TIGERWORK and the
   /var and /usr/lib paths keep their names: the rename is the settings
   namespace, the config file and path, and the explain helper.
