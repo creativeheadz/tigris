@@ -25,6 +25,9 @@
 #
 # 10/16/2026 - Initial version. ClamAV signatures judged, freshness
 #             inventoried.
+# 10/22/2026 - Installed means a ClamAV program is there: the
+#             /etc/clamav a removed package leaves behind scans
+#             nothing, and its old databases are not stale signatures.
 #
 # References:
 #   clamscan(1)
@@ -91,14 +94,14 @@ existing_sys()
   done
 }
 
+# Installed means a ClamAV program is there: a removed package leaves
+# /etc/clamav (and its databases) behind, and that scans nothing
 bins=`existing_sys /usr/bin/clamscan /usr/bin/clamdscan /usr/bin/freshclam \
   /usr/sbin/clamd /bin/clamscan /sbin/clamd /usr/local/bin/clamscan \
   /usr/local/bin/freshclam /usr/local/sbin/clamd`
-haveconf=
-[ -d "`rootfile /etc/clamav`" ] && haveconf=1
 
 # No scanner installed: not a finding
-[ -z "$bins$haveconf" ] && exit 0
+[ -z "$bins" ] && exit 0
 
 # Where freshclam keeps the databases: its DatabaseDirectory, or the
 # stock one. Only an absolute path is read: anything else resolves

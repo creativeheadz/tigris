@@ -2,10 +2,11 @@
 #
 # tests/antivirus_check.sh - check_antivirus on offline roots
 #
-# Five roots: ClamAV with fresh signatures; signatures older than a
-# week; a freshclam.conf but no databases at all; a DatabaseDirectory
-# elsewhere, read from the config; and an empty root, where no
-# scanner is installed and nothing is said. INFO findings only show
+# Six roots: ClamAV with fresh signatures; signatures older than a
+# week; freshclam but no databases at all; a DatabaseDirectory
+# elsewhere, read from the config; what a removed ClamAV leaves (its
+# config and old databases, no program), which is not a scanner; and
+# an empty root, where no scanner is installed and nothing is said. INFO findings only show
 # with Tigris_Show_INFO_Msgs=Y. Runs as a user and as root; the
 # fixtures read the same for both.
 #
@@ -49,14 +50,16 @@ has 'older than a week' "$W/out" &&
 ! grep -q 'avir002i' "$W/out" &&
   ok "week-old signatures: avir001w" || { bad "stale"; cat "$W/out"; }
 
-M=$W/missing; mkdir -p "$M/etc/clamav" "$M/var/lib/clamav"
+M=$W/missing; mkdir -p "$M/etc/clamav" "$M/var/lib/clamav" "$M/usr/bin"
 printf 'DatabaseDirectory /var/lib/clamav\n' > "$M/etc/clamav/freshclam.conf"
+printf '#!/bin/sh\n' > "$M/usr/bin/freshclam"; chmod 755 "$M/usr/bin/freshclam"
 run "$M" "$W/out"
 has '--WARN-- [avir001w]' "$W/out" &&
 has 'has no signatures in /var/lib/clamav' "$W/out" &&
   ok "configured but never fetched: avir001w" || { bad "missing"; cat "$W/out"; }
 
-C=$W/custom; mkdir -p "$C/etc/clamav" "$C/srv/av"
+C=$W/custom; mkdir -p "$C/etc/clamav" "$C/srv/av" "$C/usr/sbin"
+printf '#!/bin/sh\n' > "$C/usr/sbin/clamd"; chmod 755 "$C/usr/sbin/clamd"
 printf '# local mirrors land here\nDatabaseDirectory /srv/av  # moved off root\n' > "$C/etc/clamav/freshclam.conf"
 printf 'clamav\n' > "$C/srv/av/daily.cld"
 run "$C" "$W/out"
@@ -64,6 +67,14 @@ has '--INFO-- [avir002i]' "$W/out" &&
 has 'fresh signatures in /srv/av' "$W/out" &&
 ! grep -q 'avir001w' "$W/out" &&
   ok "DatabaseDirectory elsewhere: read from the config" || { bad "custom"; cat "$W/out"; }
+
+R=$W/removed; mkdir -p "$R/etc/clamav" "$R/var/lib/clamav"
+printf 'DatabaseDirectory /var/lib/clamav\n' > "$R/etc/clamav/freshclam.conf"
+printf 'clamav\n' > "$R/var/lib/clamav/daily.cvd"
+touch -t 202001010000 "$R/var/lib/clamav/daily.cvd"
+run "$R" "$W/out"
+[ -s "$W/out" ] && { bad "removed"; cat "$W/out"; } ||
+  ok "what a removed ClamAV leaves behind: nothing said"
 
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
