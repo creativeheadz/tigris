@@ -7,9 +7,9 @@ is the reference point because it is the tool people compare against:
 everything Lynis checks on a platform Tigris supports, Tigris checks
 too, tracked group by group in `doc/parity-matrix.md`.
 
-*Last updated 16 October 2026.* `[x]` done, `[ ]` to do, `[~]` started.
+*Last updated 22 October 2026.* `[x]` done, `[ ]` to do, `[~]` started.
 Everything marked done is on `master`; "released" means tagged (the last
-tag is `version_3_9_0`).
+tag is `version_4_0_0`).
 
 ## Contents
 
@@ -67,7 +67,7 @@ Settled, so they do not have to be argued again:
 
 ## Where things stand
 
-|                      | Tigris 3.9.0 (October 2026)                                     | Lynis 3.1.7 (June 2026)                  |
+|                      | Tigris 4.0.0 (October 2026)                                     | Lynis 3.1.7 (June 2026)                  |
 |----------------------|-----------------------------------------------------------------|------------------------------------------|
 | Language             | POSIX shell, no dependencies                                    | POSIX shell                              |
 | Licence              | GPL-2.0-or-later                                                | GPL-3.0                                  |
@@ -148,6 +148,14 @@ fast the disks can be walked (a bare `find` over the same disks takes
    with 16,000 lines of dangling symlinks hides the few that matter.
 
 ## What has shipped
+
+**Released: 4.0.0 (22 October 2026).** Tigris's own names: `tigris.conf`,
+the `Tigris_*` settings, `/etc/tigris` and `tigris explain`, with every
+old name still read and an edited `tigerrc` carried over by the
+packages. Nine checks deeper (Apache rewritten, ClamAV, NTP, Qmail and
+OpenSMTPD, PowerDNS, USB authorisation, sysstat and snoopy, shell idle
+timeouts) and check_repos for package sources that stopped publishing.
+The full list is in `CHANGES`.
 
 **Released: 3.9.0 (16 October 2026).** A security release again: 3.8.1's
 hostile-image fix was incomplete, and a second review found more paths

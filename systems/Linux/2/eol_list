@@ -1,5 +1,5 @@
 # End of security support per release, read by check_release.
-# From https://endoflife.date on 2026-10-15 by util/mkeol; do not edit,
+# From https://endoflife.date on 2026-10-22 by util/mkeol; do not edit,
 # run sh util/mkeol before a release instead.
 #
 # os-release ID  cycle  end of security support  end of paid extended support
@@ -21,6 +21,7 @@ debian         2.0      1999-02-15 -
 debian         1.3      1998-12-08 -
 debian         1.2      1997-10-23 -
 debian         1.1      1996-12-12 -
+ubuntu         26.10    2027-07-01 -
 ubuntu         26.04    2031-05-29 2036-04-23
 ubuntu         25.10    2026-07-01 -
 ubuntu         25.04    2026-01-17 -

@@ -1,10 +1,10 @@
-%define _tag version_3_9_0
+%define _tag version_4_0_0
 # No -debuginfo: five small helpers, and EL9's toolchain errors on their
 # empty debugsource list.
 %define debug_package %{nil}
 
 Name:           tigris
-Version:        3.9.0
+Version:        4.0.0
 Release:        1%{?dist}
 Summary:        Security auditor for Linux, macOS and the BSDs, descended from TIGER
 License:        GPL-2.0-or-later
@@ -71,6 +71,11 @@ fi
 %{_mandir}/man8/tigris-accept.8*
 
 %changelog
+* Thu Oct 22 2026 Andrei Trimbitas <a.trimbitas@oldforge.tech> - 4.0.0-1
+- Tigris 4.0.0: its own names (tigris.conf, Tigris_*), the old ones
+  still read, an edited tigerrc carried over; nine checks deeper;
+  package sources that stopped publishing.
+
 * Fri Oct 16 2026 Andrei Trimbitas <a.trimbitas@oldforge.tech> - 3.9.0-1
 - Tigris 3.9.0: the hostile-image fix completed and hardened; setuid
   judged file by file; releases against end of support; a summary.

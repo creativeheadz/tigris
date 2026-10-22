@@ -1,6 +1,77 @@
 NOTE: To read changes made to the Debian package (since
 August 23rd 2001) see the changelog.Debian file
 
+Changes (v 4.0.0)
+--------------------
+
+4.0 gives Tigris its own names and keeps reading the old ones. The
+configuration is tigris.conf (tigris-quick.conf for the quick
+profile), its settings are Tigris_*, the packages keep it in
+/etc/tigris, and the explain helper is tigris-explain, behind `tigris
+explain`. A tigerrc, a profile or a site file that still says Tiger_*
+works as it is: old names are translated as each file is read, so the
+files override each other exactly as they did in 3.9.0, and an old
+setting in the environment still counts. Upgrading a 3.x package, an
+unedited tigerrc goes and an edited one becomes the tigris.conf, the
+new default kept beside it as tigris.conf.dpkg-new, .rpmnew, .pacnew
+or .apk-new; a source install never overwrites a configuration it
+finds, and brings the old directory's files into the new one. Where a
+tigerrc and a tigris.conf share a directory, the tigerrc is read and
+Tigris says so (con020c). The tiger and tigercron commands,
+TIGERHOMEDIR and the /var and library paths keep their names, tigexp
+is a link to tigris-explain, and the JSON report and its schema are
+unchanged.
+
+Nine checks go deeper, into most of what was left of Lynis's server
+groups. check_apache was rewritten: it reads the configuration as the
+server does, Includes from ServerRoot and directives in any case, and
+reports the loaded modules, an open forward proxy, WebDAV writes and
+world-readable status pages. ClamAV's signatures are judged by their
+age; NTP's sources are counted and a falseticker named; Qmail and
+OpenSMTPD join the mail checks, OpenSMTPD's open relay read in its
+match and action grammar; PowerDNS answering recursion to anyone
+fails; USBGuard, uas and the kernel's USB authorisation default are
+read, and a connected stick is named; sysstat and snoopy are judged by
+whether they collect; and a shell idle timeout (TMOUT, autologout) is
+reported, as information. check_repos is new: a package source can
+stop publishing without an error, as packager.io's old repositories
+did, and leave a server releases behind while apt says it is up to
+date. It reads when each repository last published from what apt, dnf,
+zypper, pacman and apk keep on disk, judges a distribution by its
+newest suite, and says when a source has published nothing for 180
+days (Tigris_Repos_MaxAge), when the lists have not been refreshed,
+and when a Valid-Until has passed. The new checks read an offline root
+where they can; NTP's sources and the USB devices plugged in need the
+running system and are skipped there.
+
+On the reference machine (Linux Mint 22.3, kernel 7.0), as root: a full
+run takes 2:06 (111 s user, 89 s system) and peaks at 138 MB, as 3.9.0
+does, measured the same afternoon.
+
+Changes you will see
+
+- The configuration file is tigris.conf and its settings Tigris_*;
+  a tigerrc and Tiger_* settings go on working, and so does tigexp.
+- Upgrading a 3.x package turns an edited tigerrc into the tigris.conf
+  and keeps the new default beside it (.dpkg-new, .rpmnew, .pacnew,
+  .apk-new): merge what you want from it.
+- con020c (CONFIG): a tigerrc and a tigris.conf in one directory, and
+  which of them is read.
+- upd007w, upd008w and upd009w: a package source silent for 180 days,
+  lists not refreshed, a Valid-Until passed. A host whose sources have
+  gone quiet now exits 3 (WARN) where 3.9.0 said nothing.
+- shl001i: no shell idle timeout, as information; shl002i names the
+  ones that are set.
+- The new depth, each id explained by tigris explain: avir001w and
+  avir002i (ClamAV), time005w and time006w (NTP), apa007i to apa011i
+  (Apache), mail002w for OpenSMTPD and Qmail, dns008f for PowerDNS,
+  stor014i to stor016w (USB), aud005w to aud008i (sysstat, snoopy).
+- tigris-accept writes the accepted file in the install's
+  configuration directory, where the run reads it.
+- make install no longer overwrites tigris.conf or cronrc: the shipped
+  file goes beside yours as FILE.new. configure's default
+  configuration directory is $sysconfdir/tigris.
+
 Changes (v 3.9.0)
 --------------------
 

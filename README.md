@@ -344,7 +344,10 @@ archive, not this fork.
 ## Where it is going
 
 [ROADMAP.md](ROADMAP.md) has the decisions, the status and what is next.
-3.9.0 completes the hostile-image fix, judges setuid files and shared
+4.0.0 gives Tigris its own names (`tigris.conf`, `Tigris_*`,
+`/etc/tigris`) and keeps reading the old ones, goes deeper in nine
+checks and spots package sources that stopped publishing; 3.9.0
+completes the hostile-image fix, judges setuid files and shared
 directories one by one, and ends each run with a summary; 3.8.1 began
 making sure nothing an audited image holds can run as code, and gave
 every finding a one-line fix and references; 3.8.0 carries the
@@ -352,8 +355,7 @@ audit to macOS and FreeBSD, from fixture roots on any machine; 3.7.0
 finished the offline audit, so an image reads as fully as a running
 system, and brought the packages; 3.6.0 the compliance mapping, the
 transparent summary and five server-side checks; 3.5.0 the offline
-audit. 4.0 renames the internals in one go (`tigris.conf`, `Tigris_*`,
-`/etc/tigris`), with shims for old configurations; later a PowerShell
+audit. Later a PowerShell
 engine for Windows against the same contract. Every change
 is measured for wall time, CPU and memory.
 
