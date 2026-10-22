@@ -7,9 +7,11 @@ References: Apache httpd core directives (Listen)
 Controls: CIS 4.1; NIST CM-6, CM-7; ISO 8.9; CE Secure configuration
 
 The Apache server is listening on every address of the machine instead
-of one named address (a Listen directive without an IP, or no Listen
-restriction at all). On a machine with more than one interface this
-serves the site where it was never meant to be served. The same id at
+of one named address (a Listen directive without an IP, or with
+0.0.0.0 or [::], or no Listen directive at all); every such Listen
+is named in the one finding. On a machine with more than one
+interface this serves the site where it was never meant to be
+served. The same id at
 INFO level confirms the server does listen only on one address and
 port. Give each Listen directive an explicit address, for example
 "Listen 192.0.2.10:80", and restart the server.

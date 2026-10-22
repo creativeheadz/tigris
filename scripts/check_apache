@@ -327,7 +327,8 @@ do
     }
     if (w1 == "listen" && ishttpd) {
       v = rest; sub(/[ \t].*$/, "", v)
-      if (v ~ /:/) { nb++; boundv[nb] = v }
+      # 0.0.0.0:80 and [::]:80 name every address as surely as 80 does
+      if (v ~ /:/ && v !~ /^(0\.0\.0\.0|\[::\]):/) { nb++; boundv[nb] = v }
       else if (v != "") { na++; barev[na] = v; bareloc[na] = file " line " lineno }
       next
     }
@@ -427,11 +428,15 @@ else
   message INFO apa007i "$modlist" "Apache is configured to load $n $what."
 fi
 
-$SED -n 's/^bare: //p' $listens 2>/dev/null | while IFS= read -r __b
-do
-  [ -n "$__b" ] && message WARN apa001w "Give each Listen directive an address (Listen 192.0.2.10:80) and restart." "Listen $__b serves every address of the machine."
-done
-if [ -z "`$SED -n 's/^bare: //p' $listens 2>/dev/null`" ]; then
+# every bare Listen in one finding: "Listen 80 in F line 2 serves", or
+# "Listen 80 (F line 2), 443 (G line 5) serve"
+bare=`$SED -n 's/^bare: //p' $listens 2>/dev/null | $AWK '
+  { i = index($0, " in "); n++; one = $0
+    all = all (n > 1 ? ", " : "") substr($0, 1, i - 1) " (" substr($0, i + 4) ")" }
+  END { if (n == 1) print one " serves"; else if (n > 1) print all " serve" }'`
+if [ -n "$bare" ]; then
+  message WARN apa001w "Give each Listen directive an address (Listen 192.0.2.10:80) and restart." "Listen $bare every address of the machine."
+else
   bound=`$SED -n 's/^bound: //p' $listens 2>/dev/null | $AWK '{ l = l (NR > 1 ? ", " : "") $0 } END { print l }'`
   if [ -n "$bound" ]; then
     message INFO apa001w "" "Apache listens only on $bound."

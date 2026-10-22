@@ -151,6 +151,7 @@ Include conf.modules.d/*.conf
 IncludeOptional conf.d/*.conf
 EOF
 printf 'LoadModule authz_core_module /usr/lib64/httpd/modules/mod_authz_core.so\n' > "$R/etc/httpd/conf.modules.d/00-base.conf"
+printf 'Listen 443 https\n' > "$R/etc/httpd/conf.d/ssl.conf"
 cat > "$R/etc/httpd/conf.d/autoindex.conf" <<'EOF'
 <Directory "/usr/share/httpd/icons">
     Options Indexes MultiViews FollowSymlinks
@@ -158,10 +159,11 @@ cat > "$R/etc/httpd/conf.d/autoindex.conf" <<'EOF'
 </Directory>
 EOF
 run "$R" "$W/out"
-has '--WARN-- [apa001w] Listen 80 in /etc/httpd/conf/httpd.conf line 2 serves every address' "$W/out" &&
+has '--WARN-- [apa001w] Listen 80 (/etc/httpd/conf/httpd.conf line 2), 443 (/etc/httpd/conf.d/ssl.conf line 1) serve every address' "$W/out" &&
+[ "`grep -c 'apa001w' \"$W/out\"`" = 1 ] &&
 has 'authz_core, mpm_event' "$W/out" &&
 has '--WARN-- [apa006w] /usr/share/httpd/icons directory will provide content listing' "$W/out" &&
-  ok "RHEL: conf.modules.d and conf.d read from ServerRoot; bare Listen" || { bad "rhel"; cat "$W/out"; }
+  ok "RHEL: conf.modules.d and conf.d read from ServerRoot; bare Listens in one finding" || { bad "rhel"; cat "$W/out"; }
 
 # with no ServerRoot line the platform's default holds: /usr/local on
 # FreeBSD, whose Includes are etc/apache24/...
@@ -256,6 +258,10 @@ printf 'Listen 192.0.2.10:80\n' > "$B/etc/httpd/conf/httpd.conf"
 run "$B" "$W/out"
 has '--INFO-- [apa001w] Apache listens only on 192.0.2.10:80.' "$W/out" &&
   ok "bound Listen: apa001w INFO" || { bad "rhelbound"; cat "$W/out"; }
+printf 'Listen 0.0.0.0:80\n' > "$B/etc/httpd/conf/httpd.conf"
+run "$B" "$W/out"
+has '--WARN-- [apa001w] Listen 0.0.0.0:80 in /etc/httpd/conf/httpd.conf line 1 serves every address' "$W/out" &&
+  ok "Listen 0.0.0.0:80 is bare" || { bad "rhelany"; cat "$W/out"; }
 
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
