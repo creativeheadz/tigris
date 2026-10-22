@@ -291,6 +291,11 @@ jobs:
           grep '"type":"finding"' report.jsonl | head -20
           # nothing in the report names where the root is on the runner
           ! grep -q "$RUNNER_TEMP" report.jsonl
+      # The root was unpacked as root, so the runner cannot clear it: left
+      # behind, each run added a Debian's setuid programs to the host
+      - name: Remove the unpacked root
+        if: always()
+        run: sudo rm -rf "$RUNNER_TEMP/root" "$RUNNER_TEMP/reports"
 
   package-managers:
     name: Package integrity (${{ matrix.image }})
