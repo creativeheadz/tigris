@@ -50,12 +50,13 @@ T=$D/$S/tigris
 grep -q '`dirname "$0"`/tigris-explain' "$T" || { echo "stage.sh: the explain line moved in tigris"; exit 1; }
 sed -i 's#`dirname "$0"`/tigris-explain#'"$LIB"'/tigris-explain#' "$T"
 
-# the log and accepted-file defaults name the tigris directories
+# the log default names the tigris directory; the accepted file is in the
+# configuration directory make install wrote into tigris-accept
 F=$D/$S/tigris-diff
 grep -q '/var/log/tiger' "$F" || { echo "stage.sh: the log default moved in tigris-diff"; exit 1; }
 sed -i 's#/var/log/tiger#/var/log/tigris#' "$F"
 A=$D/$S/tigris-accept
-grep -q '/etc/tigris/tigris.accepted' "$A" || { echo "stage.sh: the accepted-file default moved in tigris-accept"; exit 1; }
+grep -q '^TigrisConfigDir="/etc/tigris"$' "$A" || { echo "stage.sh: tigris-accept does not name /etc/tigris (configure --with-tigerconfig=/etc/tigris)"; exit 1; }
 
 # man pages: the tigris ones only
 rm -f "$D/usr/share/man/man8/tiger.8" "$D/usr/share/man/man8/tigris-explain.8" "$D/usr/share/man/man8/tigercron.8"

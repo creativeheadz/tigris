@@ -59,10 +59,11 @@ Settled, so they do not have to be argued again:
   Linux parity comes first.
 - **Internal names renamed in 4.0.** `tigris.conf`, the `Tigris_*` settings,
   `/etc/tigris` and `tigris explain` are the names; the old `tigerrc`,
-  `Tiger_*`, `/etc/tiger` and `tigexp` keep working through shims, an old
-  file beating a new file beside it, and old names read as new ones as
-  each file is read, so the files override each other as in 3.9.0.
-  `./tigris` is the entry point.
+  `Tiger_*` and `tigexp` keep working through shims (`/etc/tiger` is not
+  read: no Tigris package used it), an old file beating a new file
+  beside it, and old names read as new ones as each file is read, so
+  the files override each other as in 3.9.0. `./tigris` is the entry
+  point.
 
 ## Where things stand
 

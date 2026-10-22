@@ -591,8 +591,12 @@ tigris_readconf()
   # Each directory tries the old name first, for the same reason as the
   # preset: an old file the admin kept is their settings, and no new
   # file appearing beside it may silently switch them to defaults.
+  # /etc/tiger is not searched: no Tigris package ever used it (an
+  # install configured for it reads it as the preset above), and on a
+  # host with the distribution's tiger beside Tigris its tigerrc is that
+  # package's, not this one's.
   [ ! -n "$RCFILE" ] && {
-    for file in '/etc/tiger/tigerrc' '/etc/tigris/tigris.conf' '/usr/local/etc/tigerrc' '/usr/local/etc/tigris.conf' './.tigerrc' './.tigris.conf' './tigerrc' './tigris.conf' '$BASEDIR/tigerrc' '$BASEDIR/tigris.conf' '$HOME/.tigerrc' '$HOME/.tigris.conf'
+    for file in '/etc/tigris/tigerrc' '/etc/tigris/tigris.conf' '/usr/local/etc/tigerrc' '/usr/local/etc/tigris.conf' './.tigerrc' './.tigris.conf' './tigerrc' './tigris.conf' '$BASEDIR/tigerrc' '$BASEDIR/tigris.conf' '$HOME/.tigerrc' '$HOME/.tigris.conf'
   # TODO: Check with ARSC if there is a preference on their behalf
   # for this ordering since Tara 3.0.3 uses
   # for file in './.tigris.conf' './tigris.conf' '$HOME/.tigris.conf' '$BASEDIR/tigris.conf'

@@ -29,12 +29,15 @@
 # 'docker.service listens on 2283/tcp*'; without it every message with
 # that id is accepted.
 #
-# The file is tigris.accepted next to tigris.conf: ./tigris.accepted when
-# run from a source tree, /etc/tigris/tigris.accepted when installed
-# (/etc/tiger/tigris.accepted while the old install's file is still there).
+# The file is tigris.accepted next to tigris.conf, where the run reads it:
+# ./tigris.accepted when run from a source tree, and in the configuration
+# directory of the install otherwise (/etc/tigris for the packages).
 # One entry per line, tab-separated: id, expiry or -, glob or -, reason.
 #
 #-----------------------------------------------------------------------------
+# The configuration directory: make install writes it here as it does
+# into config, whose run reads tigris.accepted from there
+TigrisConfigDir='.'
 
 file=
 mode=add
@@ -57,7 +60,7 @@ do
   esac
   shift
 done
-[ -n "$file" ] || { if [ -f ./tigris.conf ] || [ -f ./tigerrc ]; then file=./tigris.accepted; elif [ -f /etc/tigris/tigris.accepted ] || [ ! -f /etc/tiger/tigris.accepted ]; then file=/etc/tigris/tigris.accepted; else file=/etc/tiger/tigris.accepted; fi; }
+[ -n "$file" ] || { if [ -f ./tigris.conf ] || [ -f ./tigerrc ]; then file=./tigris.accepted; else file=$TigrisConfigDir/tigris.accepted; fi; }
 tab=`printf '\t'`
 
 case "$mode" in

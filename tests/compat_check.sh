@@ -149,6 +149,23 @@ printf 'basedir=$TIGERHOMEDIR\n. $basedir/config\necho "OLD=${__old-unset} NEW=$
 grep -q '^OLD=unset NEW=unset SH=unset$' "$W/out" &&
   ok "the shim unsets its loop variables" || { bad "shim leaks"; grep '^OLD=' "$W/out"; }
 
+# /etc/tiger is never searched: no Tigris package used it, and beside
+# the distribution's tiger its tigerrc is that package's
+! grep -q "'/etc/tiger/" "$TIGER/config" &&
+  ok "the search list holds no /etc/tiger file" || bad "config searches /etc/tiger: `grep -o \"'/etc/tiger/[^']*'\" \"$TIGER/config\"`"
+
+# tigris-accept writes where the run reads: the TigrisConfigDir that
+# make install writes into it, as into config; a source tree's own file
+# from inside the tree
+mkdir -p "$W/inst/etc" "$W/inst/sbin" "$W/elsewhere"
+sed "s%^TigrisConfigDir=.*%TigrisConfigDir=\"$W/inst/etc\"%" "$W/tigris-accept" > "$W/inst/sbin/tigris-accept"
+( cd "$W/elsewhere" && sh "$W/inst/sbin/tigris-accept" lin002i -r 'compat leg' ) > "$W/out" 2>&1
+[ -f "$W/inst/etc/tigris.accepted" ] && grep -q lin002i "$W/inst/etc/tigris.accepted" &&
+  ok "an installed tigris-accept writes into its TigrisConfigDir" || { bad "tigris-accept ignores TigrisConfigDir"; cat "$W/out"; }
+( cd "$W" && sh "$W/inst/sbin/tigris-accept" -l ) > "$W/out" 2>&1
+grep -q '(\./tigris\.accepted ' "$W/out" &&
+  ok "inside a source tree it uses the tree's tigris.accepted" || { bad "source-tree fallback"; cat "$W/out"; }
+
 # tigexp still runs the explanation
 [ -L "$TIGER/tigexp" ] && ok "tigexp is a symlink" || bad "tigexp is not a symlink"
 ( cd "$W" && sh ./tigexp lin002i ) > "$W/out" 2>&1
@@ -167,7 +184,7 @@ left=`grep -v -x -e config -e tests/compat_check.sh "$W/vars.txt"`
 left=`grep -v -x -e config -e tigris-accept -e profiles/quick -e tests/compat_check.sh -e tests/diff_check.sh -e tests/nonroot_check.sh -e tests/schema_check.sh -e packaging/mkdeb.sh -e packaging/tigris.spec -e packaging/tigris.install -e packaging/tigris.post-upgrade -e packaging/README.md "$W/rc.txt"`
 [ -z "$left" ] && ok "no tigerrc stragglers outside the shims, old-report fixtures and package upgrades" || { bad "tigerrc stragglers: $left"; }
 ( cd "$TIGER" && grep -rln '/etc/tiger' $D 2>/dev/null ) | grep -v '^debian/changelog$' > "$W/etc.txt"
-left=`grep -v -x -e config -e tigris-accept -e tests/compat_check.sh "$W/etc.txt"`
+left=`grep -v -x -e config -e tests/compat_check.sh "$W/etc.txt"`
 [ -z "$left" ] && ok "no /etc/tiger stragglers outside the fallbacks" || { bad "/etc/tiger stragglers: $left"; }
 ( cd "$TIGER" && grep -rn 'tigexp' $D 2>/dev/null ) | grep -v 'tigris-explain' | grep -v '^debian/changelog:' | grep -v '^Binary' | sed 's/:.*//' | sort -u > "$W/exp.txt"
 left=`grep -v -x -e tests/compat_check.sh "$W/exp.txt"`
