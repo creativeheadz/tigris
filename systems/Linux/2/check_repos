@@ -40,13 +40,16 @@
 #             and openh264 repositories are not judged at all.
 #             APKINDEX names carry a hash of the URL,
 #             not the URL, so apk findings name the file and point at
-#             /etc/apk/repositories. Tigris_Repos_MaxAge (90 days)
+#             /etc/apk/repositories. Tigris_Repos_MaxAge (180 days)
 #             sets the age; Tigris_Repos_Now replaces the clock, for
 #             the tests.
 #
 # 10/16/2026 - Initial version. apt (Date, Valid-Until, refresh),
 #             dnf and zypper (repomd, refresh), pacman and apk
 #             (mtime-gated, refresh).
+# 10/22/2026 - The age is 180 days by default: 90 called live repositories
+#             with a quarterly cadence dead. The finding allows that
+#             this host may be what stopped fetching.
 # 10/22/2026 - dnf and zypper repositories grouped by host, newest wins;
 #             local sources (apt file:, rpm file: cd: dvd: ...) and
 #             openh264 repositories never judged stale.
@@ -111,8 +114,8 @@ done
 
 haveallcmds AWK FIND SED SORT || exit 1
 
-MaxAge=${Tigris_Repos_MaxAge:-90}
-case "$MaxAge" in *[!0-9]*|"") MaxAge=90 ;; esac
+MaxAge=${Tigris_Repos_MaxAge:-180}
+case "$MaxAge" in *[!0-9]*|"") MaxAge=180 ;; esac
 now=${Tigris_Repos_Now:-`date +%s`}
 case "$now" in *[!0-9]*|"") now=`date +%s` ;; esac
 nowdays=`expr $now / 86400`
@@ -330,7 +333,7 @@ do
   do
     [ -n "$url" ] || url="see $rdir"
     if [ "$count" -gt 1 ]; then also=", the newest of $count from that host"; else also=; fi
-    message WARN upd007w "Drop the repo or fix its URL in $rdir." "Repository '$id' ($url) published $age days ago ($sysf$also): it may have moved or died."
+    message WARN upd007w "Drop the repo or fix its URL in $rdir." "Repository '$id' ($url) published $age days ago ($sysf$also): it may have moved or died, or this host no longer fetches it."
   done
 done
 
@@ -350,7 +353,7 @@ if [ -n "$syncd" ] && [ -d "$syncd" ] && [ -n "`$FIND "$syncd" -name '*.db' 2>/d
       [ -n "`$FIND "$db" -mtime -$MaxAge 2>/dev/null`" ] && continue
       repo=${db##*/}; repo=${repo%.db}
       url=`pacmanurl "$repo"`; [ -n "$url" ] || url="see /etc/pacman.conf"
-      message WARN upd007w "Refresh from another mirror, or drop the repo." "Repository '$repo' has no index newer than $MaxAge days (/var/lib/pacman/sync/${repo}.db from $url): it stopped publishing, or the mirror lags."
+      message WARN upd007w "Refresh from another mirror, or drop the repo." "Repository '$repo' has no index newer than $MaxAge days (/var/lib/pacman/sync/${repo}.db from $url): it may have moved or died, its mirror may lag, or this host no longer fetches it."
     done
   fi
 fi
@@ -369,7 +372,7 @@ if [ -n "$apkcache" ] && [ -d "$apkcache" ] && [ -n "`$FIND "$apkcache" -name 'A
     do
       [ -f "$idx" ] || continue
       [ -n "`$FIND "$idx" -mtime -$MaxAge 2>/dev/null`" ] && continue
-      message WARN upd007w "Drop the source from /etc/apk/repositories." "\`${idx##*/}' is older than $MaxAge days while other indexes refresh: the repository stopped publishing."
+      message WARN upd007w "Drop the source from /etc/apk/repositories." "\`${idx##*/}' is older than $MaxAge days while other indexes refresh: the repository may have moved or died, or this host no longer fetches it."
     done
   fi
 fi
@@ -390,7 +393,7 @@ do
   [ "$age" = 1 ] && u=day || u=days
   [ -n "$origin" ] && src=$origin || src=$url
   [ -n "$suite" ] && suite=", suite $suite" || suite=
-  message WARN upd007w "Drop the source, move to its successor, or track its -updates suite too (sources in /etc/apt/sources.list and /etc/apt/sources.list.d)." "\`$sysf' (from $src$suite) published $age $u ago (dated $datestr): the repository may have moved or died."
+  message WARN upd007w "Drop the source, move to its successor, or track its -updates suite too (sources in /etc/apt/sources.list and /etc/apt/sources.list.d)." "\`$sysf' (from $src$suite) published $age $u ago (dated $datestr): it may have moved or died, or this host no longer fetches it."
 done
 
 #

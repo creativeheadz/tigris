@@ -2,18 +2,20 @@
 #
 # tests/repos_check.sh - check_repos on offline roots
 #
-# Thirteen roots, all judged against Tigris_Repos_Now=1791974400
-# (14 Oct 2026), so the ages never rot: apt judged by newest suite
-# (an old release pocket beside fresh updates is fine, whichever
-# files are fresh); an apt source dead 120 days; an apt source
-# freshly published but Valid-Until passed; an apt source with an
-# old Date still re-fetched (served, not dead); apt lists never
-# refreshed; dnf with a dead repo beside a fresh one; zypper the
-# same; pacman with a dead repo beside a fresh one (URLs through
-# Server and Include); a lone dead pacman database (refresh, not
-# stale); apk both ways; and an empty root, where no manager exists
-# and nothing is said. Runs as a user and as root; the fixtures
-# read the same for both.
+# All judged against Tigris_Repos_Now=1791974400 (14 Oct 2026), so
+# the ages never rot, and at 90 days unless a root tests the shipped
+# 180. apt: judged by newest suite (an old release pocket beside fresh
+# updates is fine, whichever files are fresh); a source dead 120 days;
+# one freshly published but Valid-Until passed; one with an old Date
+# still re-fetched (served, not dead); lists never refreshed; a local
+# file: source; the shipped age. dnf (4 and 5) and zypper: a dead repo
+# beside a fresh one; release repositories beside their updates on one
+# host, openh264, local and COPR/OBS projects. pacman and apk: a dead
+# index beside a fresh one, and a lone dead one (refresh, not stale).
+# Containment and data: linked indexes leading in and out of the root,
+# backslashes in names, a Release with no Origin. A stock image with
+# nothing cached, and an empty root, where nothing is said. Runs as a
+# user and as root; the fixtures read the same for both.
 #
 TIGER=${TIGER:-`cd "\`dirname \"$0\"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -25,10 +27,11 @@ cp "$W/tigris.conf" "$W/tigris.conf.base"
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
-run() {  # run ROOT OUTFILE [EXTRA]: check_repos with ROOT as the audited system
+run() {  # run ROOT OUTFILE [EXTRA]: check_repos with ROOT as the audited system,
+         # judged at 90 days unless EXTRA sets something else ("-": the shipped default)
   cp "$W/tigris.conf.base" "$W/tigris.conf"
   { echo "Tigris_Repos_Now=1791974400"; } >> "$W/tigris.conf"
-  [ -n "$3" ] && { echo "$3" >> "$W/tigris.conf"; }
+  case "$3" in -) ;; "") echo "Tigris_Repos_MaxAge=90" >> "$W/tigris.conf" ;; *) echo "$3" >> "$W/tigris.conf" ;; esac
   ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$1" sh ./systems/Linux/2/check_repos ) 2>&1 |
   awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
   tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$2" || true
@@ -273,6 +276,20 @@ printf 'package list\n' > "$AL/var/lib/apt/lists/fresh_example_com_Packages"
 run "$AL" "$W/out"
 ! grep -q 'upd007w' "$W/out" &&
   ok "apt local file: source never stale" || { bad "aptlocal"; cat "$W/out"; }
+
+# the shipped age is 180 days: a live source between quarterly
+# releases (120 days, osquery's gap in 2026) is not called dead; one
+# silent for 200 days is, worded for either cause
+DF=$W/default; mkdir -p "$DF/etc" "$DF/var/lib/apt/lists"
+release "$DF/var/lib/apt/lists/pkg_example_io_deb_dists_deb_InRelease" Quarterly deb 'Tue, 16 Jun 2026 10:40:00 UTC' ''
+release "$DF/var/lib/apt/lists/old_example_io_deb_dists_deb_InRelease" Gone deb 'Thu, 26 Mar 2026 10:40:00 UTC' ''
+touch -t 202001010000 "$DF/var/lib/apt/lists/pkg_example_io_deb_dists_deb_InRelease" "$DF/var/lib/apt/lists/old_example_io_deb_dists_deb_InRelease"
+printf 'package list\n' > "$DF/var/lib/apt/lists/fresh_example_com_Packages"
+run "$DF" "$W/out" -
+! grep -q 'Quarterly' "$W/out" &&
+has '(from Gone, suite deb) published 202 days ago (dated 26 Mar 2026): it may have moved or died, or this host no longer fetches it.' "$W/out" &&
+[ "`grep -c 'upd007w' \"$W/out\"`" = 1 ] &&
+  ok "default age 180 days: quarterly source fine, 200-day silence warned" || { bad "default"; cat "$W/out"; }
 
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
