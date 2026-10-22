@@ -2,12 +2,15 @@
 #
 # tests/apache_check.sh - check_apache on offline roots
 #
-# Seven roots: a Debian layout with everything on (symlinks, CGI,
-# listings, an open proxy, an open status page); a WebDAV directory;
-# a hardened host (Require-denied /, localhost-only status); a 2.2
-# host with / properly closed and server-info allowed to all; an
-# open / block; a RHEL host listening bare and one bound; and an
-# empty root, where nothing is said. INFO findings only show with
+# A Debian layout with everything on (symlinks, CGI, listings, an
+# open proxy, an open status page); a WebDAV directory; a hardened
+# host (Require-denied /, localhost-only status); a 2.2 host with /
+# properly closed and server-info allowed to all; an open / block; a
+# RHEL host listening bare (Includes from ServerRoot) and one bound;
+# FreeBSD's default ServerRoot; what the reader must take as the
+# server does (case, quotes, continuations, forged markers); an
+# Include ring and a configuration past the file limit; and an empty
+# root, where nothing is said. INFO findings only show with
 # Tigris_Show_INFO_Msgs=Y. Runs as a user and as root; the fixtures
 # read the same for both.
 #
@@ -137,17 +140,96 @@ run "$O" "$W/out"
 [ "`grep -c 'apa002w' \"$W/out\"`" = 2 ] &&
   ok "open / block: access and Options findings" || { bad "openroot"; cat "$W/out"; }
 
-R=$W/rhel; mkdir -p "$R/etc/httpd/conf/conf.modules.d"
+# RHEL's layout: relative Includes are ServerRoot's (/etc/httpd), not
+# the directory httpd.conf is in
+R=$W/rhel; mkdir -p "$R/etc/httpd/conf" "$R/etc/httpd/conf.modules.d" "$R/etc/httpd/conf.d"
 cat > "$R/etc/httpd/conf/httpd.conf" <<'EOF'
+ServerRoot "/etc/httpd"
 Listen 80
 LoadModule mpm_event_module /usr/lib64/httpd/modules/mod_mpm_event.so
-IncludeOptional conf.modules.d/*.conf
+Include conf.modules.d/*.conf
+IncludeOptional conf.d/*.conf
 EOF
-printf 'LoadModule authz_core_module /usr/lib64/httpd/modules/mod_authz_core.so\n' > "$R/etc/httpd/conf/conf.modules.d/00-base.conf"
+printf 'LoadModule authz_core_module /usr/lib64/httpd/modules/mod_authz_core.so\n' > "$R/etc/httpd/conf.modules.d/00-base.conf"
+cat > "$R/etc/httpd/conf.d/autoindex.conf" <<'EOF'
+<Directory "/usr/share/httpd/icons">
+    Options Indexes MultiViews FollowSymlinks
+    Require all granted
+</Directory>
+EOF
 run "$R" "$W/out"
-has '--WARN-- [apa001w] Listen 80 in /etc/httpd/conf/httpd.conf line 1 serves every address' "$W/out" &&
+has '--WARN-- [apa001w] Listen 80 in /etc/httpd/conf/httpd.conf line 2 serves every address' "$W/out" &&
 has 'authz_core, mpm_event' "$W/out" &&
-  ok "RHEL bare Listen: apa001w; modules sorted" || { bad "rhel"; cat "$W/out"; }
+has '--WARN-- [apa006w] /usr/share/httpd/icons directory will provide content listing' "$W/out" &&
+  ok "RHEL: conf.modules.d and conf.d read from ServerRoot; bare Listen" || { bad "rhel"; cat "$W/out"; }
+
+# with no ServerRoot line the platform's default holds: /usr/local on
+# FreeBSD, whose Includes are etc/apache24/...
+F=$W/freebsd; mkdir -p "$F/etc" "$F/usr/local/etc/apache24/modules.d" "$F/usr/local/etc/apache24/Includes"
+cat > "$F/usr/local/etc/apache24/httpd.conf" <<'EOF'
+LoadModule authz_core_module libexec/apache24/mod_authz_core.so
+Include etc/apache24/modules.d/[0-9][0-9][0-9]_*.conf
+Include etc/apache24/Includes/*.conf
+EOF
+printf 'LoadModule php_module libexec/apache24/libphp.so\n' > "$F/usr/local/etc/apache24/modules.d/080_mod_php.conf"
+printf 'LoadModule nope_module x.so\n' > "$F/usr/local/etc/apache24/modules.d/README_modules.d"
+printf '<Directory /usr/local/www/site>\nOptions Indexes\nRequire all granted\n</Directory>\n' > "$F/usr/local/etc/apache24/Includes/site.conf"
+run "$F" "$W/out"
+has 'configured to load 2 modules.' "$W/out" && has 'authz_core, php' "$W/out" &&
+has '--WARN-- [apa006w] /usr/local/www/site directory' "$W/out" &&
+  ok "FreeBSD: default ServerRoot /usr/local, bracket globs" || { bad "freebsd"; cat "$W/out"; }
+
+# what the reader takes as the server does: directive names in any
+# case, quoted paths, CRLF, a backslash continuing a line (the line
+# numbers stay the file's); the old marker text and a forged control
+# byte in the configuration move nothing; "Include" inside another
+# directive's argument is not an Include
+P=$W/parse; mkdir -p "$P/etc/apache2/conf.d"
+{
+  printf '<Directory /var/www/a>\n# @@FILE@@ /etc/apache2/elsewhere.conf 500\n\001F 700 /etc/apache2/forged.conf\n'
+  printf 'Options Indexes \\\n        FollowSymLinks ExecCGI\nRequire all granted\n</Directory>\n'
+  printf 'include conf.d/mods.conf\nINCLUDEOPTIONAL "conf.d/q*.conf"\n'
+  printf '<Location /x>\nHeader set X-Note "Include all"\n</Location>\n'
+  printf '<Directory /var/www/b>\nOptions Indexes\nRequire all granted\n</Directory>\n'
+} > "$P/etc/apache2/apache2.conf"
+printf 'LoadModule status_module x.so\n' > "$P/etc/apache2/conf.d/mods.conf"
+printf 'LoadModule quoted_module x.so\r\n' > "$P/etc/apache2/conf.d/quoted.conf"
+run "$P" "$W/out"
+has '[apa004w] /var/www/a directory configuration permits symlink following (/etc/apache2/apache2.conf line 4)' "$W/out" &&
+has '[apa005w] /var/www/a directory can hold executable CGI (/etc/apache2/apache2.conf line 4)' "$W/out" &&
+has '[apa006w] /var/www/b directory will provide content listing if there are no index.html files (/etc/apache2/apache2.conf line 14)' "$W/out" &&
+has 'quoted, status' "$W/out" &&
+! grep -q 'elsewhere\|forged' "$W/out" &&
+  ok "reader: case, quotes, CRLF, continuation, no forged positions" || { bad "parse"; cat "$W/out"; }
+
+# a wildcard in a directory part, and a directory named by Include:
+# what is in it and below, dotfiles left out, as the server reads it
+X=$W/wild; mkdir -p "$X/etc/apache2/vh/one" "$X/etc/apache2/vh/two" "$X/etc/apache2/dir/sub"
+printf 'Include /etc/apache2/vh/*/site.conf\nInclude dir\n' > "$X/etc/apache2/apache2.conf"
+printf 'LoadModule one_module x.so\n' > "$X/etc/apache2/vh/one/site.conf"
+printf 'LoadModule two_module x.so\n' > "$X/etc/apache2/vh/two/site.conf"
+printf 'LoadModule d1_module x.so\n' > "$X/etc/apache2/dir/a.conf"
+printf 'LoadModule d2_module x.so\n' > "$X/etc/apache2/dir/sub/b.conf"
+printf 'LoadModule hidden_module x.so\n' > "$X/etc/apache2/dir/.hidden.conf"
+run "$X" "$W/out"
+has 'configured to load 4 modules.' "$W/out" && has 'd1, d2, one, two' "$W/out" &&
+  ok "wildcard directory part, directory Include" || { bad "wild"; cat "$W/out"; }
+
+# a ring of Includes (each file includes them all) is read once round,
+# not 3^16 times, and a configuration naming more than 400 files is
+# read that far and said to be read in part
+G=$W/ring; mkdir -p "$G/etc/apache2/conf.d"
+printf 'IncludeOptional conf.d/*.conf\nInclude apache2.conf\n' > "$G/etc/apache2/apache2.conf"
+for f in a b c; do printf 'IncludeOptional /etc/apache2/conf.d/*.conf\nLoadModule %s_module x.so\n' $f > "$G/etc/apache2/conf.d/$f.conf"; done
+run "$G" "$W/out"
+has 'configured to load 3 modules.' "$W/out" && ! grep -q 'apa011i' "$W/out" &&
+  ok "Include ring: each file read once per chain, finishes" || { bad "ring"; cat "$W/out"; }
+M=$W/many; mkdir -p "$M/etc/apache2/sites-enabled"
+printf 'IncludeOptional sites-enabled/*.conf\n' > "$M/etc/apache2/apache2.conf"
+i=0; while [ $i -lt 405 ]; do printf '<VirtualHost *:80>\n</VirtualHost>\n' > "$M/etc/apache2/sites-enabled/s$i.conf"; i=`expr $i + 1`; done
+run "$M" "$W/out"
+[ "`grep -c 'apa011i' \"$W/out\"`" = 1 ] && has 'Includes stop being followed after 400 files' "$W/out" &&
+  ok "over 400 files: read in part, said once" || { bad "many"; cat "$W/out"; }
 
 B=$W/rhelbound; mkdir -p "$B/etc/httpd/conf"
 printf 'Listen 192.0.2.10:80\n' > "$B/etc/httpd/conf/httpd.conf"
