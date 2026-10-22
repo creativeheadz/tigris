@@ -32,6 +32,13 @@
 #                 in the authoritative server, each with one level of
 #                 include-dir. What is not set is not judged: the
 #                 defaults allow localhost and the private networks.
+# 10/22/2026 - The authoritative server's allow-recursion counts only
+#                 where it can recurse at all, with a recursor= to hand
+#                 queries to (gone since 4.1, which does not recurse).
+#                 key+= adds to a setting and is read; include-dir
+#                 loads its *.conf only, as PowerDNS does; the 5.x
+#                 recursor's recursor.yml is read too (incoming:
+#                 allow_from, and recursor: include_dir's *.yml).
 #
 # References:
 #   resolv.conf(5), unbound.conf(5), named.conf(5), PowerDNS settings (allow-from)
@@ -227,59 +234,105 @@ done
 
 # PowerDNS: allow-from in the recursor, allow-recursion in the
 # authoritative server, holding 0.0.0.0/0 or ::/0. One level of
-# include-dir, which is what the packaged configurations use.
+# include-dir, which is what the packaged configurations use, and of
+# it only the files PowerDNS loads (*.conf; *.yml for recursor.yml).
+
+# pdns_values KEY FILE: the values FILE gives the PowerDNS setting KEY,
+# set (key=a, b) or added to (key+=c), one a line
+pdns_values()
+{
+  $SED 's/#.*//' "`rootfile "$2"`" 2>/dev/null | k="$1" $AWK '
+    { line = $0; sub(/^[ \t]+/, "", line); k = ENVIRON["k"]
+      if (tolower(substr(line, 1, length(k))) != k) next
+      v = substr(line, length(k) + 1); sub(/^[ \t]+/, "", v)
+      if (substr(v, 1, 1) == "+") v = substr(v, 2)
+      if (substr(v, 1, 1) != "=") next
+      v = substr(v, 2); gsub(/[,;]/, " ", v)
+      n = split(v, w, /[ \t]+/)
+      for (i = 1; i <= n; i++) if (w[i] != "") print w[i] }'
+}
+
+# pdns_yaml SECTION KEY FILE: the values of SECTION.KEY in a PowerDNS 5
+# YAML settings file, one a line: a scalar, an inline [a, b] list, or
+# the "- item" lines that follow the key
+pdns_yaml()
+{
+  $SED 's/#.*//' "`rootfile "$3"`" 2>/dev/null | sec="$1" key="$2" $AWK '
+    function out(v) { gsub(/["\047]/, "", v); sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v); if (v != "") print v }
+    /^[A-Za-z_][A-Za-z0-9_]*[ \t]*:/ { s = $0; sub(/[ \t]*:.*/, "", s); insec = (s == ENVIRON["sec"]); inkey = 0; next }
+    !insec { next }
+    /^[ \t]+-[ \t]/ { if (inkey) { v = $0; sub(/^[ \t]+-[ \t]+/, "", v); out(v) }; next }
+    /^[ \t]+[A-Za-z_][A-Za-z0-9_]*[ \t]*:/ {
+      k = $0; sub(/^[ \t]+/, "", k); sub(/[ \t]*:.*/, "", k)
+      inkey = (k == ENVIRON["key"])
+      if (!inkey) next
+      v = $0; sub(/^[^:]*:/, "", v); gsub(/\[|\]/, "", v)
+      n = split(v, w, /,/)
+      for (i = 1; i <= n; i++) out(w[i])
+    }'
+}
+
+# pdns_files MAIN: MAIN and the *.conf files of its include-dir
+pdns_files()
+{
+  echo "$1"
+  pdns_values include-dir "$1" | while IFS= read -r g
+  do
+    case "$g" in /*) ;; *) g=${1%/*}/$g ;; esac
+    rootls "$g" 2>/dev/null | $GREP '\.conf$'
+  done
+}
+
+# world: whether the values on standard input hold the whole Internet
+world()
+{
+  $GREP -q -x -e '0\.0\.0\.0/0' -e '::/0'
+}
+
 for main in /etc/powerdns/recursor.conf /etc/pdns-recursor/recursor.conf
 do
   [ -f "`rootfile $main`" ] || continue
-  {
-    echo "$main"
-    $SED 's/#.*//' "`rootfile $main`" |
-      $SED -n 's/^[ 	]*include-dir[ 	]*=[ 	]*//p' | $SED 's/[ 	]*$//' |
-      while IFS= read -r g
-      do
-        case "$g" in /*) ;; *) g=${main%/*}/$g ;; esac
-        rootls "$g" 2>/dev/null
-      done
-  } | $SORT -u | while IFS= read -r f
+  pdns_files "$main" | $SORT -u | while IFS= read -r f
   do
-    here=`rootfile "$f"`
-    [ -f "$here" ] || continue
-    $SED 's/#.*//' "$here" |
-      $AWK 'tolower($0) ~ /^[ \t]*allow-from[ \t]*=/ {
-        v = $0; sub(/^[^=]*=/, "", v); gsub(/[,;]/, " ", v)
-        n = split(v, w, /[ \t]+/)
-        for (i = 1; i <= n; i++)
-          if (w[i] == "0.0.0.0/0" || w[i] == "::/0") { open = 1 }
-      } END { if (open) print "open" }' |
-      $GREP -q open &&
+    [ -f "`rootfile "$f"`" ] || continue
+    pdns_values allow-from "$f" | world &&
       message FAIL dns008f "" "\`$f' lets anyone use this recursor (allow-from holds the whole Internet): it answers everyone, and amplifies denial-of-service attacks against others. Allow localhost and the local networks only."
   done
 done
-for main in /etc/powerdns/pdns.conf /etc/pdns/pdns.conf
+for main in /etc/powerdns/recursor.yml /etc/pdns-recursor/recursor.yml
 do
   [ -f "`rootfile $main`" ] || continue
   {
     echo "$main"
-    $SED 's/#.*//' "`rootfile $main`" |
-      $SED -n 's/^[ \t]*include-dir[ \t]*=[ \t]*//p' | $SED 's/[ \t]*$//' |
-      while IFS= read -r g
-      do
-        case "$g" in /*) ;; *) g=${main%/*}/$g ;; esac
-        rootls "$g" 2>/dev/null
-      done
+    pdns_yaml recursor include_dir "$main" | while IFS= read -r g
+    do
+      case "$g" in /*) ;; *) g=${main%/*}/$g ;; esac
+      rootls "$g" 2>/dev/null | $GREP '\.yml$'
+    done
   } | $SORT -u | while IFS= read -r f
   do
-    here=`rootfile "$f"`
-    [ -f "$here" ] || continue
-    $SED 's/#.*//' "$here" |
-      $AWK 'tolower($0) ~ /^[ \t]*allow-recursion[ \t]*=/ {
-        v = $0; sub(/^[^=]*=/, "", v); gsub(/[,;]/, " ", v)
-        n = split(v, w, /[ \t]+/)
-        for (i = 1; i <= n; i++)
-          if (w[i] == "0.0.0.0/0" || w[i] == "::/0") { open = 1 }
-      } END { if (open) print "open" }' |
-      $GREP -q open &&
-      message FAIL dns008f "" "\`$f' lets anyone recurse (allow-recursion holds the whole Internet): it answers everyone, and amplifies denial-of-service attacks against others. Allow localhost and the local networks only."
+    [ -f "`rootfile "$f"`" ] || continue
+    pdns_yaml incoming allow_from "$f" | world &&
+      message FAIL dns008f "" "\`$f' lets anyone use this recursor (incoming.allow_from holds the whole Internet): it answers everyone, and amplifies denial-of-service attacks against others. Allow localhost and the local networks only."
+  done
+done
+# The authoritative server recursed only before 4.1, and only with a
+# recursor= to hand the queries to; without one (and in every later
+# version, where both settings are gone) allow-recursion opens nothing
+for main in /etc/powerdns/pdns.conf /etc/pdns/pdns.conf
+do
+  [ -f "`rootfile $main`" ] || continue
+  files=`pdns_files "$main" | $SORT -u`
+  recurses=`printf '%s\n' "$files" | while IFS= read -r f
+  do
+    [ -f "\`rootfile "$f"\`" ] && pdns_values recursor "$f"
+  done`
+  [ -n "$recurses" ] || continue
+  printf '%s\n' "$files" | while IFS= read -r f
+  do
+    [ -f "`rootfile "$f"`" ] || continue
+    pdns_values allow-recursion "$f" | world &&
+      message FAIL dns008f "" "\`$f' lets anyone recurse (allow-recursion holds the whole Internet, and recursor= hands their queries on): it answers everyone, and amplifies denial-of-service attacks against others. Allow localhost and the local networks only."
   done
 done
 
