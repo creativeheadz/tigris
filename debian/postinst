@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 # System configuration file:
-CONFIG=/etc/tigris/tigris.conf
+CONFIG=/etc/tiger/tigerrc
 # Package-provided configuration file:
 PKGCONFIG=/usr/share/tiger/tigris.conf
 
