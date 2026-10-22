@@ -12,7 +12,7 @@ install=tigris.install
 source=("$pkgname-$pkgver.tar.gz::https://github.com/creativeheadz/tigris/archive/refs/tags/version_${pkgver//./_}.tar.gz")
 # SKIP until the tag exists: the sum of the tag's tarball is put here, and
 # .SRCINFO regenerated, in the commit after the release (packaging/README.md)
-sha256sums=('SKIP')
+sha256sums=('8599a35cf6c48d8ad624daafedcc5528d846088e68b0c6bfb36b25da050d3a74')
 
 build() {
 	cd "$srcdir/$pkgname-version_${pkgver//./_}"

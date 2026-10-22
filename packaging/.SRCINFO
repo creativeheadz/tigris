@@ -12,6 +12,6 @@ pkgbase = tigris
 	backup = etc/tigris/tigris.conf
 	backup = etc/tigris/cronrc
 	source = tigris-4.0.0.tar.gz::https://github.com/creativeheadz/tigris/archive/refs/tags/version_4_0_0.tar.gz
-	sha256sums = SKIP
+	sha256sums = 8599a35cf6c48d8ad624daafedcc5528d846088e68b0c6bfb36b25da050d3a74
 
 pkgname = tigris
