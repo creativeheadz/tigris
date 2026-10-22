@@ -87,7 +87,7 @@ the 'configure' script with the following options (check
   --with-tigerhome=LOCATION       Location of all Tiger files 
                                   (default /usr/local/tiger)
   --with-tigerconfig=LOCATION     Location of Tiger configuration files
-                                  (default /usr/local/tiger)
+                                  (default /usr/local/etc/tigris)
   --with-tigerwork=LOCATION       Location of all the temporary files created 
                                   by Tiger
                                   (default /usr/local/tiger/run)
@@ -96,7 +96,8 @@ the 'configure' script with the following options (check
   --with-tigerbin=LOCATION        Location of the Tiger binaries
                                   (default /usr/local/bin)
 
-Then just type 'make install'.  
+Then just type 'make install'. An existing tigris.conf, tigerrc or
+cronrc is kept: the shipped one is installed beside it as FILE.new.
 
 NOTE NOTE NOTE: It is important that the destination
 directory (TIGERHOME) is *NOT* be the same as the source directory

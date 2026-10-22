@@ -8,7 +8,10 @@
 # needs $BASEDIR/tigris-explain) and once with --since last (which needs
 # $BASEDIR/tigris-diff). Installing the entry points without the helpers
 # they call is the failure; sbin/tigris explain (which needs tigris-explain
-# beside it) is checked too.
+# beside it) is checked too. Then the configuration: it is in
+# <sysconfdir>/tigris, a second install keeps an edited tigris.conf and
+# cronrc (the shipped ones go beside them as .new), and an install into
+# a directory with no rc takes the old <sysconfdir>/tiger's tigerrc.
 #
 # Needs a C compiler and make; exits 2 (skip) without them.
 #
@@ -56,6 +59,17 @@ expect "[ -x $STAGEHOME/tigris-diff ]" "tigris-diff is where BASEDIR expects it"
 $SBIN/tigris explain lin002i >"$W/explain.out" 2>&1
 expect "grep -q 'Severity:' $W/explain.out" "sbin/tigris explain finds tigris-explain"
 
+# configure's default configuration directory is <sysconfdir>/tigris
+CONF="$W/pfx/etc/tigris"
+expect "[ -f $CONF/tigris.conf ] && [ -f $CONF/cronrc ]" "the configuration is in sysconfdir/tigris"
+# tigexp, the explain helper's name before 4.0, is a link to it
+expect "[ -L $SBIN/tigexp ]" "sbin/tigexp is a symlink"
+$SBIN/tigexp lin002i >"$W/tigexp.out" 2>&1
+expect "grep -q 'Severity:' $W/tigexp.out" "sbin/tigexp explains an id"
+# tigris-accept writes where the installed run reads
+( cd / && $SBIN/tigris-accept -l ) >"$W/accept.out" 2>&1
+expect "grep -qF '$CONF/tigris.accepted' $W/accept.out" "the installed tigris-accept uses the configuration directory"
+
 # version.h is installed: a package once said "version undetermined"
 ver=`cat "$W/src/version.h"`
 $SBIN/tigris -v >"$W/v.out" 2>&1
@@ -83,6 +97,27 @@ $SBIN/tigris --since last --root "$W/root" >"$W/run2.out" 2>&1; st=$?
 if [ "`id -u`" = 0 ]; then expect "[ $st -ge 0 ] && [ $st -le 5 ]" "the installed tree finishes a run with --since (as root: exit $st)"
 else expect "[ $st -eq 2 ]" "the installed tree finishes a run with --since"; fi
 expect "grep -q 'Tigris diff:' $W/run2.out" "the --since run compared with the earlier one"
+
+# A second install keeps the admin's configuration: the shipped files go
+# beside it as .new, and the install says so
+echo '# edited' >> "$CONF/tigris.conf"
+echo '# edited' >> "$CONF/cronrc"
+make install >"$W/install2.log" 2>&1
+expect "tail -1 $CONF/tigris.conf | grep -q '^# edited'" "make install again keeps an edited tigris.conf"
+expect "tail -1 $CONF/cronrc | grep -q '^# edited'" "make install again keeps an edited cronrc"
+expect "[ -f $CONF/tigris.conf.new ] && [ -f $CONF/cronrc.new ] && grep -q 'tigris.conf.new' $W/install2.log" "the shipped ones are installed as .new, and said"
+
+# A configuration directory with neither rc takes the old default
+# directory's tigerrc, with its tigris.accepted; the shipped tigris.conf
+# then goes beside it as .new, so only one rc is there
+ST="$W/stage"
+mkdir -p "$ST$W/pfx/etc/tiger"
+printf 'Tiger_Check_PASSWD=N\n' > "$ST$W/pfx/etc/tiger/tigerrc"
+printf 'lin002i\t-\t-\tkept\n' > "$ST$W/pfx/etc/tiger/tigris.accepted"
+make install DESTDIR="$ST" >"$W/install3.log" 2>&1
+expect "cmp -s $ST$W/pfx/etc/tiger/tigerrc $ST$CONF/tigerrc" "the old directory's tigerrc is copied into the new one"
+expect "[ -f $ST$CONF/tigris.accepted ] && [ ! -e $ST$CONF/tigris.conf ] && [ -f $ST$CONF/tigris.conf.new ]" "with its tigris.accepted, and the shipped tigris.conf as .new"
+expect "grep -q 'tigerrc -> ' $W/install3.log" "the copy is said"
 
 [ "$fail" -eq 0 ] && echo PASS
 exit $fail

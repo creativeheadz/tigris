@@ -2697,7 +2697,7 @@ else
 fi
 
 if test "$tigerconfig" = "no" ; then
-        tigerconfig=${sysconfdir}/tiger
+        tigerconfig=${sysconfdir}/tigris
 
 fi
 

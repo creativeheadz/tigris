@@ -329,6 +329,9 @@ make install
 man tigris
 ```
 
+The configuration goes to `/usr/local/etc/tigris`; a later
+`make install` keeps it and puts the shipped files beside it as `.new`.
+
 Or as a container: `docker build -t tigris .` builds an image with
 Tigris and every distribution's package tools, for auditing roots
 offline (above). Release tags publish it as `ghcr.io/creativeheadz/tigris`.

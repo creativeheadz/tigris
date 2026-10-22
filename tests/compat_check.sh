@@ -198,20 +198,21 @@ grep -q 'Severity:' "$W/out" &&
 
 # nothing else still says the old names: code, shipped configuration,
 # tests and metadata use the new ones, except the shims themselves, the
-# old-report fixtures, and this suite
+# old-report fixtures, make install's and install_check's upgrade legs,
+# and this suite
 D='systems scripts tiger tigercron tigris-diff tigris-accept tigris-explain config initdefs util profiles tigris.conf tigris-quick.conf tests meta Makefile.in configure configure.in install.sh cronrc packaging debian .github tigris.spec Dockerfile check.d site-sample site-saturn'
 ( cd "$TIGER" && grep -rln 'Tiger_[A-Za-z0-9]\|Tiger[A-Z]' $D 2>/dev/null ) | grep -v '^debian/changelog$' > "$W/vars.txt"
-left=`grep -v -x -e config -e tests/compat_check.sh "$W/vars.txt"`
+left=`grep -v -x -e config -e tests/compat_check.sh -e tests/install_check.sh "$W/vars.txt"`
 [ -z "$left" ] && ok "no Tiger_* stragglers outside the shim" || { bad "Tiger_ stragglers: $left"; }
 ( cd "$TIGER" && grep -rln 'tigerrc' $D 2>/dev/null ) | grep -v '^debian/changelog$' > "$W/rc.txt"
 # the packages' upgrade from 3.x names the file it carries over
-left=`grep -v -x -e config -e tigris-accept -e meta/con020c -e profiles/quick -e tests/compat_check.sh -e tests/diff_check.sh -e tests/nonroot_check.sh -e tests/schema_check.sh -e packaging/mkdeb.sh -e packaging/tigris.spec -e packaging/tigris.install -e packaging/tigris.post-upgrade -e packaging/README.md "$W/rc.txt"`
+left=`grep -v -x -e config -e tigris-accept -e meta/con020c -e profiles/quick -e tests/compat_check.sh -e tests/diff_check.sh -e tests/nonroot_check.sh -e tests/schema_check.sh -e packaging/mkdeb.sh -e packaging/tigris.spec -e packaging/tigris.install -e packaging/tigris.post-upgrade -e packaging/README.md -e Makefile.in -e tests/install_check.sh "$W/rc.txt"`
 [ -z "$left" ] && ok "no tigerrc stragglers outside the shims, old-report fixtures and package upgrades" || { bad "tigerrc stragglers: $left"; }
 ( cd "$TIGER" && grep -rln '/etc/tiger' $D 2>/dev/null ) | grep -v '^debian/changelog$' > "$W/etc.txt"
-left=`grep -v -x -e config -e tests/compat_check.sh "$W/etc.txt"`
+left=`grep -v -x -e config -e tests/compat_check.sh -e tests/install_check.sh "$W/etc.txt"`
 [ -z "$left" ] && ok "no /etc/tiger stragglers outside the fallbacks" || { bad "/etc/tiger stragglers: $left"; }
 ( cd "$TIGER" && grep -rn 'tigexp' $D 2>/dev/null ) | grep -v 'tigris-explain' | grep -v '^debian/changelog:' | grep -v '^Binary' | sed 's/:.*//' | sort -u > "$W/exp.txt"
-left=`grep -v -x -e tests/compat_check.sh "$W/exp.txt"`
+left=`grep -v -x -e tests/compat_check.sh -e tests/install_check.sh "$W/exp.txt"`
 [ -z "$left" ] && ok "no bare tigexp outside this suite" || { bad "tigexp stragglers: $left"; }
 
 [ $fail -eq 0 ] && echo PASS || echo FAIL

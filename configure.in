@@ -18,7 +18,7 @@ fi
 AC_ARG_WITH(tigerconfig, [  --with-tigerconfig=LOCATION        Location of Tiger configuration files],
 tigerconfig=$withval, tigerconfig="no")
 if test "$tigerconfig" = "no" ; then
-        tigerconfig=${sysconfdir}/tiger
+        tigerconfig=${sysconfdir}/tigris
 
 fi
 

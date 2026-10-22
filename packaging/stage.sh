@@ -33,6 +33,7 @@ need $S/tigris "sbin binary"
 need $S/tigris-diff "sbin binary"
 need $S/tigris-accept "sbin binary"
 need $S/tigris-explain "sbin binary"
+need $S/tigexp "sbin symlink to tigris-explain"
 need $S/tigercron "sbin binary"
 need "$R/tigris-explain" "helper beside the install (HELPERS in Makefile.in)"
 need "$R/tigris-diff" "helper beside the install (HELPERS in Makefile.in)"
@@ -42,7 +43,9 @@ need usr/share/man/man8/tigris.8 "man page"
 [ "$fail" -ne 0 ] && exit 1
 
 # sbin keeps the tigris entry points; the rest run from the library dir
-mv "$D/$S/tiger" "$D/$S/tigris-explain" "$D/$S/tigercron" "$D/$R/"
+# (tigexp, the explain helper's old name, links to tigris-explain beside it)
+mv "$D/$S/tiger" "$D/$S/tigris-explain" "$D/$S/tigexp" "$D/$S/tigercron" "$D/$R/"
+[ -L "$D/$R/tigexp" ] && [ -f "$D/$R/tigexp" ] || { echo "stage.sh: $R/tigexp does not reach tigris-explain"; exit 1; }
 
 # `tigris explain` looks beside itself for tigris-explain; bake the library dir
 # the way make install bakes the other paths

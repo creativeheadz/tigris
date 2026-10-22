@@ -75,6 +75,9 @@ TIGERBIN=@tigerbin@
 # installed there
 #
 TIGERCONFIG=@tigerconfig@
+# Where configure put the configuration before 4.0 moved its default
+# to $(sysconfdir)/tigris: make install brings an old tigerrc across
+OLDCONFIG=$(sysconfdir)/tiger
 #
 # Where do manpages go to
 # 
@@ -248,6 +251,8 @@ installbinaries: installdirs
 	         $$file > $(DESTDIR)$(TIGERBIN)/$$file; \
 	  chmod 755 $(DESTDIR)$(TIGERBIN)/$$file ; \
 	done
+	@# the explain helper's name before 4.0
+	@ln -sf tigris-explain $(DESTDIR)$(TIGERBIN)/tigexp
 
 installhelpers: installdirs
 	@echo "Copying helper binaries beside the install..."
@@ -261,10 +266,33 @@ installhelpers: installdirs
 	  chmod 755 $(DESTDIR)$(TIGERHOME)/$$file ; \
 	done
 
+# The configuration is the admin's: an install never overwrites a
+# tigris.conf, a tigerrc or a cronrc that is there. The new one goes
+# beside it as FILE.new. A configuration directory with neither rc in it
+# takes the tigerrc (and the cronrc, tigris.accepted and tiger.ignore)
+# of the pre-4.0 default directory, when there is one.
 installconfig: installdirs
+	@if [ "$(OLDCONFIG)" != "$(TIGERCONFIG)" ] && [ -f $(DESTDIR)$(OLDCONFIG)/tigerrc ] && \
+	    [ ! -e $(DESTDIR)$(TIGERCONFIG)/tigerrc ] && [ ! -e $(DESTDIR)$(TIGERCONFIG)/tigris.conf ]; then \
+	  echo "The configuration directory is $(TIGERCONFIG) from 4.0 on; copying the old one's files into it:"; \
+	  for file in tigerrc cronrc tigris.accepted tiger.ignore; do \
+	    if [ -f $(DESTDIR)$(OLDCONFIG)/$$file ] && [ ! -e $(DESTDIR)$(TIGERCONFIG)/$$file ]; then \
+	      cp -p $(DESTDIR)$(OLDCONFIG)/$$file $(DESTDIR)$(TIGERCONFIG)/$$file && \
+	        echo "  $(OLDCONFIG)/$$file -> $(TIGERCONFIG)/$$file"; \
+	    fi; \
+	  done; \
+	  echo "  ($(OLDCONFIG) is left as it was; remove it once the new directory is right)"; \
+	fi
 	@echo "Copying configuration files..."
 	@for file in $(CONFIGFILES); do \
-	  $(INSTALL) -m 0640 $$file $(DESTDIR)$(TIGERCONFIG)/$$file; \
+	  name=$${file#./}; \
+	  if [ -e $(DESTDIR)$(TIGERCONFIG)/$$name ] || \
+	     { [ $$name = tigris.conf ] && [ -e $(DESTDIR)$(TIGERCONFIG)/tigerrc ]; }; then \
+	    $(INSTALL) -m 0640 $$file $(DESTDIR)$(TIGERCONFIG)/$$name.new; \
+	    echo "  $(TIGERCONFIG)/$$name.new: the shipped $$name, beside your configuration, which is kept"; \
+	  else \
+	    $(INSTALL) -m 0640 $$file $(DESTDIR)$(TIGERCONFIG)/$$name; \
+	  fi; \
 	done
 	@echo "Copying general configuration..."
 	@sed -e 's%^TigrisLogDir=.*$$%TigrisLogDir="'$(TIGERLOGS)'"%' \
