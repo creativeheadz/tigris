@@ -52,6 +52,15 @@ Description: Security auditor for Linux, descended from TIGER
  Debian's tiger under its own name and paths.
 EOF
 printf '/etc/tigris/tigris.conf\n/etc/tigris/cronrc\n' > "$W/stage/DEBIAN/conffiles"
+# 3.x shipped /etc/tigris/tigerrc. dpkg keeps an obsolete conffile on
+# disk for good, and Tigris reads a tigerrc before the tigris.conf beside
+# it, so an upgraded host would read 3.x's file forever. mv_conffile
+# removes an unedited tigerrc and makes an edited one the tigris.conf,
+# keeping the new default beside it as tigris.conf.dpkg-new.
+for s in preinst postinst postrm; do
+  printf '#!/bin/sh\nset -e\ndpkg-maintscript-helper mv_conffile /etc/tigris/tigerrc /etc/tigris/tigris.conf 4.0.0-1~ tigris -- "$@"\n' > "$W/stage/DEBIAN/$s"
+  chmod 0755 "$W/stage/DEBIAN/$s"
+done
 
 DEB="$OUT/tigris_${VERSION}-1_${ARCH}.deb"
 dpkg-deb --root-owner-group -b "$W/stage" "$DEB" || exit 1

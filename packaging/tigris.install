@@ -1,0 +1,14 @@
+# pacman install script for tigris (named in PKGBUILD's install=)
+
+post_upgrade() {
+	# 3.x shipped tigerrc, 4.0 ships tigris.conf. Upgrading, pacman saves
+	# an edited tigerrc as tigerrc.pacsave and the new default would run in
+	# its place: the saved file is the admin's settings, so it becomes the
+	# tigris.conf and the new default is kept beside it.
+	c=/etc/tigris
+	if [ "$(vercmp "$2" 4.0.0-1)" -lt 0 ] && [ -f "$c/tigerrc.pacsave" ] && [ ! -e "$c/tigerrc" ]; then
+		[ -e "$c/tigris.conf" ] && mv -f "$c/tigris.conf" "$c/tigris.conf.pacnew"
+		mv -f "$c/tigerrc.pacsave" "$c/tigris.conf"
+		echo "tigris: your edited tigerrc is now $c/tigris.conf; the new default is tigris.conf.pacnew"
+	fi
+}

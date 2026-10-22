@@ -57,10 +57,10 @@ aur)
   TAG=version_`echo "$VERSION" | tr . _`
   ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run \
     --transform "s,^,tigris-$TAG/,SH" -cf - . ) | gzip > "/build/tigris-$VERSION.tar.gz"
-  cp "$TIGER/packaging/PKGBUILD" /build/ && chown builder /build/PKGBUILD
+  cp "$TIGER/packaging/PKGBUILD" "$TIGER/packaging/tigris.install" /build/ && chown builder /build/PKGBUILD /build/tigris.install
   su builder -c "cd /build && sed -i 's|^source=.*|source=(tigris-$VERSION.tar.gz)|; s|^sha256sums=.*|sha256sums=(SKIP)|' PKGBUILD && makepkg -s --noconfirm" || exit 1
   cp /build/tigris-[0-9]*.pkg.tar.* "$OUT/" || exit 1
-  mkdir -p /srcinfo && cp "$TIGER/packaging/PKGBUILD" /srcinfo/ && chown -R builder /srcinfo
+  mkdir -p /srcinfo && cp "$TIGER/packaging/PKGBUILD" "$TIGER/packaging/tigris.install" /srcinfo/ && chown -R builder /srcinfo
   su builder -c "cd /srcinfo && makepkg --printsrcinfo" | diff - "$TIGER/packaging/.SRCINFO" || { echo "ci.sh: .SRCINFO does not match PKGBUILD"; exit 1; }
   pacman -U --noconfirm "$OUT"/tigris-[0-9]*.pkg.tar.* >/dev/null || exit 1
   sh "$TIGER/packaging/smoke-installed.sh" || exit 1

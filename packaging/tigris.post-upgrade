@@ -1,0 +1,13 @@
+#!/bin/sh
+# 3.x shipped tigerrc, 4.0 ships tigris.conf. apk removes an unedited
+# tigerrc with the old package and keeps an edited one, which Tigris
+# would go on reading before the tigris.conf beside it: it is the
+# admin's settings, so it becomes the tigris.conf and the new default is
+# kept beside it. $2 is the version upgraded from.
+c=/etc/tigris
+if [ -f "$c/tigerrc" ] && [ "$(apk version -t "$2" 4.0.0-r0)" = "<" ]; then
+	[ -e "$c/tigris.conf" ] && mv -f "$c/tigris.conf" "$c/tigris.conf.apk-new"
+	mv -f "$c/tigerrc" "$c/tigris.conf"
+	echo "tigris: your edited tigerrc is now $c/tigris.conf; the new default is tigris.conf.apk-new"
+fi
+exit 0

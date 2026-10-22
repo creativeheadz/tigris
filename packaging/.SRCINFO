@@ -3,6 +3,7 @@ pkgbase = tigris
 	pkgver = 3.9.0
 	pkgrel = 1
 	url = https://github.com/creativeheadz/tigris
+	install = tigris.install
 	arch = x86_64
 	arch = aarch64
 	license = GPL-2.0-or-later

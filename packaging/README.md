@@ -25,6 +25,16 @@ would be its own package.
 source text, so a source change that moves it fails the build. The
 package needs nothing beyond libc and the base system.
 
+3.x packages shipped `/etc/tigris/tigerrc`; 4.0 ships `tigris.conf`.
+Upgrading from 3.x, an unedited `tigerrc` goes and an edited one becomes
+the `tigris.conf`, the new default kept beside it (`.dpkg-new`,
+`.rpmnew`, `.pacnew`, `.apk-new`): `dpkg-maintscript-helper mv_conffile`
+in the scripts `mkdeb.sh` writes, `%pre`/`%posttrans` in `tigris.spec`,
+`tigris.install` for pacman, `tigris.post-upgrade` for apk. Without
+them dpkg and apk leave the old file, which Tigris reads before a
+`tigris.conf` beside it, and rpm and pacman set an edited one aside
+unread. Checked on each by upgrading the 3.9.0 package, edited and not.
+
 ## Building
 
 Each format builds from the working tree (uncommitted changes

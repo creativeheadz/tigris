@@ -110,6 +110,7 @@ jobs:
           # PKGBUILD and .SRCINFO: the release's own tarball, and its sum
           sed -e "s|^source=(.*|source=(\"tigris-\$pkgver.tar.gz::$url\")|" -e "s|^sha256sums=.*|sha256sums=('$sum')|" packaging/PKGBUILD > "$out/packaging/PKGBUILD"
           sed -e "s|^\tsource = .*|\tsource = tigris-$v.tar.gz::$url|" -e "s|^\tsha256sums = .*|\tsha256sums = $sum|" packaging/.SRCINFO > "$out/packaging/.SRCINFO"
+          cp packaging/tigris.install packaging/tigris.post-upgrade "$out/packaging/"
           sed -e "s|^sha512sums=.*|sha512sums=\"$(sha512sum "$out/src/tigris-$v.tar.gz" | cut -d' ' -f1)  tigris-$v.tar.gz\"|" packaging/APKBUILD > "$out/packaging/APKBUILD"
           ( cd "$out" && sha256sum src/* deb/* rpm/* apk/* packaging/* | sed 's|  [a-z]*/|  |' > SHA256SUMS )
           cat "$out/SHA256SUMS"

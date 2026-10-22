@@ -24,7 +24,7 @@ VERSION=`cat "$TIGER/version"`
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 mkdir "$W/build"
-cp "$TIGER/packaging/APKBUILD" "$W/build/"
+cp "$TIGER/packaging/APKBUILD" "$TIGER/packaging/tigris.post-upgrade" "$W/build/"
 sed -i "s/^pkgver=.*/pkgver=$VERSION/" "$W/build/APKBUILD"
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | gzip > "$W/build/tigris-$VERSION.tar.gz"
 cd "$W/build" || exit 1

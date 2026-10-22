@@ -36,6 +36,27 @@ make %{?_smp_mflags}
 make install DESTDIR=%{buildroot}
 sh packaging/stage.sh %{buildroot} %{_libdir}/tigris %{_sbindir}
 
+%pre
+# 3.x shipped tigerrc, 4.0 ships tigris.conf. Upgrading, rpm saves an
+# edited tigerrc as tigerrc.rpmsave and the new default would run in its
+# place: note that this is such an upgrade, so %posttrans can make the
+# admin's file the tigris.conf.
+if [ "$1" -ge 2 ] && [ -e %{_sysconfdir}/tigris/tigerrc ]; then
+  touch %{_localstatedir}/lib/tigris/.tigerrc-upgrade 2>/dev/null || :
+fi
+
+%posttrans
+m=%{_localstatedir}/lib/tigris/.tigerrc-upgrade
+if [ -e "$m" ]; then
+  rm -f "$m"
+  c=%{_sysconfdir}/tigris
+  if [ -f "$c/tigerrc.rpmsave" ] && [ ! -e "$c/tigerrc" ]; then
+    [ -e "$c/tigris.conf" ] && mv -f "$c/tigris.conf" "$c/tigris.conf.rpmnew"
+    mv -f "$c/tigerrc.rpmsave" "$c/tigris.conf"
+    echo "tigris: your edited tigerrc is now $c/tigris.conf; the new default is tigris.conf.rpmnew"
+  fi
+fi
+
 %files
 %license COPYING
 %config(noreplace) %{_sysconfdir}/tigris/
