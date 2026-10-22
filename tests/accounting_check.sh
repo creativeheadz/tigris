@@ -2,11 +2,14 @@
 #
 # tests/accounting_check.sh - check_accounting on offline roots
 #
-# Seven roots: sysstat collecting (fresh data); sysstat installed
+# Nine roots: sysstat collecting (fresh data); sysstat installed
 # with stale data; sysstat installed with no data dir at all;
-# sysstat explicitly disabled; snoopy preloaded; snoopy configured
-# but not preloaded; and an empty root, where neither is installed
-# and nothing is said. INFO findings only show with
+# sysstat explicitly disabled; snoopy preloaded; snoopy's library
+# alone (in arm64's directory), not preloaded; snoopy whose
+# preload line is commented out; the configuration removed sysstat
+# and snoopy packages leave behind, which is not an installation;
+# and an empty root, where neither is installed and nothing is
+# said. INFO findings only show with
 # Tigris_Show_INFO_Msgs=Y. Runs as a user and as root; the fixtures
 # read the same for both.
 #
@@ -39,7 +42,8 @@ has 'data in /var/log/sysstat' "$W/out" &&
 ! grep -q 'aud005w' "$W/out" &&
   ok "fresh data: inventory only" || { bad "fresh"; cat "$W/out"; }
 
-S=$W/stale; mkdir -p "$S/etc" "$S/etc/cron.d" "$S/var/log/sysstat"
+S=$W/stale; mkdir -p "$S/etc" "$S/etc/cron.d" "$S/var/log/sysstat" "$S/usr/lib/sysstat"
+printf '\177ELF\n' > "$S/usr/lib/sysstat/sadc"; chmod 755 "$S/usr/lib/sysstat/sadc"
 printf '0 * * * * root /usr/lib/sysstat/debian-sa1 1 1\n' > "$S/etc/cron.d/sysstat"
 printf 'sysstat\n' > "$S/var/log/sysstat/sa01"
 touch -t 202001010000 "$S/var/log/sysstat/sa01"
@@ -71,12 +75,32 @@ has '--INFO-- [aud008i]' "$W/out" &&
 ! grep -q 'aud007w' "$W/out" &&
   ok "snoopy preloaded: inventory only" || { bad "preloaded"; cat "$W/out"; }
 
-C=$W/configured; mkdir -p "$C/etc"
-printf '[snoopy]\noutput = syslog\n' > "$C/etc/snoopy.ini"
+C=$W/configured; mkdir -p "$C/etc" "$C/usr/lib/aarch64-linux-gnu"
+printf '\177ELF\n' > "$C/usr/lib/aarch64-linux-gnu/libsnoopy.so.0.0.0"
 run "$C" "$W/out"
 has '--WARN-- [aud007w]' "$W/out" &&
 ! grep -q 'aud008i' "$W/out" &&
-  ok "snoopy configured, not preloaded: aud007w" || { bad "configured"; cat "$W/out"; }
+  ok "snoopy library alone (arm64's directory), not preloaded: aud007w" || { bad "configured"; cat "$W/out"; }
+
+# ld.so reads '#' to the end of a line as a comment
+K=$W/commented; mkdir -p "$K/etc" "$K/usr/lib/x86_64-linux-gnu"
+printf '[snoopy]\noutput = syslog\n' > "$K/etc/snoopy.ini"
+printf '\177ELF\n' > "$K/usr/lib/x86_64-linux-gnu/libsnoopy.so"
+printf '# off while we debug\n#/usr/lib/x86_64-linux-gnu/libsnoopy.so\n' > "$K/etc/ld.so.preload"
+run "$K" "$W/out"
+has '--WARN-- [aud007w]' "$W/out" &&
+! grep -q 'aud008i' "$W/out" &&
+  ok "snoopy preload commented out: aud007w, not aud008i" || { bad "commented"; cat "$W/out"; }
+
+# what apt remove (not purge) leaves of both packages
+R=$W/removed; mkdir -p "$R/etc/sysstat" "$R/etc/cron.d" "$R/etc/default"
+printf 'HISTORY=7\n' > "$R/etc/sysstat/sysstat"
+printf '0 * * * * root command -v debian-sa1 > /dev/null && debian-sa1 1 1\n' > "$R/etc/cron.d/sysstat"
+printf 'ENABLED="true"\n' > "$R/etc/default/sysstat"
+printf '[snoopy]\noutput = syslog\n' > "$R/etc/snoopy.ini"
+run "$R" "$W/out"
+[ -s "$W/out" ] && { bad "removed"; cat "$W/out"; } ||
+  ok "configuration left by removed packages: nothing said"
 
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"

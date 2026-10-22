@@ -28,6 +28,12 @@
 #
 # 10/16/2026 - Initial version. sysstat binaries, configs, cron and
 #             data files; snoopy.ini and /etc/ld.so.preload.
+# 10/22/2026 - Installed means the program is there (sar or sadc,
+#             the snoopy library under any lib directory, arm64's
+#             too): the configuration a removed package leaves
+#             behind is not an installation. ld.so.preload is read
+#             as ld.so reads it, comments dropped, so a commented
+#             snoopy line is not a preload.
 #
 # References:
 #   sar(1), snoopy.ini
@@ -72,7 +78,7 @@ done
 # elements are set.
 #
 [ "$Tigris_TESTMODE" = 'Y' ] && {
-  haveallcmds AWK CAT FIND GREP || exit 1
+  haveallcmds AWK CAT FIND GREP SED || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
@@ -81,7 +87,7 @@ done
 
 #------------------------------------------------------------------------
 
-haveallcmds AWK CAT FIND GREP || exit 1
+haveallcmds AWK CAT FIND GREP SED || exit 1
 
 # existing_sys: the existing files among the arguments, one per line
 existing_sys()
@@ -92,11 +98,24 @@ existing_sys()
   done
 }
 
-sysstat=`existing_sys /usr/bin/sar /usr/bin/sadc /usr/lib/sysstat/sadc /usr/lib/sysstat/debian-sa1 /usr/lib64/sa/sadc /etc/sysstat/sysstat /etc/default/sysstat /etc/cron.d/sysstat /etc/sysconfig/sysstat`
-snoopy=`existing_sys /etc/snoopy.ini /usr/lib/x86_64-linux-gnu/libsnoopy.so /usr/lib64/libsnoopy.so /usr/lib/libsnoopy.so /lib/x86_64-linux-gnu/libsnoopy.so`
+# Installed means the program is there: a removed package leaves its
+# configuration behind (dpkg's "rc"), and that collects nothing
+sysstat=`existing_sys /usr/bin/sar /usr/bin/sadc /usr/lib/sysstat/sadc /usr/lib64/sa/sadc /usr/lib/sa/sadc /usr/libexec/sysstat/sadc`
+snoopy=`for g in '/usr/lib/*-linux-gnu*/libsnoopy.so*' '/lib/*-linux-gnu*/libsnoopy.so*' '/usr/lib64/libsnoopy.so*' '/usr/lib/libsnoopy.so*' '/lib64/libsnoopy.so*' '/usr/local/lib/libsnoopy.so*'
+do
+  rootglob "$g"
+done | $SED -n 1p`
+
+# snooping: whether ld.so.preload loads snoopy, read as ld.so reads it:
+# '#' to the end of the line is a comment, and the names are separated
+# by blanks or colons
+preload=`rootfile /etc/ld.so.preload`
+snooping=
+[ -f "$preload" ] && $AWK '{ sub(/#.*$/, ""); n = split($0, e, /[: \t]+/)
+  for (i = 1; i <= n; i++) if (e[i] ~ /libsnoopy/) y = 1 } END { exit !y }' "$preload" 2>/dev/null && snooping=1
 
 # Neither installed: not a finding
-[ -z "$sysstat$snoopy" ] && [ ! -f "`rootfile /etc/ld.so.preload`" ] && exit 0
+[ -z "$sysstat$snoopy$snooping" ] && exit 0
 
 echo
 echo "# Checking system accounting (sysstat, snoopy)..."
@@ -126,14 +145,11 @@ if [ -n "$sysstat" ]; then
   fi
 fi
 
-# Snoopy: configured but not preloaded logs nothing
-preload=`rootfile /etc/ld.so.preload`
-if [ -n "$snoopy" ] || { [ -f "$preload" ] && $GREP snoopy "$preload" >/dev/null 2>&1; }; then
-  if [ -f "$preload" ] && $GREP snoopy "$preload" >/dev/null 2>&1; then
-    message INFO aud008i "" "Snoopy logs commands to syslog (preloaded from /etc/ld.so.preload)."
-  else
-    message WARN aud007w "Preload it (its library in /etc/ld.so.preload) or remove the configuration." "Snoopy is configured but not preloaded, so it logs no commands."
-  fi
+# Snoopy: installed but not preloaded logs nothing
+if [ -n "$snooping" ]; then
+  message INFO aud008i "" "Snoopy logs commands to syslog (preloaded from /etc/ld.so.preload)."
+elif [ -n "$snoopy" ]; then
+  message WARN aud007w "Preload it (its library in /etc/ld.so.preload) or remove the configuration." "Snoopy is configured but not preloaded, so it logs no commands."
 fi
 
 exit 0

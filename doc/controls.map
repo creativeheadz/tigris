@@ -281,6 +281,10 @@ id:stor014i               | -                  | -                        | -   
 id:avir002i               | -                  | -                        | -                   | -
 # shl002i: names the shell idle timeouts in place; not a gap.
 id:shl002i                | -                  | -                        | -                   | -
+# aud006i: names the sysstat collection in place; not a gap.
+id:aud006i                | -                  | -                        | -                   | -
+# aud008i: names the snoopy command logging in place; not a gap.
+id:aud008i                | -                  | -                        | -                   | -
 # rlog001i: forwarding is the arrangement to have; the finding only records where the copies go.
 id:rlog001i               | -                  | -                        | -                   | -
 # Tigris's own messages (its configuration, the run, its helpers) are about
