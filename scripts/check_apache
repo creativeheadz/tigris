@@ -295,6 +295,7 @@ do
       closing = (tag ~ /^<[ \t]*\//)
       t = tag; sub(/^<[ \t]*\/?/, "", t); sub(/[ \t>].*$/, "", t); t = tolower(t)
       if (t == "requireall" || t == "requireany" || t == "requirenone") next
+      if (t ~ /match$/) t = substr(t, 1, length(t) - 5)
       if (closing) {
         if (d > 0 && btype[d] == t) {
           judge_status(d); judge_root(d); flush_opts(d)
@@ -303,7 +304,6 @@ do
         }
         next
       }
-      if (t ~ /match$/) t = substr(t, 1, length(t) - 5)
       if (t != "directory" && t != "location" && t != "files" && t != "proxy") next
       arg = tag; sub(/^<[ \t]*[A-Za-z]+[ \t]*/, "", arg); sub(/[ \t]*>[ \t]*$/, "", arg)
       sq = sprintf("%c", 39)

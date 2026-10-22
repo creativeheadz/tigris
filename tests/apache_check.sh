@@ -215,6 +215,26 @@ run "$X" "$W/out"
 has 'configured to load 4 modules.' "$W/out" && has 'd1, d2, one, two' "$W/out" &&
   ok "wildcard directory part, directory Include" || { bad "wild"; cat "$W/out"; }
 
+# a <DirectoryMatch> (any *Match block) ends at its closing tag:
+# what follows is not judged as inside it
+Q=$W/match; mkdir -p "$Q/etc/apache2"
+cat > "$Q/etc/apache2/apache2.conf" <<'EOF'
+<DirectoryMatch "^/srv/www/[^/]+/public">
+Require all granted
+</DirectoryMatch>
+<VirtualHost *:80>
+Options Indexes
+<Location /dav>
+Dav On
+Require all granted
+</Location>
+</VirtualHost>
+EOF
+run "$Q" "$W/out"
+! grep -q 'apa006w' "$W/out" &&
+has '[apa009w] WebDAV writes are on for <Location /dav>' "$W/out" &&
+  ok "*Match blocks close: nothing after them judged inside" || { bad "match"; cat "$W/out"; }
+
 # a ring of Includes (each file includes them all) is read once round,
 # not 3^16 times, and a configuration naming more than 400 files is
 # read that far and said to be read in part
