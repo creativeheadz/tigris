@@ -34,6 +34,13 @@
 #                 in time003i. Tigris_Chronyc_Sources_Cmd and
 #                 Tigris_Ntpq_Cmd replace 'chronyc -n sources' and
 #                 'ntpq -pn', for the tests.
+# 10/22/2026 - ntpq rows are told apart by their type column: a pool
+#                 (p) is the name ntpd draws servers from, not a server,
+#                 and only a local clock (l) is a reference clock, so an
+#                 IPv6 server whose address starts with a letter counts.
+#                 chronyc and ntpq run under a five-second timeout: a
+#                 stopped or wedged daemon held chronyc 21 seconds a
+#                 call, and ntpq 10.
 #
 # References:
 #   man 1 timedatectl, man 1 chronyc, man 8 systemd-timesyncd
@@ -160,13 +167,18 @@ judge_sources()
 # no selection state worth judging, so they are left alone. Both
 # commands ask for numeric addresses, so no reverse lookup leaves
 # the box.
+# A stopped or wedged daemon holds chronyc 21 seconds a call and ntpq
+# 10; both talk to a local socket, so five seconds is plenty. Without
+# a timeout command they run as they are.
+tmo=
+[ -n "$TIMEOUT" ] && tmo="$TIMEOUT -s KILL 5"
 stratum_n=
 case " $daemons " in
   *" chronyd "*)
     srccmd=${Tigris_Chronyc_Sources_Cmd:-}
     [ -z "$srccmd" ] && c=`findtool chronyc` && srccmd="$c -n sources"
     if [ -n "$srccmd" ]; then
-      srcout=`$srccmd 2>/dev/null | $AWK '
+      srcout=`$tmo $srccmd 2>/dev/null | $AWK '
         /^=+$/ { seen = 1; next }
         seen && NF >= 6 {
           if (substr($1, 1, 1) == "#") { clock = 1; next }
@@ -184,12 +196,16 @@ case " $daemons " in
     ntpqcmd=${Tigris_Ntpq_Cmd:-}
     [ -z "$ntpqcmd" ] && c=`findtool ntpq` && ntpqcmd="$c -pn"
     if [ -n "$ntpqcmd" ]; then
-      ntpqout=`$ntpqcmd 2>/dev/null | $AWK '
+      # the columns: tally and remote, refid, st, t, when, poll, reach;
+      # a blank tally leaves the remote first all the same. t is p for
+      # a pool (a name servers are drawn from, not one), l for a local
+      # reference clock, anything else a network server.
+      ntpqout=`$tmo $ntpqcmd 2>/dev/null | $AWK '
         /^=+$/ { seen = 1; next }
-        seen && NF >= 8 {
+        seen && NF >= 8 && $4 != "p" {
           tally = substr($1, 1, 1); remote = $1
           if (tally ~ /[.x+#*o-]/) remote = substr($1, 2)
-          if (remote ~ /^[A-Za-z]/) { clock = 1
+          if ($4 == "l") { clock = 1
             if ((tally == "*") || (tally == "o")) {
               if ($3 ~ /^[0-9][0-9]*$/) stratum = $3 + 1 } }
           else {
@@ -215,7 +231,7 @@ case " $daemons " in
     cmd=${Tigris_Chronyc_Cmd:-}
     [ -z "$cmd" ] && c=`findtool chronyc` && cmd="$c -n tracking"
     if [ -n "$cmd" ]; then
-      out=`$cmd 2>/dev/null`
+      out=`$tmo $cmd 2>/dev/null`
       case "$out" in
         *"Leap status"*"Not synchronised"*) synced=no ;;
         *"Leap status"*) synced=yes

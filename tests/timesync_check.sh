@@ -7,7 +7,9 @@
 # timedatectl show, chronyc -n tracking, chronyc -n sources and ntpq -pn
 # are scripts printing what the real ones print, through
 # Tigris_Timedatectl_Cmd, Tigris_Chronyc_Cmd, Tigris_Chronyc_Sources_Cmd
-# and Tigris_Ntpq_Cmd.
+# and Tigris_Ntpq_Cmd. The ntpq with pools prints what ntpsec 1.2.3 on
+# Debian stable prints; the hung one never answers, and the check must
+# give up on it (when this system has a timeout command).
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -128,6 +130,33 @@ cat <<EOT
 oGPS_NMEA(0)    .GPS.            0 l    1   16  377    0.000   -0.001   0.002
 EOT
 EOF
+cat > "$W/ntpq-pool" <<'EOF'
+#!/bin/sh
+cat <<EOT
+     remote           refid      st t when poll reach   delay   offset   jitter
+===============================================================================
+ 0.debian.pool.n .POOL.          16 p    -  256    0   0.0000   0.0000   0.0001
+ 1.debian.pool.n .POOL.          16 p    -  256    0   0.0000   0.0000   0.0001
+ 2.debian.pool.n .POOL.          16 p    -  256    0   0.0000   0.0000   0.0001
+ 3.debian.pool.n .POOL.          16 p    -   64    0   0.0000   0.0000   0.0001
+*51.89.151.183   85.199.214.102   2 u   33   64  377   6.3375  -3.6945   0.0870
++87.106.36.214   193.204.114.233  2 u   31   64  377  11.5186   2.9909   0.1511
+EOT
+EOF
+cat > "$W/ntpq-pool3" <<'EOF'
+#!/bin/sh
+sh "${0%3}"
+echo "+192.0.2.30      192.0.2.1        2 u   30   64  377   0.2100   0.0050   0.0180"
+EOF
+cat > "$W/ntpq-v6" <<'EOF'
+#!/bin/sh
+cat <<EOT
+     remote           refid      st t when poll reach   delay   offset  jitter
+==============================================================================
+*fd00:1::10      192.0.2.1        2 u   45   64  377    0.123   -0.045   0.012
+EOT
+EOF
+printf '#!/bin/sh\nexec sleep 30\n' > "$W/ntpq-hung"
 go() {  # go NAME TIMEDATECTL CHRONYC SOURCES NTPQ
   cp "$W/tigris.conf.base" "$W/tigris.conf"
   { echo "Tigris_Sysctl_Root='$W/$1'"; echo "Tigris_Timedatectl_Cmd='sh $W/$2'"; echo "Tigris_Chronyc_Cmd='sh $W/$3'"; echo "Tigris_Chronyc_Sources_Cmd='sh $W/$4'"; echo "Tigris_Ntpq_Cmd='sh $W/$5'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
@@ -175,6 +204,22 @@ has '--WARN-- [time005w] ntpd has only 1 of its 2 time sources answering' &&
 go ntp tdc-yes chrony-ok sources-ok ntpq-gps
 has 'The clock is synchronised by ntpd (stratum 1).' && [ "`count time005w`" = 0 ] &&
   ok "an ntpd GPS refclock alone: stratum 1, nothing judged" || { bad "ntpd gps"; cat "$W/out"; }
+go ntp tdc-yes chrony-ok sources-ok ntpq-pool
+has '--WARN-- [time005w] ntpd has only 2 of its 2 time sources answering' &&
+  ok "ntpsec's pool rows are not servers: 2 of 2, time005w" || { bad "ntpd pool"; cat "$W/out"; }
+go ntp tdc-yes chrony-ok sources-ok ntpq-pool3
+[ "`count time005w`" = 0 ] && has 'The clock is synchronised by ntpd (stratum 3).' &&
+  ok "three servers drawn from the pools: nothing judged" || { bad "ntpd pool3"; cat "$W/out"; }
+go ntp tdc-yes chrony-ok sources-ok ntpq-v6
+has '--WARN-- [time005w] ntpd has only 1 of its 1 time source answering' &&
+  ok "an IPv6 server starting with a letter is a server, not a clock: time005w" || { bad "ntpd v6"; cat "$W/out"; }
+if command -v timeout >/dev/null 2>&1; then
+  t0=`date +%s`
+  go ntp tdc-yes chrony-ok sources-ok ntpq-hung
+  t1=`date +%s`
+  [ $((t1 - t0)) -lt 20 ] && has 'The clock is synchronised by ntpd.' && [ "`count time005w`" = 0 ] &&
+    ok "a hung ntpq is given up on after five seconds" || { bad "ntpd hung ($((t1 - t0)) s)"; cat "$W/out"; }
+fi
 procs none sshd cron
 go none tdc-yes chrony-ok sources-ok ntpq-ok
 has '--WARN-- [time001w] No time synchronisation daemon is running' && [ "`count .`" = 1 ] && ok "no daemon: time001w" || { bad "none"; cat "$W/out"; }
