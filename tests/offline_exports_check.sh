@@ -41,7 +41,7 @@ cat > "$R/etc/exports" <<'EOF'
 /srv *(rw,sync,no_subtree_check)
 /srv2 (rw,sync)
 /srv3 *(sync)
-/lan 192.168.1.0/24(rw,sync) @trusted(rw)
+/lan 192.0.2.0/24(rw,sync) @trusted(rw)
 /mixed trusted(rw,sync) *(ro,sync)
 /gap trusted (rw)
 /bare
