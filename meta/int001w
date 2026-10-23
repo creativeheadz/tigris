@@ -7,4 +7,9 @@ References: aide.conf(5)
 Controls: NIST SI-7; ISO 8.16
 
 AIDE is configured but its database was never built: it
-compares against nothing. Initialize it, or take AIDE out.
+compares against nothing. The database is the one aide.conf says
+AIDE reads (database_in, or database in AIDE before 0.16), with
+its @@define macros and included files followed; it is missing or
+empty. 'aide --init' writes a new database where database_out
+points, and it does nothing until it is moved to database_in.
+Initialize it, or take AIDE out.

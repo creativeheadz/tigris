@@ -30,6 +30,10 @@
 # 10/09/2026 - Initial version. database=file: in aide.conf,
 #             database := in afick.conf (the database name takes
 #             extensions, so any file starting with it counts).
+# 10/23/2026 - AIDE's database is the one it reads: database_in (the
+#             name since 0.16), its @@define macros put in, its
+#             @@include and @@x_include files and directories read (as
+#             Debian's aide.conf.d); an empty database is none.
 #
 # References:
 #   aide.conf(5)
@@ -95,17 +99,126 @@ existing_sys()
   done
 }
 
-# aide_db FILE: the last database=file: target in an aide.conf
-aide_db()
+TAB='	'
+
+# aide_conf FILE DEPTH: FILE (an audited-system path) as AIDE reads it,
+# each @@include and @@x_include line replaced by the file it names, or
+# by the files of the directory it names whose names match its regular
+# expression, each read inside the root. A file @@x_include would
+# execute (one with an execute bit) is a program: it is not run here,
+# and taken to set no database. An include this cannot follow (a name
+# built from a macro, a relative one, one too deep) leaves the line
+# @@tigris_unknown in its place. Each file is read once ($seen lists
+# them), so a root whose includes name each other costs no more than
+# its files.
+aide_conf()
+{
+  (
+  __f=$1 __d=$2
+  __h=`rootfile "$__f"`
+  [ -n "$__h" ] && [ -f "$__h" ] || exit 0
+  [ "$__d" -le 8 ] || { echo '@@tigris_unknown'; exit 0; }
+  $GREP -qxF -- "$__h" "$seen" && exit 0
+  printf '%s\n' "$__h" >> "$seen"
+  $AWK '
+    { line = $0; sub(/^[ \t]+/, "", line) }
+    line ~ /^@@(x_)?include[ \t]/ {
+      n = split(line, w, /[ \t]+/)
+      printf "I%s\t%s\t%s\n", (w[1] == "@@x_include" ? "x" : "i"), w[2], (n > 2 ? w[3] : "")
+      next }
+    { print "L" $0 }' "$__h" |
+  while IFS= read -r __l
+  do
+    case "$__l" in
+      L*) printf '%s\n' "${__l#L}"; continue ;;
+    esac
+    __l=${__l#I}
+    __k=${__l%%"$TAB"*}; __l=${__l#*"$TAB"}
+    __p=${__l%%"$TAB"*}; __re=${__l#*"$TAB"}
+    case "$__p" in
+      *@@*|[!/]*|'') echo '@@tigris_unknown'; continue ;;
+    esac
+    if [ -n "$__re" ]; then
+      rootls "$__p" 2>/dev/null |
+        RE=$__re $AWK '{ n = $0; sub(/.*\//, "", n); if (n ~ ENVIRON["RE"]) print }' 2>/dev/null
+    else
+      printf '%s\n' "$__p"
+    fi | while IFS= read -r __n
+    do
+      __nh=`rootfile "$__n"`
+      [ -n "$__nh" ] && [ -f "$__nh" ] || continue
+      [ "$__k" = x ] && [ -x "$__nh" ] && continue
+      aide_conf "$__n" `expr $__d + 1`
+    done
+  done
+  )
+}
+
+# aide_dbs: from an AIDE configuration as aide_conf puts it together
+# (standard input), "in<TAB>PATH" for each database AIDE may compare
+# against (database_in; database before AIDE 0.16) and "out<TAB>PATH"
+# for each it may write (database_out), the file: taken off, @@define
+# macros put in, @@ifdef and @@ifndef followed. Under a condition only
+# AIDE can decide (@@ifhost, @@if) a database counts as one it may read,
+# and a macro set there is unknown. A line "unknown" when a database
+# AIDE reads cannot be named offline (an unknown macro, stdin, a
+# relative name, an include not followed): nothing is judged then.
+aide_dbs()
 {
   $AWK '
-    /^[ \t]*(@@define|@@include)/ { next }
-    { line = $0; sub(/#.*/, "", line)
-      if (line ~ /^[ \t]*database[ \t]*=/) {
-        v = line; sub(/^[^=]*=/, "", v)
-        gsub(/^[ \t]+|[ \t]+$/, "", v); sub(/^file:/, "", v)
-        if (v != "") db = v } }
-    END { if (db != "") print db }' "$1" 2>/dev/null
+    function mode(   k, m) {
+      m = "on"
+      for (k = 1; k <= lvl; k++) {
+        if (st[k] == "off") return "off"
+        if (st[k] == "unk") m = "unk"
+      }
+      return m }
+    function expand(s,   out, i, j, name) {
+      out = ""
+      while ((i = index(s, "@@{")) > 0) {
+        j = index(substr(s, i + 3), "}")
+        if (j == 0) { bad = 1; return "" }
+        name = substr(s, i + 3, j - 1)
+        if (!(name in def) || (name in poison)) { bad = 1; return "" }
+        out = out substr(s, 1, i - 1) def[name]
+        s = substr(s, i + 3 + j)
+      }
+      return out s }
+    { line = $0; sub(/^[ \t]+/, "", line); sub(/[ \t]+$/, "", line) }
+    line == "" || line ~ /^#/ { next }
+    line ~ /^@@/ {
+      n = split(line, w, /[ \t]+/); d = w[1]; m = mode()
+      if (d == "@@ifdef" || d == "@@ifndef") {
+        if (m == "off") st[++lvl] = "off"
+        else if (w[2] in poison) st[++lvl] = "unk"
+        else st[++lvl] = (((w[2] in def) == (d == "@@ifdef")) ? "on" : "off")
+      } else if (d == "@@ifhost" || d == "@@ifnhost" || d == "@@if") {
+        st[++lvl] = (m == "off" ? "off" : "unk")
+      } else if (d == "@@else") {
+        if (lvl > 0) st[lvl] = (st[lvl] == "on" ? "off" : (st[lvl] == "off" ? "on" : "unk"))
+      } else if (d == "@@endif") {
+        if (lvl > 0) lvl--
+      } else if (m == "off") {
+        next
+      } else if (d == "@@define" && n >= 2) {
+        v = line; sub(/^@@define[ \t]+[^ \t]+[ \t]*/, "", v)
+        bad = 0; v = expand(v)
+        if (m == "unk" || bad) poison[w[2]] = 1
+        else { def[w[2]] = v; delete poison[w[2]] }
+      } else if (d == "@@undef" && n >= 2) {
+        if (m == "unk") poison[w[2]] = 1
+        else { delete def[w[2]]; delete poison[w[2]] }
+      } else if (d == "@@tigris_unknown") unknown = 1
+      next }
+    mode() == "off" { next }
+    line ~ /^database(_in|_out)?[ \t]*=/ {
+      out = (line ~ /^database_out/)
+      v = line; sub(/^[^=]*=[ \t]*/, "", v); sub(/[ \t]+#.*/, "", v)
+      bad = 0; v = expand(v)
+      if (v ~ /^file:/) v = substr(v, 6)
+      if (bad || v !~ /^\//) { if (!out) unknown = 1; next }
+      print (out ? "out" : "in") "\t" v }
+    END { if (unknown) print "unknown" }'
 }
 
 # afick_db FILE: the database := target in an afick.conf
@@ -120,7 +233,7 @@ afick_db()
         if (v != "") print v } }' "$1" 2>/dev/null
 }
 
-aide=`existing_sys /etc/aide/aide.conf /etc/aide.conf`
+aide=`existing_sys /etc/aide/aide.conf /etc/aide.conf /usr/local/etc/aide.conf`
 # shellcheck disable=SC2046
 afick=`existing_sys /etc/afick.conf \`{ rootls /etc/afick; } 2>/dev/null | $GREP '\.conf$'\``
 samhain=`existing_sys /etc/samhainrc /etc/samhain/samhainrc`
@@ -132,15 +245,35 @@ osquery=`existing_sys /etc/osquery/osquery.conf`
 echo
 echo "# Checking the file-integrity configuration..."
 
+seen=$WORKDIR/integ.$$
+safe_temp $seen
+trap 'delete $seen ; exit 1' 1 2 3 15
+
 for c in $aide
 do
-  ch=`rootfile $c`
-  db=`aide_db "$ch"`
-  # macros (@@{...}) resolve at runtime; what cannot be resolved
-  # offline is not judged
-  case "$db" in *@\@*) db= ;; esac
-  if [ -n "$db" ]; then
-    [ -e "`rootfile $db`" ] || message WARN int001w "Initialize the database ('aide --init', then put it where database= points in $c)." "AIDE is configured ($c) but its database was never built: it compares against nothing."
+  # every database AIDE may compare against missing or empty: the
+  # watcher is blind. One that cannot be named offline, or none named
+  # at all (the built-in default), is not judged.
+  : > "$seen"
+  dbs=`aide_conf "$c" 0 | aide_dbs`
+  if [ -n "$dbs" ] && ! printf '%s\n' "$dbs" | $GREP -q '^unknown$'; then
+    want= have= built=
+    while IFS="$TAB" read -r kind p
+    do
+      case "$kind" in
+        in) if [ -s "`rootfile "$p"`" ]; then have=Y; else want="$want${want:+, }$p"; fi ;;
+        out) [ -s "`rootfile "$p"`" ] && built=$p ;;
+      esac
+    done <<EOF
+$dbs
+EOF
+    if [ -n "$want" ] && [ -z "$have" ]; then
+      if [ -n "$built" ]; then
+        message WARN int001w "'aide --init' wrote $built; move it to $want." "AIDE is configured ($c) but its database ($want) is not in place: it compares against nothing."
+      else
+        message WARN int001w "Initialize the database ('aide --init'), then move what it writes to $want." "AIDE is configured ($c) but its database ($want) was never built: it compares against nothing."
+      fi
+    fi
   fi
   message INFO int003i "" "AIDE is the file-integrity watcher in place."
 done
@@ -164,4 +297,5 @@ done
 [ -n "$samhain" ] && message INFO int003i "" "Samhain is the file-integrity watcher in place."
 [ -n "$osquery" ] && message INFO int003i "" "osquery is the file-integrity watcher in place."
 
+delete $seen
 exit 0
