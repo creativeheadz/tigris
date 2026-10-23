@@ -20,6 +20,8 @@ trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
 uid=`id -u`; gid=`id -g`
+# (the fixture accounts' ids are 51001 and up: as a user, root's entry takes
+# this user's uid and gid, and a runner's 1001 clashed with alice's)
 [ "$uid" = 0 ] && chown -R 0:0 "$W"
 fail=0
 ok()  { echo "ok   $1"; }
@@ -48,10 +50,10 @@ root:$H6:0:0::0:0:Charlie &:/root:/bin/sh
 daemon:*:1:1::0:0:Owner of many system processes:/root:/usr/sbin/nologin
 operator:*:2:5::0:0:System &:/:/usr/sbin/nologin
 nobody:*:65534:65534::0:0:Unprivileged user:/nonexistent:/usr/sbin/nologin
-alice:$H6:1001:1001::0:0:Alice:/home/alice:/bin/sh
+alice:$H6:51001:51001::0:0:Alice:/home/alice:/bin/sh
 EOF
   awk -F: '/^#/ { print; next } { print $1 ":*:" $3 ":" $4 ":" $8 ":" $9 ":" $10 }' "$r/etc/master.passwd" > "$r/etc/passwd"
-  printf '# $FreeBSD$\nwheel:*:0:root\ndaemon:*:1:\noperator:*:5:root\nnobody:*:65534:\nalice:*:1001:\n' > "$r/etc/group"
+  printf '# $FreeBSD$\nwheel:*:0:root\ndaemon:*:1:\noperator:*:5:root\nnobody:*:65534:\nalice:*:51001:\n' > "$r/etc/group"
   printf '# shells\n/bin/sh\n/bin/csh\n/bin/tcsh\n' > "$r/etc/shells"
   printf '#!/bin/sh\n' > "$r/bin/sh"; chmod 555 "$r/bin/sh"
   printf '# shrc\n' > "$r/home/alice/.shrc"; printf '# profile\n' > "$r/home/alice/.profile"
@@ -87,7 +89,7 @@ EOF
   printf 'sshd_enable="YES"\n' > "$r/etc/rc.conf"
   chmod 600 "$r/etc/master.passwd"
   if [ "$uid" = 0 ]; then
-    chown -R 0:0 "$r"; chown -R 1001:1001 "$r/home/alice"
+    chown -R 0:0 "$r"; chown -R 51001:51001 "$r/home/alice"
   else
     # the runner's uid and gid are the root's root and wheel, for the
     # owners check_perms names
@@ -105,8 +107,8 @@ L=$W/loose; root "$L"
 # rc.conf open
 cat >> "$L/etc/master.passwd" <<EOF
 toor:*:0:0::0:0:Bourne-again Superuser:/root:
-bob:*LOCKED*$H6:1002:1002::0:0:Bob:/home/bob:/bin/sh
-eve:_J9..abcdefghijklmno:1003:1003::0:0:Eve:/home/eve:/bin/sh
+bob:*LOCKED*$H6:51002:51002::0:0:Bob:/home/bob:/bin/sh
+eve:_J9..abcdefghijklmno:51003:51003::0:0:Eve:/home/eve:/bin/sh
 EOF
 awk -F: '$1 == "toor" || $1 == "bob" || $1 == "eve" { print $1 ":*:" $3 ":" $4 ":" $8 ":" $9 ":" $10 }' "$L/etc/master.passwd" >> "$L/etc/passwd"
 for u in bob eve; do mkdir -p "$L/home/$u"; printf '# shrc\n' > "$L/home/$u/.shrc"; done
