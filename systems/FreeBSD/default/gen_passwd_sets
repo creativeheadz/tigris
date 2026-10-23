@@ -27,7 +27,7 @@
 #     fields go; the password becomes the name of its hash, as on
 #     Linux: md5 ($1$), bcrypt ($2a$, $2b$, $2y$), sha256 ($5$),
 #     sha512 ($6$, the login.conf default), crypt3 (13 characters of
-#     DES), bsdicrypt (extended DES, _ and 19 more), nthash ($3$),
+#     DES), bsdicrypt (extended DES, _ and 19 more), nt ($3$),
 #     unknown for anything else, * for an account that cannot log in
 #     with a password (*, or pw lock's *LOCKED* prefix), and empty
 #     for none; check_passwd judges the names against
@@ -88,7 +88,7 @@ TIGRIS_FIELDS=$fields $AWK -F: '
     else if (p ~ /^\$6\$/) h = "sha512"
     else if (p ~ /^_[A-Za-z0-9.\/]+$/ && length(p) == 20) h = "bsdicrypt"
     else if (p ~ /^[A-Za-z0-9.\/]+$/ && length(p) == 13) h = "crypt3"
-    else if (p ~ /^\$3\$/) h = "nthash"
+    else if (p ~ /^\$3\$/) h = "nt"
     else h = "unknown"
     if (ten) print $1, h, $3, $4, $8, $9, $10
     else print $1, h, $3, $4, $5, $6, $7
