@@ -10,7 +10,8 @@
 # was a FAIL on every Ubuntu host until October 2026; reverse-path
 # filtering takes the higher of conf/all and the interface's rp_filter, so
 # only both at 0 is lin014f (the default's half was read from a path that
-# does not exist).
+# does not exist). icmp_ignore_bogus_error_responses is check_sysctl's
+# (lin033w): this check says nothing of it.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -40,6 +41,7 @@ root srcboth net.ipv4.conf.all.accept_source_route=1 net.ipv4.conf.default.accep
 root srcall  net.ipv4.conf.all.accept_source_route=1 net.ipv4.conf.default.accept_source_route=0
 root rpoff   net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0
 root rphalf  net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=1
+root bogus   net.ipv4.icmp_ignore_bogus_error_responses=0
 
 case " `ids stock` " in *" lin016f "*) bad "stock Ubuntu (all 0, default 1): lin016f" ;; *) ok "stock Ubuntu's source routing (all 0, default 1): no lin016f" ;; esac
 case " `ids srcboth` " in *" lin016f "*) ok "all and default on: lin016f" ;; *) bad "all and default on: no lin016f" ;; esac
@@ -47,6 +49,8 @@ case " `ids srcall` " in *" lin016f "*) bad "all on, default off: lin016f" ;; *)
 case " `ids rpoff` " in *" lin014f "*) ok "rp_filter off in all and default: lin014f" ;; *) bad "rp_filter off in both: no lin014f" ;; esac
 case " `ids rphalf` " in *" lin014f "*) bad "rp_filter all 0, default 1: lin014f" ;; *) ok "rp_filter all 0, default 1: no lin014f" ;; esac
 case " `ids stock` " in *" lin014f "*) bad "stock Ubuntu's rp_filter 2: lin014f" ;; *) ok "stock Ubuntu's rp_filter (2, loose): no lin014f" ;; esac
+# check_sysctl judges this one (lin033w): nothing here, so it is said once
+[ -z "`ids bogus`" ] && ok "bogus ICMP errors logged: left to check_sysctl" || bad "bogus ICMP errors: `ids bogus`"
 
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

@@ -39,6 +39,10 @@
 #   sysctl_configured). A setting nothing there sets is left alone: its
 #   value is the kernel's default, which depends on the kernel the root
 #   boots (check_sysctl lists such settings, lin041i).
+# 10/23/2026 atrimbitas - lin011f retired: it read
+#   net/ipv4/icmp_bogus_error_responses, which no kernel has, so it never
+#   fired; check_sysctl judges the real key,
+#   net.ipv4.icmp_ignore_bogus_error_responses (lin033w).
 #
 # Tigris: offline
 #   the network settings the root applies at boot, from its sysctl.d.
@@ -132,8 +136,6 @@ read_if_exist /proc/sys/net/ipv4/icmp_echo_ignore_all
 icmp_echo_ignore=$?
 read_if_exist /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
 icmp_broadcast_ignore=$?
-read_if_exist /proc/sys/net/ipv4/icmp_bogus_error_responses
-icmp_bogus_error=$?
 read_if_exist /proc/sys/net/ipv4/conf/all/accept_redirects
 icmp_redirect=$?
 read_if_exist /proc/sys/net/ipv4/conf/default/accept_redirects
@@ -176,8 +178,6 @@ secure_redirects=$?
 	message INFO lin009i "" "The system is configured to answer ICMP ECHO requests"
 [ $icmp_broadcast_ignore -eq 0 ] && \
 	message FAIL lin010f "" "The system is configured to answer to ICMP broadcasts"
-[ $icmp_bogus_error -eq 0 ] && \
-	message FAIL lin011f "" "The system is configured to answer bogus errors"
 
 [ $icmp_redirect -eq 1 -o $icmp_redirect_def -eq 1 ] && \
 	message WARN lin012w "" "The system accepts ICMP redirection messages"
