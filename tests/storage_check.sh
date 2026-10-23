@@ -286,6 +286,13 @@ offline "$L"
 has '[stor011i] LVM volume group vg0 holds logical volumes root, swap.' && ok "LVM metadata: stor011i names the group and its volumes" || { bad "lvm"; cat "$W/out"; }
 has '[stor013w]' && has '`/var/lib/mlocate/mlocate.db'"'"' is readable by anyone' "$W/out" &&
   ok "a world-readable locate database: stor013w" || { bad "locate"; cat "$W/out"; }
+# plocate's, the default on current Debian, Ubuntu and Fedora
+mkdir -p "$L/var/lib/plocate"
+printf 'plocate-bytes' > "$L/var/lib/plocate/plocate.db"
+chmod 644 "$L/var/lib/plocate/plocate.db"
+offline "$L"
+has '`/var/lib/plocate/plocate.db'"'"' is readable by anyone' "$W/out" && has "chown root:plocate" "$W/out" &&
+  ok "a world-readable plocate database: stor013w, its own group named" || { bad "plocate"; cat "$W/out"; }
 ! grep -q 'stor012w' "$W/out" &&
   ok "no ACLs on the fixtures: no stor012w" || { bad "acl quiet"; cat "$W/out"; }
 
@@ -319,6 +326,9 @@ printf 'root:!:1:0:::::\n' > "$T/etc/shadow"
 chmod 600 "$T/etc/shadow"
 printf 'mlocate-bytes' > "$T/var/lib/mlocate/mlocate.db"
 chmod 600 "$T/var/lib/mlocate/mlocate.db"
+mkdir -p "$T/var/lib/plocate"
+printf 'plocate-bytes' > "$T/var/lib/plocate/plocate.db"
+chmod 600 "$T/var/lib/plocate/plocate.db"
 offline "$T"
 ! grep -q 'stor011i\|stor012w\|stor013w' "$W/out" &&
   ok "no LVM, no ACLs, a guarded database: nothing" || { bad "tight2"; cat "$W/out"; }

@@ -293,12 +293,17 @@ storage_second()
       [ -n "$extra" ] && message WARN stor012w "Take the extra entries off \`$a' ('setfacl -x' each away, or 'setfacl -b' to clear them all)." "\`$a' grants $extra beyond its mode: whoever is named reaches past it."
     done
   fi
-  # The locate database names every file on the box
-  for ldb in /var/lib/mlocate/mlocate.db /var/lib/locatedb /var/lib/slocate/slocate.db /var/cache/locate/locatedb
+  # The locate database names every file on the box: plocate's (the
+  # default on current Debian, Ubuntu and Fedora), mlocate's, slocate's,
+  # each read by its setgid locate through a group of its own, and
+  # findutils' (no group of its own)
+  for l in /var/lib/plocate/plocate.db:plocate /var/lib/mlocate/mlocate.db:mlocate \
+           /var/lib/slocate/slocate.db:slocate /var/lib/locatedb:root /var/cache/locate/locatedb:root
   do
+    ldb=${l%:*} lgr=${l##*:}
     [ -f "`rootfile $ldb`" ] || continue
-    why=`exposed "$ldb" mlocate`
-    [ -n "$why" ] && message WARN stor013w "Leave the locate database to root and its group ('chown root:mlocate \`$ldb'; chmod 640 \`$ldb')." "The locate database \`$ldb' is $why: its filenames name every file on the box, and every account with a home."
+    why=`exposed "$ldb" $lgr`
+    [ -n "$why" ] && message WARN stor013w "Leave the locate database to root and its group ('chown root:$lgr \`$ldb'; chmod 640 \`$ldb')." "The locate database \`$ldb' is $why: its filenames name every file on the box, and every account with a home."
   done
 }
 
