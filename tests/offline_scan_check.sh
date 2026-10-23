@@ -6,7 +6,8 @@
 # directories, unowned files, links, odd names, devices) over a root that
 # holds one of each: a setuid program no package ships, a setgid script,
 # world-writable directories (one not sticky, reported; one sticky as /tmp
-# is, not reported; one sticky under /etc, reported), world-writable files
+# is, not reported; one sticky under /etc, reported; /tmp itself not
+# sticky, reported, and /var/tmp sticky, not), world-writable files
 # (one under /etc, listed; two in a home directory, counted), a directory named
 # "...", an absolute link to a
 # file this host has and the root does not (dangling inside the root; it
@@ -33,12 +34,15 @@ U=$uid; G=`id -g`
 find / -maxdepth 0 -printf '' 2>/dev/null || { echo "ok   (no GNU find here: nothing to test)"; echo PASS; exit 0; }
 
 R=$W/img
-mkdir -p "$R/etc" "$R/usr/bin" "$R/srv/drop" "$R/srv/shared" "$R/etc/zz-drop" "$R/opt/..." "$R/dev" "$R/home/milo"
+mkdir -p "$R/etc" "$R/usr/bin" "$R/srv/drop" "$R/srv/shared" "$R/etc/zz-drop" "$R/opt/..." "$R/dev" "$R/home/milo" "$R/tmp/zz-sub" "$R/var/tmp"
 printf 'root:x:0:0:root:/root:/bin/sh\nmilo:x:%s:%s:Milo:/home/milo:/bin/sh\n' "$U" "$G" > "$R/etc/passwd"
 printf 'root:x:0:\n' > "$R/etc/group"
 printf '\177ELF' > "$R/usr/bin/zz-suid"; chmod 4755 "$R/usr/bin/zz-suid"
 printf '#!/bin/sh\necho hi\n' > "$R/usr/bin/zz-sgid-script"; chmod 2755 "$R/usr/bin/zz-sgid-script"
 chmod 777 "$R/srv/drop"; chmod 1777 "$R/srv/shared" "$R/etc/zz-drop"
+# /tmp world writable and not sticky; what is under it is its users'
+# business; /var/tmp as it should be
+chmod 777 "$R/tmp" "$R/tmp/zz-sub"; chmod 1777 "$R/var/tmp"
 : > "$R/etc/zz-open"; : > "$R/home/milo/zz-a"; : > "$R/home/milo/zz-b"
 chmod 666 "$R/etc/zz-open" "$R/home/milo/zz-a" "$R/home/milo/zz-b"
 ln -s /etc/hostname "$R/etc/zz-hostlink"
@@ -78,6 +82,10 @@ has '[fsys008f] Directory /srv/drop is world writable (drwxrwxrwx' && has 'Not s
   ok "a sticky one, shared as /tmp is: no finding"
 has '[fsys008f] Directory /etc/zz-drop is world writable (drwxrwxrwt' && has 'Sticky, but under /etc' &&
   ok "a sticky one under /etc, where root reads configuration: fsys008f" || bad "sticky under /etc"
+has '[fsys008f] Directory /tmp is world writable (drwxrwxrwx' &&
+  ok "/tmp world writable and not sticky: fsys008f" || bad "/tmp not sticky"
+has 'Directory /tmp/zz-sub ' && bad "a directory under /tmp was judged" || ok "what is under /tmp is not judged"
+has 'Directory /var/tmp ' && bad "a sticky /var/tmp was reported" || ok "a sticky /var/tmp: no finding"
 has '[fsys020f] File /etc/zz-open is world writable (-rw-rw-rw-, owner' && has 'Under /etc, where root reads programs and configuration' &&
   ok "a world-writable file under /etc, listed with its mode and owner: fsys020f" || bad "fsys020f"
 # (the text report wraps at 79 columns: match what fits on the first line)

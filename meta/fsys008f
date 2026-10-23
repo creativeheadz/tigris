@@ -7,8 +7,10 @@ References: chmod(1)
 Controls: CIS 3.3; NIST AC-3; ISO 8.3; CE Secure configuration
 
 The directory is world writable, outside the ones meant to be
-(FS_WDIRSYS: /tmp, /var/tmp, /dev/shm, /run...). Without the sticky
-bit anyone can delete or replace the files others keep there. A
+(FS_WDIRSYS: /tmp, /var/tmp, /dev/shm, /run...), or it is one of
+those and not sticky. Without the sticky bit anyone can delete or
+replace the files others keep there: a /tmp without it lets any
+user swap another's temporary files, root's included. A
 sticky one, shared as /tmp is, is what CIS asks of every
 world-writable directory and is not reported, unless it is under a
 tree root reads programs or configuration from (/etc, /usr, /bin,

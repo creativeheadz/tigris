@@ -17,6 +17,10 @@
 #
 # sub/check_wdir - 06/14/93
 #
+# 10/23/2026 atrimbitas The directories meant to be world writable
+#                (FS_WDIRSYS: /tmp, /var/tmp...) are judged themselves on
+#                the sticky bit; only what is under them is left out.
+#
 #-----------------------------------------------------------------------------
 # This script is not runnable directly.
 # 
@@ -64,27 +68,34 @@ haveallcmds GETCLIENTDIRS AWK && {
   `
 }
 
-# The directories that are meant to be world writable are left out,
+# What is under the directories meant to be world writable is left out,
 # matched as prefixes, as words, never as patterns or as code (the
-# diskless clients' come from bootparams, which is data).
+# diskless clients' come from bootparams, which is data). Each of those
+# directories itself stays, marked S: it is judged on its sticky bit
+# alone, since a /tmp anyone may write and nobody made sticky lets any
+# user delete or replace the files of every other. The rest is marked A.
 $SED -e 's%\([^/]\)$%\1/%' $file |
-$AWK -v dirs="$FS_WDIRSYS $dltmpdirs" '
-  BEGIN { n = split(dirs, d, " ") }
-  { for (i = 1; i <= n; i++) if (index($0, d[i]) == 1) next; print }' > $WORKDIR/wdir.tmp.$$
+dirs="$FS_WDIRSYS $dltmpdirs" $AWK '
+  BEGIN { n = split(ENVIRON["dirs"], d, " ") }
+  { for (i = 1; i <= n; i++) if ($0 == d[i] || $0 == d[i] "/") { print "S " $0; next }
+    for (i = 1; i <= n; i++) if (index($0, d[i]) == 1) next
+    print "A " $0 }' > $WORKDIR/wdir.tmp.$$
 
 # One finding a directory. A sticky one is shared as /tmp is, which is
 # what CIS asks of every world-writable directory: no finding, but where
 # root reads programs or configuration (or a web server its pages), since
 # anyone can still add files there.
 [ -s $WORKDIR/wdir.tmp.$$ ] && {
-  $SORT $WORKDIR/wdir.tmp.$$ |
-  while read -r dir
+  $SORT -k 2 $WORKDIR/wdir.tmp.$$ |
+  while IFS= read -r line
   do
+    mark=${line%% *} dir=${line#? }
     d=${dir%/}; [ -n "$d" ] || d=/
     lsl=`lsline "$d" 2>/dev/null | $AWK '{ print $1, $3; exit }'`
     set -f; set -- $lsl; set +f
     case "${1:-?}" in
       ?????????[tT]*)
+        [ "$mark" = S ] && continue
         case "$dir" in
           /var/www/*)
             detail="Sticky, but under /var/www, where a web server reads its pages: anyone can add files there." ;;
