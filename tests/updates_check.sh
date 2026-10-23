@@ -10,7 +10,9 @@
 # security), rpm -q --last kernel-core in its usual shape. Files come
 # from a tree under Tigris_Sysctl_Root; Tigris_Updates_Manager picks the
 # manager. A yumgpg tree carries repo files with gpgcheck off and on,
-# and a dnf.conf with [main] on then off (upd005w).
+# and a dnf.conf with [main] on then off (upd005w). Debian, Raspbian and
+# Mint trees carry os-release and apt sources, one-line and deb822, with
+# and without the release's security suite (upd010w).
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -122,6 +124,78 @@ tree nolists 6.8.0-85-generic; rm -f "$W/nolists/var/lib/apt/lists/"*
 go nolists apt "`apt aptsim aptconf-on`"
 has '--INFO-- [upd004i] Security updates waiting cannot be counted: apt has no package lists' && [ "`count upd003f`" = 0 ] &&
   ok "apt without package lists: upd004i, not a count of zero" || { bad "no lists"; cat "$W/out"; }
+
+# apt sources without a security suite (upd010w): one-line and deb822,
+# a commented line, a deb-src one, a stanza turned off, a file apt
+# ignores; Debian testing, Raspbian and an alias suite left alone
+osrel() { printf '%s\n' "$2" > "$W/$1/etc/os-release"; }
+src() { mkdir -p "$W/$1/etc/apt/sources.list.d"; printf "$3" > "$W/$1/etc/apt/$2"; }
+tree bookworm 6.1.0-40-amd64; mkdir -p "$W/bookworm/etc/apt"
+osrel bookworm 'PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+VERSION_ID="12"
+VERSION_CODENAME=bookworm
+ID=debian'
+echo 12.12 > "$W/bookworm/etc/debian_version"
+src bookworm sources.list 'deb http://deb.debian.org/debian bookworm main\ndeb [arch=amd64 signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian bookworm-updates main\n#deb http://security.debian.org/debian-security bookworm-security main\ndeb-src http://security.debian.org/debian-security bookworm-security main\n'
+src bookworm sources.list.d/security.list.save 'deb http://security.debian.org/debian-security bookworm-security main\n'
+# a link out of the root, to a file of this host's naming the suite
+printf 'deb http://security.debian.org/debian-security bookworm-security main\n' > "$W/hostsec.list"
+ln -s "$W/hostsec.list" "$W/bookworm/etc/apt/sources.list.d/host.list"
+go bookworm apt "`apt aptnone aptconf-on`"
+has "--WARN-- [upd010w] apt's sources name no security suite for Debian bookworm: security updates are never fetched, so none can be counted as waiting. Add 'deb http://security.debian.org/debian-security bookworm-security main'" &&
+  [ "`count upd003f`" = 0 ] &&
+  ok "Debian, its security suite commented out, deb-src, in a .save file and through a link out of the root: upd010w, no count" || { bad "debian no security"; cat "$W/out"; }
+rm -f "$W/bookworm/etc/apt/sources.list.d/host.list"
+src bookworm sources.list.d/security.list 'deb [ arch=amd64 ] http://security.debian.org/debian-security bookworm-security main contrib # the fixes\n'
+go bookworm apt "`apt aptnone aptconf-on`"
+[ "`count upd010w`" = 0 ] && ok "Debian with bookworm-security in a .list (bracketed options, a trailing comment): quiet" || { bad "debian security list"; cat "$W/out"; }
+rm -f "$W/bookworm/etc/apt/sources.list.d/security.list"
+src bookworm sources.list.d/debian.sources 'Types: deb deb-src\nURIs: http://deb.debian.org/debian-security\nSuites: bookworm-security\nComponents: main\nEnabled: no\n'
+go bookworm apt "`apt aptnone aptconf-on`"
+has '[upd010w]' && ok "deb822: the security stanza with Enabled: no counts for nothing" || { bad "deb822 disabled"; cat "$W/out"; }
+src bookworm sources.list.d/debian.sources '# deb822\nTypes: deb\nURIs: http://deb.debian.org/debian\nSuites: bookworm\n  bookworm-updates\nComponents: main\n\nTypes: deb\nURIs: http://deb.debian.org/debian-security\nSuites: bookworm-security\nComponents: main\nSigned-By:\n -----BEGIN PGP PUBLIC KEY BLOCK-----\n .\n -----END PGP PUBLIC KEY BLOCK-----\n'
+go bookworm apt "`apt aptnone aptconf-on`"
+[ "`count upd010w`" = 0 ] && ok "deb822: a stanza with bookworm-security (a folded Suites, a key inline): quiet" || { bad "deb822 security"; cat "$W/out"; }
+rm -f "$W/bookworm/etc/apt/sources.list.d/debian.sources"
+src bookworm sources.list 'deb http://deb.debian.org/debian stable main\n'
+go bookworm apt "`apt aptnone aptconf-on`"
+has '[upd010w]' && ok "Debian's stable, alone: upd010w" || { bad "stable alone"; cat "$W/out"; }
+src bookworm sources.list 'deb http://deb.debian.org/debian stable main\ndeb http://security.debian.org/debian-security stable-security main\n'
+go bookworm apt "`apt aptnone aptconf-on`"
+[ "`count upd010w`" = 0 ] && ok "Debian's stable with stable-security: quiet" || { bad "stable-security"; cat "$W/out"; }
+src bookworm sources.list 'deb http://deb.debian.org/debian buster main\ndeb http://security.debian.org/debian-security buster/updates main\n'
+osrel bookworm 'VERSION_ID="10"
+VERSION_CODENAME=buster
+ID=debian'
+go bookworm apt "`apt aptnone aptconf-on`"
+[ "`count upd010w`" = 0 ] && ok "Debian 10 with buster/updates, its old security suite: quiet" || { bad "buster/updates"; cat "$W/out"; }
+src bookworm sources.list 'deb http://deb.debian.org/debian trixie main\n'
+osrel bookworm 'PRETTY_NAME="Debian GNU/Linux trixie/sid"
+VERSION_CODENAME=trixie
+ID=debian'
+go bookworm apt "`apt aptnone aptconf-on`"
+[ "`count upd010w`" = 0 ] && ok "Debian testing (no VERSION_ID): not judged" || { bad "testing"; cat "$W/out"; }
+osrel bookworm 'VERSION_ID="12"
+VERSION_CODENAME=bookworm
+ID=raspbian
+ID_LIKE=debian'
+src bookworm sources.list 'deb http://raspbian.raspberrypi.com/raspbian/ bookworm main contrib non-free rpi\n'
+go bookworm apt "`apt aptnone aptconf-on`"
+[ "`count upd010w`" = 0 ] && ok "Raspbian, whose fixes come in the release suite: not judged" || { bad "raspbian"; cat "$W/out"; }
+tree minty 6.8.0-85-generic; mkdir -p "$W/minty/etc/apt"
+osrel minty 'NAME="Linux Mint"
+VERSION_ID="22.2"
+VERSION_CODENAME=zara
+ID=linuxmint
+ID_LIKE="ubuntu debian"
+UBUNTU_CODENAME=noble'
+src minty sources.list.d/official-package-repositories.list 'deb http://packages.linuxmint.com zara main upstream import backport\ndeb http://archive.ubuntu.com/ubuntu noble main restricted universe multiverse\ndeb http://archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse\n'
+go minty apt "`apt aptsim aptconf-on`"
+has "apt's sources name no security suite for Ubuntu noble" && has "Add the noble-security suite" &&
+  ok "Mint without noble-security (UBUNTU_CODENAME): upd010w" || { bad "mint no security"; cat "$W/out"; }
+src minty sources.list.d/official-package-repositories.list 'deb http://archive.ubuntu.com/ubuntu noble main\ndeb http://security.ubuntu.com/ubuntu/ noble-security main restricted universe multiverse\n'
+go minty apt "`apt aptnone aptconf-on`"
+[ "`count upd010w`" = 0 ] && ok "Mint with noble-security: quiet" || { bad "mint security"; cat "$W/out"; }
 
 # reboot
 mkdir -p "$W/deb/run"; : > "$W/deb/run/reboot-required"

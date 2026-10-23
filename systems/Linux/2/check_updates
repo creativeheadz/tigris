@@ -47,6 +47,11 @@
 #                 override, and no cache or log written into the root),
 #                 its files are read through rootfile, and the reboot is
 #                 not asked about: nothing is running.
+# 10/23/2026 atrimbitas - apt sources that name no security suite for
+#                 the release (upd010w): no security update is fetched,
+#                 so the count of those waiting stayed silent, which read
+#                 as all patched. Debian testing and sid, and descendants
+#                 that are neither Ubuntu's nor LMDE, are not judged.
 #
 # Tigris: offline
 #
@@ -100,6 +105,7 @@ done
 haveallcmds AWK CAT GREP LS SED SORT || exit 1
 
 root=${Tigris_Sysctl_Root:-}
+US=`printf '\037'`
 
 findtool()
 {
@@ -185,8 +191,115 @@ rootlinks()
   done < "$tooldir/names" 3< "$tooldir/here"
   rm -f "$tooldir/names" "$tooldir/here"
 }
+
+# aptsuites: the suites apt installs packages from (deb lines and
+# stanzas, not deb-src), one a line, from /etc/apt/sources.list and the
+# files in sources.list.d that apt reads (sources.list(5): a name of
+# letters, digits, _ - and ., ending .list for the one-line style or
+# .sources for deb822), each read inside the root. A comment, and a
+# deb822 stanza with Enabled: no, count for nothing.
+aptsuites()
+{
+  {
+    printf '%s\n' /etc/apt/sources.list
+    rootls /etc/apt/sources.list.d 2>/dev/null | $AWK -F/ '$NF ~ /^[A-Za-z0-9_.-]+\.(list|sources)$/'
+  } | while IFS= read -r __sf
+  do
+    __sh=`rootfile "$__sf"`
+    [ -n "$__sh" ] && [ -f "$__sh" ] || continue
+    case "$__sf" in
+      *.sources) $AWK '
+        function flush(   n, s, j) {
+          if (types ~ /(^|[ \t])deb([ \t]|$)/ && tolower(enabled) !~ /^(no|false|0)$/) {
+            n = split(suites, s); for (j = 1; j <= n; j++) print s[j]
+          }
+          types = suites = enabled = cur = ""
+        }
+        /^[ \t]*#/ { next }
+        /^[ \t]*$/ { flush(); next }
+        /^[ \t]/ { if (cur == "types") types = types " " $0; else if (cur == "suites") suites = suites " " $0; next }
+        {
+          i = index($0, ":"); cur = tolower(substr($0, 1, i ? i - 1 : 0)); v = substr($0, i + 1)
+          if (cur == "types") types = v
+          else if (cur == "suites") suites = v
+          else if (cur == "enabled") { enabled = v; gsub(/[ \t]/, "", enabled) }
+        }
+        END { flush() }' < "$__sh" ;;
+      *) $AWK '
+        { sub(/#.*$/, "") }
+        $1 == "deb" {
+          i = 2
+          if ($i ~ /^\[/) { while (i < NF && $i !~ /\]$/) i++; i++ }
+          # (a cdrom: URI names the disc in brackets, blanks and all)
+          if ($i ~ /^cdrom:\[/) while (i < NF && $i !~ /\]/) i++
+          if (i + 1 <= NF) print $(i + 1)
+        }' < "$__sh" ;;
+    esac
+  done 2>/dev/null
+}
+
+# aptnosec: what to add, when the release's apt sources name no
+# security suite. The release is Ubuntu's (UBUNTU_CODENAME, which Mint,
+# Pop!_OS and the other derivatives carry) or Debian's (DEBIAN_CODENAME
+# on LMDE); other descendants are not judged, since some publish their
+# security updates in the release suite itself (Raspbian) or roll
+# (Kali). Debian testing and sid are not judged either: their
+# os-release has no VERSION_ID, and debian_version ends in /sid. Nor is
+# a release whose suite no source names (a mirror of its own naming):
+# only a release apt fetches can lack its security suite. Debian's
+# stable, oldstable and oldoldstable name a release too. A security
+# suite is the release's -security (-infra-security, Ubuntu Pro's), or
+# /updates, Debian's name for it until buster.
+aptnosec()
+{
+  nosec_rel= nosec_fix=
+  __or=`rootfile /etc/os-release`
+  [ -n "$__or" ] && [ -f "$__or" ] || __or=`rootfile /usr/lib/os-release`
+  [ -n "$__or" ] && [ -f "$__or" ] || return 1
+  __ov=`$AWK -F= -v q="'" '
+    BEGIN { us = sprintf("%c", 31) }
+    { v = substr($0, length($1) + 2); gsub(/"/, "", v); gsub(q, "", v); gsub(us, "", v) }
+    $1 == "ID" { id = v } $1 == "VERSION_ID" { ver = v } $1 == "VERSION_CODENAME" { vc = v }
+    $1 == "UBUNTU_CODENAME" { uc = v } $1 == "DEBIAN_CODENAME" { dc = v }
+    END { print id us ver us vc us uc us dc }' < "$__or" 2>/dev/null`
+  IFS=$US read -r __id __ver __vc __uc __dc <<EOF
+$__ov
+EOF
+  __rel= __dist=
+  if [ -n "$__uc" ]; then __rel=$__uc __dist=Ubuntu
+  elif [ "$__id" = ubuntu ]; then __rel=$__vc __dist=Ubuntu
+  elif [ "$__id" = debian ]; then
+    [ -n "$__ver" ] || return 1
+    __dv=`rootfile /etc/debian_version`
+    [ -n "$__dv" ] && [ -f "$__dv" ] && $GREP -q '/sid' "$__dv" 2>/dev/null && return 1
+    __rel=$__vc __dist=Debian
+  elif [ -n "$__dc" ]; then __rel=$__dc __dist=Debian
+  fi
+  case "$__rel" in ''|*[!a-z0-9-]*) return 1 ;; esac
+  aptsuites | TIGRIS_REL=$__rel TIGRIS_DIST=$__dist $AWK '
+    BEGIN { r = ENVIRON["TIGRIS_REL"]; deb = (ENVIRON["TIGRIS_DIST"] == "Debian") }
+    $0 == r || (deb && $0 ~ /^(old)*stable$/) { rel = 1 }
+    $0 == r "-security" || $0 == r "-infra-security" || $0 == r "/updates" { sec = 1 }
+    deb && $0 ~ /^(old)*stable(-security|\/updates)$/ { sec = 1 }
+    END { exit !(rel && !sec) }' || return 1
+  nosec_rel="$__dist $__rel"
+  case "$nosec_rel" in
+    "Debian jessie"|"Debian stretch"|"Debian buster")
+      nosec_fix="Add 'deb http://security.debian.org/debian-security $__rel/updates main' to /etc/apt/sources.list, then run 'apt update'." ;;
+    Debian*)
+      nosec_fix="Add 'deb http://security.debian.org/debian-security $__rel-security main' to /etc/apt/sources.list (or a stanza with 'Suites: $__rel-security' for that URI in /etc/apt/sources.list.d/debian.sources), then run 'apt update'." ;;
+    *)
+      nosec_fix="Add the $__rel-security suite ('deb http://security.ubuntu.com/ubuntu $__rel-security main restricted universe multiverse', or 'Suites: $__rel-security' in /etc/apt/sources.list.d/ubuntu.sources), then run 'apt update'." ;;
+  esac
+  return 0
+}
+
 case "$mgr" in
   apt)
+    # No security suite: no security update is fetched, so none is ever
+    # counted as waiting, and the silence would read as all patched
+    aptnosec &&
+      message WARN upd010w "$nosec_fix" "apt's sources name no security suite for $nosec_rel: security updates are never fetched, so none can be counted as waiting."
     lists=`rootfile /var/lib/apt/lists`
     cmd=${Tigris_Apt_Simulate_Cmd:-}
     [ -z "$cmd" ] && a=`findtool apt-get` && cmd="$a -s -o Debug::NoLocking=1 dist-upgrade"

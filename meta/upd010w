@@ -1,0 +1,43 @@
+Id: upd010w
+Severity: WARN
+Category: packages
+Check: check_updates
+Fix: Add the release's security suite (<codename>-security) to apt's sources and run apt update.
+References: sources.list(5); https://www.debian.org/security/; https://ubuntu.com/security/notices
+Controls: CIS 7.3, 7.4; NIST SI-2; ISO 8.8; CE Security update management
+
+apt's sources name the release (Debian's or Ubuntu's codename) but no
+security suite for it, so security updates never reach this host: the
+point releases and -updates carry them weeks later, if at all. Nor can
+Tigris count the security updates waiting (upd003f), since apt knows
+of none; without this finding the silence would read as all patched.
+
+The sources read are /etc/apt/sources.list and the .list and .sources
+(deb822) files in /etc/apt/sources.list.d that apt reads; a comment,
+a deb-src line and a stanza with 'Enabled: no' count for nothing. The
+security suite is <codename>-security (on Debian, from
+security.debian.org/debian-security or deb.debian.org/debian-security;
+on Ubuntu, from security.ubuntu.com or any mirror), Ubuntu Pro's
+<codename>-infra-security, or <codename>/updates, Debian's name for it
+until buster. The release comes from os-release: UBUNTU_CODENAME on
+Ubuntu and its derivatives (Mint, Pop!_OS), DEBIAN_CODENAME on LMDE.
+Debian testing and sid are not judged (their os-release has no
+VERSION_ID): their security support is not that of a release. Nor are
+other Debian descendants (Raspbian publishes its fixes in the release
+suite itself), nor a release no source names.
+
+To fix it, add the suite, for Debian 12:
+
+    deb http://security.debian.org/debian-security bookworm-security main
+
+or, in /etc/apt/sources.list.d/debian.sources:
+
+    Types: deb
+    URIs: http://security.debian.org/debian-security
+    Suites: bookworm-security
+    Components: main
+    Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+and on Ubuntu 24.04, 'noble-security' beside 'noble' and
+'noble-updates' in /etc/apt/sources.list.d/ubuntu.sources; then run
+'apt update'.
