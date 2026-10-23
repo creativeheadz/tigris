@@ -79,8 +79,33 @@ re-running the inventory and updating the counts below.
 
 ## Counts
 
-Covered 27, strong 14, partial 0, gap 0, N/A 2: 43 files, 477
-real tests. Recounted 2026-10-16 from the rows above: the ten gap
+**Read with the note below.** Covered 27, strong 14, partial 0, gap 0,
+N/A 2: 43 files, 477 real tests, as counted by group.
+
+On 2026-10-23 the groups were checked test by test against Lynis
+3.1.8 (457 tests registered for Linux, macOS or the BSDs). 246 of
+those tests report nothing themselves (they detect software for later
+tests), 32 fall under the deliberate exceptions below or other
+platforms, and of the 179 that report a weakness Tigris covered 37,
+covered 50 in part and 96 not at all; inside the tests that walk a
+list (sshd options, sysctl keys, mount options, permission files), 44
+of 213 items were covered. Several checks this table relied on never
+fired: check_single exited unless the CPU was 32-bit x86, the AIDE
+database check knew only `database=`, GRUB 2 in /boot/grub2 was never
+read, check_apache was off by default, an export to `*` counted as
+restricted, the sticky bit on /tmp was never judged, md5 and DES
+hashes were accepted, and on FreeBSD the portable checks stopped at
+init001e. Those are fixed (ROADMAP, "Test-level parity", round 1);
+the group statuses above stand as upper bounds until this file is
+rewritten at test level from the inventory, group by group, in the
+rounds the roadmap lists. Known overstatements meanwhile: banners
+(check_issue is off by default and compares against a site template),
+homedirs (owner and mode of a home are not judged), insecure_services
+(nothing on Linux; FreeBSD inetd only), kerberos (the KDC side is
+scoped out, which is a decision, not one of the exceptions),
+file_permissions (write bits only, Linux only), kernel_hardening (20
+of 44 Linux keys), ssh (5 of 20 options), and `cmp003w` under
+hardening is `cmp003i`. Recounted 2026-10-16 from the rows above: the ten gap
 groups went to covered on their 2026-10-09 checks, the 2026-10-16
 depth work (antivirus, NTP protocol, Apache, Qmail/OpenSMTPD,
 PowerDNS, USB, accounting, shells, stale repos) promoted eight

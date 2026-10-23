@@ -7,7 +7,7 @@ is the reference point because it is the tool people compare against:
 everything Lynis checks on a platform Tigris supports, Tigris checks
 too, tracked group by group in `doc/parity-matrix.md`.
 
-*Last updated 22 October 2026.* `[x]` done, `[ ]` to do, `[~]` started.
+*Last updated 23 October 2026.* `[x]` done, `[ ]` to do, `[~]` started.
 Everything marked done is on `master`; "released" means tagged (the last
 tag is `version_4_0_0`).
 
@@ -71,7 +71,7 @@ Settled, so they do not have to be argued again:
 |----------------------|-----------------------------------------------------------------|------------------------------------------|
 | Language             | POSIX shell, no dependencies                                    | POSIX shell                              |
 | Licence              | GPL-2.0-or-later                                                | GPL-3.0                                  |
-| Checks               | 101 check scripts, 545 finding ids in 15 categories, each explained | ~470 test ids in 42 categories        |
+| Checks               | 101 check scripts, 549 finding ids in 15 categories, each explained | ~470 test ids in 42 categories        |
 | Platforms            | Linux: Debian/Ubuntu, Fedora/RHEL/SUSE, Alpine, Arch            | Linux, macOS, BSD, Solaris, AIX          |
 | Machine output       | JSON Lines with a versioned schema, next to the text report     | `report.dat` (key=value)                 |
 | Explanations         | `tigris explain ID`, one metadata file per id (severity, category, checks) | Suggestions linked to the CISOfy website |
@@ -79,7 +79,7 @@ Settled, so they do not have to be argued again:
 | Change over time     | `tigris-diff` and `tigris-accept`; `tigercron`                  | Mostly point-in-time                     |
 | Package integrity    | dpkg, rpm, apk, pacman, one finding id per kind of problem      | Limited                                  |
 | Offline audit        | `tigris --root`: every check reads an image except the ten that need the running system, nothing in it is run; a container image with every distribution's package tools | None |
-| Tests                | 112 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
+| Tests                | 114 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
 | Lynis parity         | Linux groups covered in Phase A (see below); macOS, BSD done; Solaris backlogged, AIX not planned | 43 test groups across Linux, macOS, BSD, Solaris |
 
 Lynis is broad, maintained and popular (16k GitHub stars). Tigris
@@ -726,14 +726,47 @@ what scripts and cron see.
 
 ## Parity with Lynis
 
-Full functional parity, tracked group by group in
-`doc/parity-matrix.md` against Lynis 3.1.8-dev (43 test groups, 477
-real tests): 27 groups covered, 14 strong with minor gaps, none
-partial or gap, 2 not applicable (recounted 2026-10-16). New checks
-follow the standing rules:
-written from the upstream documentation of the thing being checked,
-each with a metadata file per finding id and a fixture suite, offline
-capable where honesty allows.
+Full functional parity, tracked in `doc/parity-matrix.md` against
+Lynis 3.1.8 (43 test groups, 477 real tests). The group-level count
+(27 groups covered, 14 strong, recounted 2026-10-16) was checked test
+by test on 2026-10-23 and found generous: of the 179 Lynis tests that
+report something on a platform Tigris supports, 37 were covered, 50
+in part and 96 not at all, and several checks the matrix relied on
+turned out never to fire (the single-user check on 64-bit hosts, the
+AIDE database check on any current aide.conf, Apache off by default,
+an NFS export to `*` taken for restricted). The matrix is being
+rewritten at test level; until it is, its group statuses are
+upper bounds. New checks follow the standing rules: written from the
+upstream documentation of the thing being checked, each with a
+metadata file per finding id and a fixture suite, offline capable
+where honesty allows.
+
+**Test-level parity** (started 2026-10-23; the inventory, one row per
+Lynis test and per item of a list-walking test, is the basis).
+- [x] Round 1, the checks that did not work: check_single on every
+  architecture and systemd's rescue and emergency units (sum002f,
+  sum003w); GRUB 2 in /boot/grub2 and a password only with
+  superusers; DES and md5crypt hashes reported, unknown formats not
+  taken for locked; login.defs ageing judged everywhere (pass023i,
+  pass024w); the AIDE database AIDE reads; exports to everyone and
+  exports.d; remote logging over several lines, omrelp and @host; the
+  sticky bit on /tmp and /var/tmp; plocate; /root/.rhosts root's;
+  apt sources with no security suite (upd010w); OpenNTPD; Apache on
+  by default; tiger and the portable checks running on FreeBSD and
+  macOS at all; lin011f retired.
+- [ ] Round 2, depth on the core: the 13 sshd options not judged,
+  the sysctl keys judged loosely or not at all, mount options beyond
+  /tmp, /dev/shm and /var/tmp, uncommon protocols and filesystems
+  left loadable, home directory ownership and modes, telnet, rsh,
+  tftp and xinetd on Linux, systemd-coredump, SELinux mode mismatch.
+- [ ] Round 3, services: Apache TraceEnable, mod_evasive, reqtimeout
+  and ModSecurity; PHP allow_url_fopen, enable_dl, disable_functions
+  and drop-ins; Postfix VRFY and banner; Redis password and bind on
+  their own; PostgreSQL file modes; Squid Safe_ports and version;
+  MySQL empty root password where a client can be asked.
+- [ ] Round 4, FreeBSD and macOS: a sysctl check (31 keys), accounts
+  without a password, the console in /etc/ttys, time sync.
+- [ ] Rewrite `doc/parity-matrix.md` test by test from the inventory.
 
 **Phase A: Linux parity** (done 2026-10-09, released in 3.7.0's
 tree; KDC server-side, DB2, Qmail/OpenSMTPD and FileVault-on-Linux
