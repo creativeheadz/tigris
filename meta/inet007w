@@ -1,0 +1,19 @@
+Id: inet007w
+Severity: WARN
+Category: services
+Check: check_inetd
+Fix: Set disable = yes for echo, chargen, daytime, discard and time in /etc/xinetd.d, or comment them out of /etc/inetd.conf.
+References: xinetd.conf(5); inetd.conf(5); RFC 862 (Echo), RFC 864 (Character Generator); CERT advisory CA-1996-01 (UDP port denial-of-service)
+Controls: CIS 4.8; NIST CM-7, SC-5; ISO 8.21; CE Secure configuration
+
+An enabled super-server (xinetd or inetd) offers one of the small
+internal services: echo, chargen, daytime, discard or time. They
+serve nothing anyone uses, and because they answer any UDP packet
+they reflect traffic to whatever source address a packet claims, and
+two of them pointed at each other loop forever: the oldest
+denial-of-service amplifier there is. Every distribution ships them
+disabled; one that is on was turned on by hand.
+
+Set 'disable = yes' in the service's file under /etc/xinetd.d (or
+comment the line out of /etc/inetd.conf) and restart the super-server;
+if nothing else is served, remove it.

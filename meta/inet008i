@@ -1,0 +1,14 @@
+Id: inet008i
+Severity: INFO
+Category: services
+Check: check_inetd
+References: xinetd(8); inetd(8); systemd.socket(5)
+
+A super-server, xinetd or inetd (openbsd-inetd, inetutils-inetd), is
+installed on this Linux host. The finding says whether it is enabled or
+running and which services it serves (xinetd.d entries not disabled,
+active inetd.conf lines); the insecure ones among them are judged by
+inet005f and the small internal services by inet007w, so this is the
+inventory, not a gap. No distribution installs a super-server by
+default: systemd's socket units start the same services on demand.
+Remove it if nothing needs it.

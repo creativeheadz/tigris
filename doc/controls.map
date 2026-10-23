@@ -218,6 +218,9 @@ id:int001w                | -                  | SI-7                     | 8.16
 id:int002w                | -                  | SI-7                     | 8.16                | -
 id:prom001w               | -                  | SI-4                     | 8.16                | -
 id:inet001w               | 4.8, 3.10          | CM-7, SC-8               | 8.21, 5.14          | Secure configuration
+id:inet005f               | 4.8, 3.10          | CM-7, SC-8               | 8.21, 5.14          | Secure configuration
+id:inet006w               | 2.3, 4.8           | CM-7                     | 8.19, 8.21          | Secure configuration
+id:inet007w               | 4.8                | CM-7, SC-5               | 8.21                | Secure configuration
 
 # ---- logging and accounting
 id:act001w                | 8.2, 8.5           | AU-2, AU-12              | 8.15                | -
@@ -290,6 +293,8 @@ id:aud006i                | -                  | -                        | -   
 id:aud008i                | -                  | -                        | -                   | -
 # rlog001i: forwarding is the arrangement to have; the finding only records where the copies go.
 id:rlog001i               | -                  | -                        | -                   | -
+# inet008i: names the super-server and what it serves; the services themselves are judged by inet005f and inet007w.
+id:inet008i               | -                  | -                        | -                   | -
 # Tigris's own messages (its configuration, the run, its helpers) are about
 # Tigris, not the system: check:config, check:initdefs, check:tiger,
 # check:tigris, check:gen_mounts, check:tigercron, check:check_symlink,

@@ -1,0 +1,23 @@
+Id: inet006w
+Severity: WARN
+Category: services
+Check: check_inetd
+Fix: Remove the telnet, rsh or TFTP server package; SSH does the same job encrypted.
+References: in.telnetd(8); rshd(8); in.tftpd(8); CIS Distribution Independent Linux Benchmark 2.2 (Special Purpose Services)
+Controls: CIS 2.3, 4.8; NIST CM-7; ISO 8.19, 8.21; CE Secure configuration
+
+A telnet, rsh/rlogin/rexec or TFTP server program is installed (under
+/usr/sbin or its neighbours) though nothing enables it today: no
+systemd unit, no xinetd or inetd entry while that super-server is
+enabled, no running process. It is one 'systemctl enable' from use,
+and an intruder with root finds a cleartext login server ready for his
+return. The detail names the program, and any dormant xinetd.d or
+inetd.conf entry that would serve it if the super-server were turned
+on.
+
+Installed is judged by the program being there, not by the package
+database: the configuration a removed package leaves behind is not a
+server, and a binary copied in is. The clients (telnet, rsh, tftp) are
+not judged: Debian installs a telnet client on every standard system,
+and a client gives an attacker nothing nc or python does not. Remove
+the server package.

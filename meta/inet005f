@@ -1,0 +1,24 @@
+Id: inet005f
+Severity: FAIL
+Category: services
+Check: check_inetd
+Fix: Disable the unit, xinetd service or inetd.conf line, and remove the package; SSH does the same job encrypted.
+References: in.telnetd(8); rshd(8); in.tftpd(8); xinetd.conf(5); inetd.conf(5); systemd.socket(5); CIS Distribution Independent Linux Benchmark 2.2 (Special Purpose Services)
+Controls: CIS 4.8, 3.10; NIST CM-7, SC-8; ISO 8.21, 5.14; CE Secure configuration
+
+A telnet, rsh/rlogin/rexec or TFTP server is enabled on this Linux
+host: its systemd service or socket is enabled, xinetd offers it
+(a service in /etc/xinetd.d not set to disable = yes, with xinetd
+enabled or running), an inetd.conf line names it with inetd enabled or
+running, or the program itself is running. telnet carries logins and
+everything typed after them across the network in clear; rsh, rlogin
+and rexec take the client's word for who is calling (hosts.equiv,
+.rhosts) and are cleartext too; TFTP moves files with no authentication
+at all. The CIS Benchmarks ask for all of them to be off or absent, and
+no distribution installs one by default.
+
+The detail names what enables it. Turn it off ('systemctl disable
+--now telnet.socket'; 'disable = yes' in the xinetd.d file; the line
+commented out of /etc/inetd.conf, then the super-server restarted) and
+remove the package: SSH and scp do the same work encrypted, and a TFTP
+server belongs on a PXE server behind a firewall and nowhere else.

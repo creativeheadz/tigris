@@ -1,0 +1,319 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# check_inetd: the inetd-era servers that are still packaged, and the
+#             super-servers that start them. Tigris retired the checks
+#             that assumed inetd was there; the servers themselves are
+#             still in every distribution's archive, and one is a
+#             weakness the moment it is installed. A telnet server
+#             (in.telnetd, telnetd), the r-services (in.rshd,
+#             in.rlogind, in.rexecd) or a TFTP server (in.tftpd, atftpd,
+#             tftpd) under the root is WARN (inet006w): cleartext or
+#             trust-based logins and unauthenticated file transfer, one
+#             'systemctl enable' from use. One enabled is FAIL
+#             (inet005f): its systemd service or socket enabled, an
+#             xinetd service not disabled while xinetd is enabled, an
+#             inetd.conf line while inetd is, or, live, the program
+#             running. The small internal services a super-server
+#             offers (echo, chargen, daytime, discard, time) are WARN
+#             (inet007w): UDP reflection and loops, serving nothing. The
+#             super-server (xinetd; openbsd-inetd's or inetutils' inetd)
+#             and what it serves are inventoried (inet008i).
+#
+#             Installed means the program is under the root: the package
+#             database is not read. A removed package's leftover
+#             configuration is not an installation; a binary copied in
+#             is. Clients (telnet, rsh, tftp) are not judged: Debian
+#             installs a telnet client on every standard system, and a
+#             client gives an attacker nothing nc or python does not.
+#             Ports are not read either (check_listeningprocs reports
+#             listeners; 514/tcp is rsh to IANA and rsyslog's imtcp in
+#             practice).
+#
+# 10/23/2026 - Initial version.
+#
+# References:
+#   xinetd.conf(5), inetd.conf(5), systemd.socket(5), in.telnetd(8),
+#   in.tftpd(8), rshd(8), CIS Distribution Independent Linux Benchmark
+#   2.2 (Special Purpose Services)
+#
+# Tigris: offline
+#   the root's programs, systemd wants links, rc links, xinetd.conf,
+#   xinetd.d and inetd.conf. Running processes are read live only.
+#
+#-----------------------------------------------------------------------------
+#
+TigrisInstallDir='.'
+
+#
+# Set default base directory.
+# Order or preference:
+#      -B option
+#      TIGERHOMEDIR environment variable
+#      TigrisInstallDir installed location
+#
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
+
+for parm
+do
+   case $parm in
+   -B) basedir=$2; break;;
+   esac
+done
+
+#
+# Verify that a config file exists there, and if it does
+# source it.
+#
+[ ! -r $basedir/config ] && {
+  echo "--ERROR-- [init002e] No 'config' file in \`$basedir'."
+  exit 1
+}
+
+. $basedir/config
+
+. $BASEDIR/initdefs
+#
+# If run in test mode (-t) this will verify that all required
+# elements are set.
+#
+[ "$Tigris_TESTMODE" = 'Y' ] && {
+  haveallcmds AWK CAT GREP SED SORT || exit 1
+  haveallfiles BASEDIR WORKDIR || exit 1
+
+  echo "--CONFIG-- [init003c] $0: Configuration ok..."
+  exit 0
+}
+
+#------------------------------------------------------------------------
+
+haveallcmds AWK CAT GREP SED SORT || exit 1
+
+root=${Tigris_Sysctl_Root:-}
+
+# joined: the lines on standard input as one, "; " between them
+joined()
+{
+  $AWK '{ printf "%s%s", (NR > 1 ? "; " : ""), $0 } END { if (NR) print "" }'
+}
+# commas: the same with ", "
+commas()
+{
+  $AWK '{ printf "%s%s", (NR > 1 ? ", " : ""), $0 } END { if (NR) print "" }'
+}
+
+# The programs in the system directories, as the root's paths, listed
+# once (one rootfile per name would fork util/rootpath a hundred times)
+bins=`for d in /usr/sbin /sbin /usr/bin /bin /usr/local/sbin /usr/local/bin /usr/libexec
+do
+  rootls $d 2>/dev/null
+done`
+
+# present NAME...: the first of these programs under the root, as its
+# path; a link is followed inside the root, so a dangling alternatives
+# link left by a removed package does not count
+present()
+{
+  for __n
+  do
+    for __p in `printf '%s\n' "$bins" | $AWK -F/ -v n="$__n" '$NF == n'`
+    do
+      [ -f "`rootfile "$__p"`" ] && { printf '%s\n' "$__p"; return 0; }
+    done
+  done
+  return 1
+}
+
+# running NAME...: live, the names among these that processes carry
+# (/proc/PID/comm, which cuts names to 15 characters), one a line;
+# false when none does. The names reach awk through the environment.
+running()
+{
+  [ -n "$TIGRIS_ROOT" ] && return 1
+  $CAT "$root"/proc/[0-9]*/comm 2>/dev/null |
+    names=" $* " $AWK 'index(ENVIRON["names"], " " $0 " ") && !seen[$0]++ { print; found = 1 } END { exit !found }'
+}
+
+# The enabled systemd units: the links in the *.wants directories, by
+# unit name
+wants=`for d in /etc/systemd/system /run/systemd/system /usr/local/lib/systemd/system /usr/lib/systemd/system /lib/systemd/system
+do
+  b=\`rootfile $d\`
+  [ -n "$b" ] || continue
+  for l in "$b"/*.wants/*.service "$b"/*.wants/*.socket
+  do
+    [ -e "$l" ] || [ -L "$l" ] && echo "${l##*/}"
+  done
+done | $SORT -u`
+
+# unit_enabled UNIT: UNIT (telnet.socket) has a wants link
+unit_enabled()
+{
+  printf '%s\n' "$wants" | $GREP -qxF -e "$1"
+}
+
+# rc_enabled NAME: an init link starts NAME: sysvinit's /etc/rc[2-5].d/S*NAME
+# or OpenRC's /etc/runlevels/*/NAME
+rc_enabled()
+{
+  [ -n "`rootglob "/etc/rc[2-5].d/S*$1"`" ] || [ -n "`rootglob "/etc/runlevels/*/$1"`" ]
+}
+
+# The super-servers: present, and enabled (or, live, running)
+xinetd=`present xinetd`
+inetd=`present inetd inetutils-inetd`
+xinetd_on=
+if [ -n "$xinetd" ]; then
+  if running xinetd >/dev/null; then xinetd_on=running
+  elif unit_enabled xinetd.service || rc_enabled xinetd; then xinetd_on=enabled
+  fi
+fi
+inetd_on=
+if [ -n "$inetd" ]; then
+  if running inetd inetutils-inetd >/dev/null; then inetd_on=running
+  elif unit_enabled inetd.service || unit_enabled openbsd-inetd.service || unit_enabled inetutils-inetd.service ||
+       rc_enabled inetd || rc_enabled openbsd-inetd || rc_enabled inetutils-inetd; then inetd_on=enabled
+  fi
+fi
+
+# xinetd's services that are not disabled: xinetd.conf and the files of
+# xinetd.d, "service NAME { ... disable = yes ... }" (the default is no:
+# a block without the attribute is on); a defaults block's disabled =
+# list turns names off, its enabled = list turns every other name off
+xservices=
+if [ -n "$xinetd" ]; then
+  xservices=`{ echo /etc/xinetd.conf; rootls /etc/xinetd.d 2>/dev/null; } | rootcat 2>/dev/null |
+    $AWK '
+    /^[ \t]*#/ { next }
+    /^[ \t]*defaults[ \t]*([{].*)?$/ { indef = 1; depth = 0 }
+    /^[ \t]*service[ \t]+[^ \t{]+/ { name = $2; sub(/[{].*/, "", name); dis = "no"; insvc = 1; depth = 0 }
+    {
+      line = $0
+      if (indef && line ~ /^[ \t]*disabled[ \t]*=/) {
+        v = line; sub(/^[^=]*=[ \t]*/, "", v); n = split(v, a, /[ \t]+/)
+        for (i = 1; i <= n; i++) if (a[i] != "") off[a[i]] = 1
+      }
+      if (indef && line ~ /^[ \t]*enabled[ \t]*=/) {
+        v = line; sub(/^[^=]*=[ \t]*/, "", v); n = split(v, a, /[ \t]+/)
+        for (i = 1; i <= n; i++) if (a[i] != "") { on[a[i]] = 1; haveon = 1 }
+      }
+      if (insvc && line ~ /^[ \t]*disable[ \t]*=/) { v = line; sub(/^[^=]*=[ \t]*/, "", v); sub(/[ \t]*$/, "", v); dis = tolower(v) }
+      depth += gsub(/[{]/, "&", line) - gsub(/[}]/, "&", line)
+      if ((indef || insvc) && depth <= 0 && $0 ~ /[}]/) {
+        if (insvc && name != "" && dis != "yes") want[name] = 1
+        indef = 0; insvc = 0; name = ""
+      }
+    }
+    END { for (s in want) if (!(s in off) && (!haveon || (s in on))) print s }' | $SORT -u`
+fi
+
+# inetd's services: the first field of each active inetd.conf line, its
+# [host:] prefix dropped
+iservices=
+if [ -n "$inetd" ] && [ -f "`rootfile /etc/inetd.conf`" ]; then
+  iservices=`$AWK '!/^[ \t]*#/ && NF >= 6 { s = $1; sub(/^.*:/, "", s); if (s != "") print s }' "\`rootfile /etc/inetd.conf\`" 2>/dev/null | $SORT -u`
+fi
+
+# served NAME...: how an enabled super-server serves one of these
+# service names, one line each; nothing when none does
+served()
+{
+  for __s
+  do
+    [ -n "$xinetd_on" ] && printf '%s\n' "$xservices" | $GREP -qxF -e "$__s" && echo "xinetd serves $__s (not disabled in /etc/xinetd.d, xinetd $xinetd_on)"
+    [ -n "$inetd_on" ] && printf '%s\n' "$iservices" | $GREP -qxF -e "$__s" && echo "/etc/inetd.conf serves $__s (inetd $inetd_on)"
+  done
+}
+
+# dormant NAME...: the same for a super-server that is present but not
+# enabled: configuration that serves nothing today
+dormant()
+{
+  for __s
+  do
+    [ -n "$xinetd" ] && [ -z "$xinetd_on" ] && printf '%s\n' "$xservices" | $GREP -qxF -e "$__s" && echo "/etc/xinetd.d enables $__s, but xinetd is not enabled"
+    [ -n "$inetd" ] && [ -z "$inetd_on" ] && printf '%s\n' "$iservices" | $GREP -qxF -e "$__s" && echo "/etc/inetd.conf enables $__s, but inetd is not enabled"
+  done
+}
+
+# The servers' programs
+telnet_bin=`present in.telnetd telnetd inetutils-telnetd in.telnetd-ssl`
+rsh_bin=`present in.rshd in.rlogind in.rexecd rshd rlogind rexecd inetutils-rshd inetutils-rlogind inetutils-rexecd`
+tftp_bin=`present in.tftpd tftpd atftpd inetutils-tftpd`
+
+[ -z "$telnet_bin$rsh_bin$tftp_bin$xinetd$inetd" ] && exit 0
+
+echo
+echo "# Checking the inetd-era servers (telnet, rsh, tftp) and the super-servers..."
+
+# judge KIND PROGRAM "UNITS" "PROCESSES" "SERVICES" WHY REMOVE: one class
+# of server. Enabled by a unit, a running process or a super-server:
+# inet005f; the program there and none of those: inet006w.
+judge()
+{
+  __kind=$1 __bin=$2
+  how=
+  for __u in $3
+  do
+    unit_enabled "$__u" && how="${how:+$how; }$__u is enabled"
+  done
+  __run=`running $4 | commas`
+  [ -n "$__run" ] && how="${how:+$how; }$__run is running"
+  __srv=`served $5 | joined`
+  [ -n "$__srv" ] && how="${how:+$how; }$__srv"
+  if [ -n "$how" ]; then
+    message FAIL inet005f "$how. Disable it ('systemctl disable --now' the unit, 'disable = yes' in /etc/xinetd.d, the line out of /etc/inetd.conf) and remove the package: $7." "A $__kind server is enabled: $6."
+  elif [ -n "$__bin" ]; then
+    __d=`dormant $5 | joined`
+    message WARN inet006w "$__bin is installed${__d:+; $__d}. Remove the package: $7." "A $__kind server is installed, though not enabled: $6."
+  fi
+}
+
+judge telnet "$telnet_bin" "telnet.socket telnetd.service telnet.service telnetd.socket inetutils-telnetd.service" \
+  "in.telnetd telnetd inetutils-telnetd in.telnetd-ssl" telnet \
+  "logins, and everything typed in them, cross the network in clear" "SSH does the same job encrypted"
+judge rsh "$rsh_bin" "rsh.socket rlogin.socket rexec.socket rshd.service rlogind.service rexecd.service rsh-redone-server.service" \
+  "in.rshd in.rlogind in.rexecd rshd rlogind rexecd" "shell login exec" \
+  "rsh, rlogin and rexec take the client's word for who is calling (hosts.equiv, .rhosts) and carry everything in clear" "SSH does the same job with keys"
+judge TFTP "$tftp_bin" "tftp.socket tftpd.service tftpd-hpa.service atftpd.service atftpd.socket inetutils-tftpd.service" \
+  "in.tftpd tftpd atftpd inetutils-tftpd" tftp \
+  "TFTP moves files with no authentication at all, to and from whoever asks" "it belongs on a PXE server behind a firewall, nowhere else"
+
+# The small internal services, UDP reflectors all, where a super-server
+# is enabled
+small=`served echo chargen daytime discard time echo-dgram echo-stream chargen-dgram chargen-stream daytime-dgram daytime-stream discard-dgram discard-stream time-dgram time-stream | joined`
+[ -n "$small" ] && message WARN inet007w "$small. Set 'disable = yes' for each in /etc/xinetd.d, or comment the lines out of /etc/inetd.conf." "The super-server offers the small internal services (echo, chargen, daytime, discard or time): they serve nothing, and answer any UDP packet, so they reflect and loop traffic for whoever spoofs a source."
+
+# The super-servers themselves, and what they serve
+if [ -n "$xinetd" ]; then
+  list=`printf '%s\n' "$xservices" | $SED '/^$/d' | commas`
+  if [ -n "$xinetd_on" ]; then
+    message INFO inet008i "$xinetd. Remove it if nothing needs it: systemd sockets start the same services." "xinetd is $xinetd_on, serving: ${list:-nothing}."
+  else
+    message INFO inet008i "$xinetd. Its configuration enables: ${list:-nothing}. Remove it if nothing needs it." "xinetd is installed but not enabled."
+  fi
+fi
+if [ -n "$inetd" ]; then
+  list=`printf '%s\n' "$iservices" | $SED '/^$/d' | commas`
+  if [ -n "$inetd_on" ]; then
+    message INFO inet008i "$inetd. Remove it if nothing needs it: systemd sockets start the same services." "inetd is $inetd_on, serving: ${list:-nothing}."
+  else
+    message INFO inet008i "$inetd. /etc/inetd.conf enables: ${list:-nothing}. Remove it if nothing needs it." "inetd is installed but not enabled."
+  fi
+fi
+
+exit 0

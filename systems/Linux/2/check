@@ -238,6 +238,10 @@ SYSTEMDIR=$BASEDIR/systems/Linux/2
   skip_check $SYSTEMDIR/check_units || $SYSTEMDIR/check_units
 }
 
+[ "$Tigris_Check_INETD" != 'N' ] && {
+  skip_check $SYSTEMDIR/check_inetd || $SYSTEMDIR/check_inetd
+}
+
 [ "$Tigris_Check_STORAGE" != 'N' ] && {
   skip_check $SYSTEMDIR/check_storage || $SYSTEMDIR/check_storage
 }
