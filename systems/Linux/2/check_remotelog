@@ -16,19 +16,25 @@
 #     Please see the file `COPYING' for the complete copyright notice.
 #
 # check_remotelog: whether logs leave this host: rsyslog's forwarding
-#                 (@host, @@host, omfwd), syslog-ng's tcp/udp/syslog
-#                 destinations, and journal-upload. Forwarded (rlog001i,
-#                 saying where) or not (rlog002i). Files rsyslog will
-#                 never read ones named outside its includes (rlog003w).
+#                 (@host, @@host, :omrelp:, omfwd and omrelp actions),
+#                 syslog-ng's network/tcp/udp/syslog destinations, the
+#                 classic syslogd's @host, and journal-upload. Forwarded
+#                 (rlog001i, saying where) or not (rlog002i). Files
+#                 rsyslog will never read ones named outside its
+#                 includes (rlog003w).
 #
 # 10/07/2026 atrimbitas - Initial version. One level of includes is what
 #                 both daemons use in practice; the expansion still guards
-#                 its depth. syslog-ng's destinations are read line by
-#                 line: a tcp("host") split across lines is missed, which
-#                 no configuration seen does.
+#                 its depth.
+# 10/23/2026 atrimbitas - An action() or a destination driver is read
+#                 over however many lines it takes, rsyslog's omrelp
+#                 counts, and /etc/syslog.conf is read where a syslogd
+#                 is installed to read it.
 #
 # References:
-#   rsyslog.conf(5), syslog-ng.conf(5)
+#   rsyslog.conf(5), syslog-ng.conf(5), syslog.conf(5)
+#   https://www.rsyslog.com/doc/configuration/modules/omfwd.html
+#   https://www.rsyslog.com/doc/configuration/modules/omrelp.html
 #
 # Tigris: offline
 #
@@ -150,25 +156,130 @@ expand_ng()
   )
 }
 
+# rs_targets: from rsyslog's configuration (standard input, includes in
+# place) "rsyslog DEST" for each forwarding action: legacy @host and
+# @@host, legacy :omrelp:host, and action() of type omfwd or omrelp,
+# over however many lines it takes. Comments are not read (# to the end
+# of the line, and /* */ outside legacy $ directives, whose paths hold
+# /*), so the commented example "#*.* @@remote-host:514" RHEL ships
+# forwards nothing; neither are quoted strings, so a template's "@" is
+# not a target.
+rs_targets()
+{
+  $AWK '
+    # value S: the quoted value S starts with, or its [list] as "a, b"
+    function value(s,   q, e, v) {
+      q = substr(s, 1, 1)
+      if (q == "\"" || q == "\047") {
+        e = index(substr(s, 2), q)
+        return e ? substr(s, 2, e - 1) : "" }
+      if (q == "[") {
+        e = index(s, "]"); if (!e) return ""
+        v = substr(s, 2, e - 2); gsub(/["\047]/, "", v)
+        gsub(/[ \t]*,[ \t]*/, ", ", v); gsub(/^[ \t]+|[ \t]+$/, "", v)
+        return v }
+      return "" }
+    # param BLOCK NAME: the value of NAME= in an action() (names in any case)
+    function param(blk, name,   re, p) {
+      blk = " " blk
+      re = "[^a-z0-9_.]" name "[ \t]*=[ \t]*"
+      if (!(p = match(tolower(blk), re))) return ""
+      return value(substr(blk, p + RLENGTH)) }
+    # strip S LEGACY: S without its comments; a /* */ carries over lines
+    function strip(s, legacy,   o, p, c, rest) {
+      o = ""
+      while (s != "") {
+        if (inblock) {
+          if (!(p = index(s, "*/"))) return o
+          s = substr(s, p + 2); inblock = 0; o = o " "; continue }
+        p = legacy ? match(s, /["#]/) : match(s, /["#]|\/\*/)
+        if (!p) return o s
+        o = o substr(s, 1, p - 1); c = substr(s, p, 1)
+        if (c == "#") return o
+        if (c == "/") { inblock = 1; s = substr(s, p + 2); continue }
+        rest = substr(s, p + 1)
+        if (!match(rest, /^([^"\\]|\\.)*"/)) return o substr(s, p)
+        o = o "\"" substr(rest, 1, RLENGTH); s = substr(rest, RLENGTH + 1)
+      }
+      return o }
+    {
+      legacy = !inblock && $0 ~ /^[ \t]*\$/
+      t = strip($0, legacy)
+      text = text " " t
+      l = t; gsub(/"([^"\\]|\\.)*"/, "", l)
+      n = split(l, f, /[ \t]+/)
+      for (i = 1; i <= n; i++) {
+        d = f[i]; sub(/;.*/, "", d)
+        if (d ~ /^@@?./) print "rsyslog " d
+        else if (d ~ /^:omrelp:./) print "rsyslog omrelp " substr(d, 9)
+      }
+    }
+    END {
+      s = " " text
+      while (match(s, /[^A-Za-z0-9_][Aa][Cc][Tt][Ii][Oo][Nn][ \t]*\(/)) {
+        rest = substr(s, RSTART + RLENGTH); blk = ""; closed = 0
+        while (match(rest, /["\)]/)) {
+          k = RSTART
+          if (substr(rest, k, 1) == ")") {
+            blk = blk substr(rest, 1, k - 1); rest = substr(rest, k + 1); closed = 1; break }
+          if (!match(substr(rest, k + 1), /^([^"\\]|\\.)*"/)) break
+          blk = blk substr(rest, 1, k + RLENGTH); rest = substr(rest, k + 1 + RLENGTH)
+        }
+        if (!closed) { blk = blk rest; rest = "" }
+        s = " " rest
+        type = tolower(param(blk, "type"))
+        if (type == "omfwd" || type == "omrelp") {
+          d = param(blk, "target")
+          if (d != "") print "rsyslog " type " " d
+        }
+      }
+    }'
+}
+
+# ng_targets: from syslog-ng's configuration (standard input, includes
+# in place) "syslog-ng HOST" for each network(), tcp(), udp(), tcp6(),
+# udp6() or syslog() driver that names a host, over however many lines
+# it takes. A source names none (its first word is an option, ip(...)),
+# and # comments are not read.
+ng_targets()
+{
+  $AWK '
+    function value(s,   q, e) {
+      q = substr(s, 1, 1)
+      if (q == "\"" || q == "\047") {
+        e = index(substr(s, 2), q)
+        return e ? substr(s, 2, e - 1) : "" }
+      if (match(s, /^[A-Za-z0-9_.:-]+/)) {
+        e = RLENGTH
+        return substr(s, e + 1) ~ /^[ \t]*\(/ ? "" : substr(s, 1, e) }
+      return "" }
+    {
+      s = $0; o = ""
+      while (s != "") {
+        if (!(p = match(s, /["\047#]/))) { o = o s; break }
+        c = substr(s, p, 1); o = o substr(s, 1, p - 1)
+        if (c == "#") break
+        e = index(substr(s, p + 1), c)
+        if (!e) { o = o substr(s, p); break }
+        o = o substr(s, p, e + 1); s = substr(s, p + e + 1)
+      }
+      text = text " " o
+    }
+    END {
+      s = " " text
+      while (match(s, /[^A-Za-z0-9_-](network|tcp6?|udp6?|syslog)[ \t]*\([ \t]*/)) {
+        s = substr(s, RSTART + RLENGTH)
+        d = value(s)
+        if (d != "") print "syslog-ng " d
+      }
+    }'
+}
+
 have_syslog=
-# rsyslog: @host and @@host actions (quoted strings first removed, so a
-# template's "@" is not one, then comments, so the commented example
-# "#*.* @@remote-host:514" that RHEL ships is not one either), and omfwd
-# actions with their target
 if [ -f "`rootfile /etc/rsyslog.conf`" ]; then
-  have_syslog=Y
+  have_syslog="$have_syslog rsyslog"
   main=/etc/rsyslog.conf
-  expand_rs $main 0 | $SED 's/"[^"]*"//g; s/#.*//' | $AWK '
-    { for (i = 1; i <= NF; i++)
-        if ($i ~ /^@@?./) { sub(/;$/, "", $i); print "rsyslog " $i } }' >> $found
-  expand_rs $main 0 |
-    $GREP -v '^[ 	]*#' |
-    $GREP 'action[ 	]*(.*type[ 	]*=[ 	]*"omfwd"' |
-    $SED 's/^.*target[ 	]*=[ 	]*"\([^"]*\)".*/\1/; t; d' |
-    while IFS= read -r t
-    do
-      echo "rsyslog omfwd $t" >> $found
-    done
+  expand_rs $main 0 | rs_targets >> $found
   # files the includes name no glob for: rsyslog never reads them
   $GREP -h '^[ 	]*\$IncludeConfig\|^[ 	]*include[ 	]*(.*file' "`rootfile $main`" 2>/dev/null |
     $SED 's/#.*//; s/^[ 	]*//; s/^\$IncludeConfig[ 	][ 	]*//; s/^include[ 	]*(.*file[ 	]*=[ 	]*"//; s/".*//; s/^"//; s/"$//' |
@@ -185,11 +296,23 @@ if [ -f "`rootfile /etc/rsyslog.conf`" ]; then
     done
 fi
 
-# syslog-ng: tcp("host"), udp("host") and syslog("host") destinations
+# syslog-ng: network("host"), tcp("host"), udp("host") and
+# syslog("host") destinations
 if [ -f "`rootfile /etc/syslog-ng/syslog-ng.conf`" ]; then
-  have_syslog=Y
-  expand_ng /etc/syslog-ng/syslog-ng.conf 0 |
-    $SED -n 's/^[^#]*\(tcp\|udp\|syslog\|network\)([ 	]*"\([^"]*\)".*/syslog-ng \2/p' >> $found
+  have_syslog="$have_syslog syslog-ng"
+  expand_ng /etc/syslog-ng/syslog-ng.conf 0 | ng_targets >> $found
+fi
+
+# the classic syslogd (sysklogd, inetutils): @host in /etc/syslog.conf
+# and the files of /etc/syslog.d, read only where a syslogd program is
+# there to read them (one rsyslog left behind forwards nothing)
+if [ -f "`rootfile /usr/sbin/syslogd`" ] || [ -f "`rootfile /sbin/syslogd`" ]; then
+  if [ -f "`rootfile /etc/syslog.conf`" ]; then
+    have_syslog="$have_syslog syslogd"
+    { echo /etc/syslog.conf; rootls /etc/syslog.d 2>/dev/null; } | rootcat |
+      $AWK '{ sub(/#.*/, ""); n = split($0, f, /[ \t]+/)
+              for (i = 1; i <= n; i++) if (f[i] ~ /^@./) { d = f[i]; sub(/;.*/, "", d); print "syslogd " d } }' >> $found
+  fi
 fi
 
 # journal-upload: logs sent where its URL says
@@ -200,16 +323,23 @@ if [ -f "$ju" ]; then
 fi
 
 if [ -s $found ]; then
-  dests=`$SORT -u $found | $SED 's/^[^ ]* //; s/^omfwd //' | $AWK '{ if (NR > 1) printf ", "; printf "%s", $0 } END { print "" }'`
+  dests=`$SORT -u $found | $SED 's/^[^ ]* //; s/^om[a-z]* //' | $AWK '{ if (NR > 1) printf ", "; printf "%s", $0 } END { print "" }'`
   kinds=`$SORT -u $found | $AWK '{ print $1 }' | $SORT -u | $AWK '{ if (NR > 1) printf " and "; printf "%s", $0 } END { print "" }'`
   message INFO rlog001i "`$SORT -u $found | $SED 's/^/  /'`" "Logs are forwarded to $dests ($kinds)."
 else
   # one or the other, as if/else: message exits 1 even when it prints,
   # so && ... || ... would print both
   if [ -n "$have_syslog" ]; then
-    message INFO rlog002i "" "No remote logging is configured: rsyslog and syslog-ng keep every log on this host."
+    # shellcheck disable=SC2086
+    set -- $have_syslog
+    if [ $# = 1 ]; then
+      message INFO rlog002i "" "No remote logging is configured: $1 keeps every log on this host."
+    else
+      names=`printf '%s\n' "$@" | $AWK '{ if (NR > 1) printf " and "; printf "%s", $0 } END { print "" }'`
+      message INFO rlog002i "" "No remote logging is configured: $names keep every log on this host."
+    fi
   else
-    message INFO rlog002i "" "No remote logging is configured, and no rsyslog or syslog-ng configuration was found."
+    message INFO rlog002i "" "No remote logging is configured, and no rsyslog, syslog-ng or syslogd configuration was found."
   fi
 fi
 

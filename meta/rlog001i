@@ -2,7 +2,7 @@ Id: rlog001i
 Severity: INFO
 Category: logging
 Check: check_remotelog
-References: rsyslog.conf(5); syslog-ng.conf(5)
+References: rsyslog.conf(5); syslog-ng.conf(5); syslog.conf(5)
 
 Logs are forwarded off this host, to the destinations named. That is
 the arrangement to have: an intruder who fills or wipes the local logs

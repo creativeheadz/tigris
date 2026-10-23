@@ -3,7 +3,7 @@ Severity: INFO
 Category: logging
 Check: check_remotelog
 Fix: Forward the logs to a host of their own (rsyslog's omfwd, syslog-ng's tcp(), journal-upload).
-References: rsyslog.conf(5); syslog-ng.conf(5)
+References: rsyslog.conf(5); syslog-ng.conf(5); syslog.conf(5)
 Controls: CIS 8.9; NIST AU-9(2); ISO 8.15
 
 No remote logging is configured: every log stays on this host. The
