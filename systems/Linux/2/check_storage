@@ -65,6 +65,21 @@
 #                 named by its product, which sysfs keeps on the
 #                 device, not on the interface. Mount points and swap
 #                 paths reach awk through the environment.
+# 10/23/2026 - The other mount points CIS 1.1.2 names, each judged
+#                 only when it is a mount of its own (live from
+#                 /proc/mounts, offline from fstab): /home and /var
+#                 without nodev or nosuid, /var/log and /var/log/audit
+#                 without those or noexec, /run without nodev or nosuid
+#                 and /dev without nosuid are WARN (stor017w: CIS level
+#                 1, and every init mounts /dev and /run that way).
+#                 /boot without nodev or nosuid, and /dev without
+#                 noexec, are INFO (stor018i): no stock install sets
+#                 them and CIS does not ask (noexec on /boot is not
+#                 judged at all: nothing runs from there once Linux is
+#                 up, and whoever can write there is root already).
+#                 /home or /var being part of the root file system is
+#                 INFO (stor019i): CIS level 2, and most stock installs
+#                 have one root.
 #
 # Tigris: offline
 #   what the root sets up at boot: fstab, crypttab, sysctl.d,
@@ -315,6 +330,73 @@ core_limited()
     $AWK '!/^[ \t]*#/ && $1 == "*" && $2 == "hard" && $3 == "core" && $4 == "0" { y = 1 } END { exit !y }'
 }
 
+# opts MOUNTPOINT: its options from the mount table (/proc/mounts live,
+# fstab's entries offline: "source mountpoint type options" either way),
+# or nothing when it is not a mount of its own. The path reaches awk
+# through the environment: -v reads backslash escapes, and /proc/mounts
+# writes a blank in a path as \040.
+opts()
+{
+  printf '%s\n' "$table" | m="$1" $AWK '$2 == ENVIRON["m"] { o = $4 } END { print o }'
+}
+
+# missing_opts OPTIONS WANTED: those of the comma-separated WANTED
+# options that OPTIONS lacks, comma-separated
+missing_opts()
+{
+  __mo=
+  for __w in `printf '%s\n' "$2" | $SED 's/,/ /g'`
+  do
+    case ",$1," in *",$__w,"*) ;; *) __mo="$__mo,$__w" ;; esac
+  done
+  printf '%s\n' "${__mo#,}"
+}
+
+# storage_mounts: the other mount points CIS 1.1.2 names, and the two
+# every init mounts itself. Each is judged only when it is a mount of
+# its own; an fstab line with noauto (and no automount) mounts nothing
+# at boot and is passed over. $where says how the options were set, for
+# the detail line.
+storage_mounts()
+{
+  for spec in /home:nodev,nosuid /var:nodev,nosuid /var/log:nodev,nosuid,noexec \
+              /var/log/audit:nodev,nosuid,noexec /run:nodev,nosuid /dev:nosuid
+  do
+    m=${spec%%:*} want=${spec#*:}
+    o=`opts $m`
+    case ",$o," in *,noauto,*) case ",$o," in *,x-systemd.automount,*) ;; *) o= ;; esac ;; esac
+    if [ -z "$o" ]; then
+      case $m in
+        /home|/var) [ -d "`rootfile $m`" ] &&
+          message INFO stor019i "Give $m a file system of its own (a partition, an LVM volume or a btrfs subvolume), mounted nodev,nosuid." "$m is part of the root file system: filling it fills /, and it cannot be mounted nodev or nosuid on its own." ;;
+      esac
+      continue
+    fi
+    missing=`missing_opts "$o" "$want"`
+    [ -n "$missing" ] || continue
+    why=
+    case ",$missing," in *,nodev,*|*,nosuid,*) why="a setuid program or a device node left there is honoured" ;; esac
+    case ",$missing," in *,noexec,*) why="${why:+$why, and }programs can be run from it" ;; esac
+    message WARN stor017w "Mounted with $o$where. Add $missing to its options (in /etc/fstab, or a drop-in for its .mount unit)." "$m is mounted without $missing: $why."
+  done
+  # Hardening past what any stock install does: /boot (root's alone, so
+  # nodev and nosuid only make a difference to someone who is root
+  # already) and noexec on /dev (systemd mounts it nosuid, not noexec)
+  o=`opts /boot`
+  case ",$o," in *,noauto,*) o= ;; esac
+  if [ -n "$o" ]; then
+    missing=`missing_opts "$o" nodev,nosuid`
+    [ -n "$missing" ] && message INFO stor018i "Mounted with $o$where. Adding $missing costs nothing: only the boot loader reads /boot before Linux runs." "/boot is mounted without $missing."
+  fi
+  o=`opts /dev`
+  if [ -n "$o" ]; then
+    case ",$o," in
+      *,noexec,*) ;;
+      *) message INFO stor018i "Mounted with $o$where. systemd mounts /dev nosuid but not noexec; adding noexec (a drop-in for dev.mount, or a remount at boot) stops /dev being a place to run from." "/dev is mounted without noexec." ;;
+    esac
+  fi
+}
+
 if [ -n "$TIGRIS_ROOT" ]; then
   echo
   echo "# Checking the mount options, encryption and core dumps $TIGRIS_ROOT sets up at boot..."
@@ -358,6 +440,10 @@ if [ -n "$TIGRIS_ROOT" ]; then
         *) message INFO stor002i "Mounted with $o, by $src. Adding noexec stops programs being run from it directly; some software (installers, JIT runtimes) expects to." "$m is mounted without noexec." ;;
       esac
     done
+    # The other mount points, as fstab mounts them (/dev and /run are
+    # systemd's, and are not in any fstab; they are judged live)
+    table=$entries where=", by /etc/fstab"
+    storage_mounts
 
     # Encryption: crypttab's devices. Swap is reported when the system
     # encrypts something and a swap partition is a raw device, not a
@@ -414,13 +500,7 @@ case "`echo "$mounts" | $AWK '$2 == "/" { t = $3 } END { print t }'`" in overlay
 echo
 echo "# Checking mount options, disk encryption and core dumps..."
 
-# opts MOUNTPOINT: its options, or nothing when it is not a mount of its own
-# (the path reaches awk through the environment: -v reads backslash
-# escapes, and /proc/mounts writes a blank in a path as \040)
-opts()
-{
-  printf '%s\n' "$mounts" | m="$1" $AWK '$2 == ENVIRON["m"] { o = $4 } END { print o }'
-}
+table=$mounts where=
 
 #
 # The world-writable file systems: nosuid and nodev, and noexec
@@ -443,6 +523,8 @@ do
     *) message INFO stor002i "Mounted with $o. Adding noexec stops programs being run from it directly; some software (installers, JIT runtimes) expects to." "$m is mounted without noexec." ;;
   esac
 done
+# The other mount points, as they are mounted now
+storage_mounts
 
 #
 # Encryption

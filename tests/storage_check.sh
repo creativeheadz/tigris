@@ -197,6 +197,54 @@ EOF
 go ctr
 [ "`count .`" = 0 ] && ok "a container (overlay root): nothing said" || { bad "container"; cat "$W/out"; }
 
+# The other mount points CIS 1.1.2 names: a Fedora-style btrfs /home
+# subvolume with defaults, /var/log nodev,nosuid but not noexec, a full
+# /var/log/audit, /run without nodev, /dev without nosuid (and, as
+# systemd leaves it, without noexec), a separate /boot with defaults, and
+# /var on the root
+tree cis <<'EOF'
+/dev/nvme0n1p3 / btrfs rw,relatime,compress=zstd:1,subvol=/root 0 0
+/dev/nvme0n1p3 /home btrfs rw,relatime,compress=zstd:1,subvol=/home 0 0
+/dev/nvme0n1p2 /boot ext4 rw,relatime 0 0
+/dev/nvme0n1p1 /boot/efi vfat rw,relatime,fmask=0077 0 0
+/dev/sdb1 /var/log ext4 rw,nosuid,nodev,relatime 0 0
+/dev/sdb2 /var/log/audit ext4 rw,nosuid,nodev,noexec,relatime 0 0
+tmpfs /run tmpfs rw,nosuid,relatime,mode=755 0 0
+udev /dev devtmpfs rw,relatime,mode=755 0 0
+tmpfs /dev/shm tmpfs rw,nosuid,nodev,noexec 0 0
+tmpfs /tmp tmpfs rw,nosuid,nodev,noexec 0 0
+EOF
+mkdir -p "$W/cis/home" "$W/cis/var/log"; blockdev cis nvme0n1p3; blockdev cis nvme0n1p2; blockdev cis sdb1; blockdev cis sdb2
+go cis
+has '--WARN-- [stor017w] /home is mounted without nodev,nosuid: a setuid program or a device node left there is honoured.' &&
+has '--WARN-- [stor017w] /var/log is mounted without noexec: programs can be run from it.' &&
+has '--WARN-- [stor017w] /run is mounted without nodev:' &&
+has '--WARN-- [stor017w] /dev is mounted without nosuid:' &&
+[ "`count stor017w`" = 4 ] &&
+  ok "/home, /var/log, /run and /dev short of an option: stor017w each, naming what is missing; /var/log/audit complete" || { bad "cis warn"; cat "$W/out"; }
+has '--INFO-- [stor018i] /boot is mounted without nodev,nosuid.' && has '--INFO-- [stor018i] /dev is mounted without noexec.' && [ "`count stor018i`" = 2 ] &&
+  ok "/boot with defaults and /dev without noexec: stor018i, informational" || { bad "cis info"; cat "$W/out"; }
+has '--INFO-- [stor019i] /var is part of the root file system' && [ "`count stor019i`" = 1 ] &&
+  ok "/var on the root: stor019i; /home, a mount of its own, not" || { bad "cis separate"; cat "$W/out"; }
+# Everything as the Benchmark wants it, and a mount with a blank in its path
+tree cis2 <<'EOF'
+/dev/sda2 / ext4 rw,relatime 0 0
+/dev/sda3 /home ext4 rw,nosuid,nodev,relatime 0 0
+/dev/sda4 /var ext4 rw,nosuid,nodev,relatime 0 0
+/dev/sda5 /var/log ext4 rw,nosuid,nodev,noexec,relatime 0 0
+/dev/sda6 /var/log/audit ext4 rw,nosuid,nodev,noexec,relatime 0 0
+/dev/sda1 /boot ext4 rw,nosuid,nodev,relatime 0 0
+tmpfs /run tmpfs rw,nosuid,nodev,noexec,relatime,mode=755 0 0
+udev /dev devtmpfs rw,nosuid,noexec,relatime,mode=755 0 0
+tmpfs /dev/shm tmpfs rw,nosuid,nodev,noexec 0 0
+tmpfs /tmp tmpfs rw,nosuid,nodev,noexec 0 0
+/dev/sdb1 /srv/my\040data ext4 rw,relatime 0 0
+EOF
+mkdir -p "$W/cis2/home" "$W/cis2/var/log"; for b in sda1 sda2 sda3 sda4 sda5 sda6 sdb1; do blockdev cis2 $b; done
+go cis2
+[ "`count stor017w`" = 0 ] && [ "`count stor018i`" = 0 ] && [ "`count stor019i`" = 0 ] &&
+  ok "every mount with its options: nothing about them" || { bad "cis2"; cat "$W/out"; }
+
 # Offline roots (TIGRIS_ROOT, as tigris --root sets it): what they set up at
 # boot. A: /tmp in fstab without nodev, no crypttab, no core_pattern (the
 # kernel's "core") and no limit. B: /tmp from systemd's tmp.mount, a
@@ -241,6 +289,29 @@ offline "$B"
 has '[stor006w]' && has 'Swap: /dev/sda3' && [ "`count 'cswap'`" = 0 ] &&
   ok "offline root: a swap partition outside crypttab: stor006w; the crypttab one is fine" || { bad "offline stor006w"; cat "$W/out"; }
 [ "`count stor007w`" = 0 ] && [ "`count stor008w`" = 0 ] && [ "`count stor009i`" = 0 ] && [ "`count stor010w`" = 0 ] && ok "offline root: a core handler, USB and FireWire blacklisted, a crypttab: nothing" || { bad "offline B"; cat "$W/out"; }
+# D: fstab with a separate /home and /boot on defaults, /var/log/audit
+# without noexec, a noauto /srv (mounted by nobody at boot, so not
+# judged), /var on the root
+D=$W/rootD
+mkdir -p "$D/etc" "$D/home" "$D/var/log"
+cat > "$D/etc/fstab" <<'EOF'
+UUID=1111 / ext4 defaults 0 1
+UUID=2222 /home ext4 defaults 0 2
+UUID=3333 /boot ext4 defaults 0 2
+UUID=4444 /var/log/audit ext4 nodev,nosuid 0 2
+UUID=5555 /srv ext4 noauto 0 2
+tmpfs /tmp tmpfs nosuid,nodev,noexec 0 0
+EOF
+offline "$D"
+has '[stor017w] /home is mounted without nodev,nosuid' && has 'Mounted with defaults, by /etc/fstab.' &&
+has '[stor017w] /var/log/audit is mounted without noexec' && [ "`count stor017w`" = 2 ] &&
+  ok "offline root: /home on defaults and /var/log/audit without noexec in fstab: stor017w each" || { bad "offline stor017w"; cat "$W/out"; }
+has '[stor018i] /boot is mounted without nodev,nosuid.' && [ "`count stor018i`" = 1 ] &&
+  ok "offline root: /boot on defaults: stor018i; /dev is not in any fstab" || { bad "offline stor018i"; cat "$W/out"; }
+has '[stor019i] /var is part of the root file system' && [ "`count stor019i`" = 1 ] &&
+  ok "offline root: no /var line: stor019i; /home has one" || { bad "offline stor019i"; cat "$W/out"; }
+[ "`count '/srv'`" = 0 ] && ok "offline root: a noauto line is not a mount" || { bad "offline noauto"; cat "$W/out"; }
+
 U=$W/rootC
 mkdir -p "$U/etc" "$U/etc/modprobe.d" "$U/etc/usbguard"
 printf 'UUID=1111 / ext4 defaults 0 1\n' > "$U/etc/fstab"
