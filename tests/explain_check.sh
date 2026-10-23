@@ -15,8 +15,9 @@
 #   arguments, aide/integrit exp= values, raw echo findings). Full-line
 #   comments are stripped first: changelog comments name ids of checks
 #   removed in 2003.
-# - file_access_list: check_perms builds perm<OwnID|GrpID><a|f|w> from
-#   its data columns, so the data is parsed, not scanned.
+# - file_access_list (Linux's, FreeBSD's, macOS's): check_perms builds
+#   perm<OwnID|GrpID><a|f|w> from its data columns, so the data is
+#   parsed, not scanned.
 # - signatures: check_signatures takes its id from the data's msgid
 #   column (today every line says '.', i.e. no real id).
 # - check_embed: emits embed001..embed004 with $l, which is 'w' except
@@ -61,7 +62,7 @@ grep -r "" $CODE 2>/dev/null \
 awk 'NF>=17 && $15 ~ /^[AFW.]$/ && $16 ~ /^[0-9][0-9][0-9]$/ {
   l="w"; if ($15=="A") l="a"; if ($15=="F") l="f";
   print "perm" $16 l; print "perm" $17 l
-}' systems/Linux/2/file_access_list | sort -u > "$W/perm_ids.txt"
+}' systems/Linux/2/file_access_list systems/FreeBSD/default/file_access_list systems/MacOSX/default/file_access_list | sort -u > "$W/perm_ids.txt"
 
 awk '!/^#/ && NF>=2 && $2 ~ /^[a-z]+[0-9][0-9][0-9][a-z]$/ {print $2}' \
   systems/Linux/2/signatures | sort -u > "$W/sig_ids.txt"

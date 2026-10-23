@@ -32,6 +32,11 @@
 #    the system format (a user before the command); cron.d's files are read
 #    only when their names are what cron reads (letters, digits, - and _);
 #    the cron.hourly ... cron.monthly scripts are each a job run as root.
+# 10/23/2026 - atrimbitas - The directories are the system config's
+#    (CRON_SYSTEM_DIRS, CRON_PARTS_DIRS, CRON_PERIODIC_DIRS,
+#    CRON_USER_DIRS), Linux's by default, so that FreeBSD's cron.d in
+#    /usr/local/etc, its periodic scripts and /var/cron/tabs are read
+#    by the same code. Names reach awk through ENVIRON, never -v.
 # 11/08/2007 - jfs - Handles properly the case when the special @daily,@reboot,
 #                    etc. definitions are used instead of real times. Also fix
 #                    bug deailing with variables in crontab contents 
@@ -64,7 +69,7 @@ is_account()
   if [ -z "$TIGRIS_ROOT" ] && [ -n "$GETENT" ]; then
     $GETENT passwd -- "$1" >/dev/null 2>&1
   else
-    $AWK -F: -v u="$1" '$1 == u { found = 1 } END { exit !found }' "$passwd" 2>/dev/null
+    TIGRIS_U=$1 $AWK -F: '$1 == ENVIRON["TIGRIS_U"] { found = 1 } END { exit !found }' "$passwd" 2>/dev/null
   fi
 }
 
@@ -77,7 +82,8 @@ jobs()
   __src=$1 __user=$2
   __here=`rootfile "$__src"`
   [ -f "$__here" ] || return 0
-  $AWK -v user="$__user" -v src="$__src" '
+  TIGRIS_USER=$__user TIGRIS_SRC=$__src $AWK '
+    BEGIN { user = ENVIRON["TIGRIS_USER"]; src = ENVIRON["TIGRIS_SRC"] }
     { sub(/^[ \t]+/, "") }
     /^#/ || /^$/ { next }
     /^[A-Za-z_][A-Za-z0-9_]*[ \t]*=/ { next }
@@ -94,18 +100,26 @@ jobs()
     }' "$__here"
 }
 
-# The system crontab and cron.d
+# The directories come from the system's config, Linux's below by
+# default: CRON_SYSTEM_DIRS in the system crontab's format (cron.d),
+# CRON_PARTS_DIRS run by run-parts, CRON_PERIODIC_DIRS by periodic(8),
+# CRON_USER_DIRS the users' crontabs.
+
+# The system crontab and the directories in its format
 echo "F	root	/etc/crontab" >> "$outfile"
 jobs /etc/crontab "" >> "$outfile"
-for f in `rootls /etc/cron.d`
+for d in ${CRON_SYSTEM_DIRS:-/etc/cron.d}
 do
-  case "${f##*/}" in *[!A-Za-z0-9_-]*) continue ;; esac
-  printf 'F\troot\t%s\n' "$f" >> "$outfile"
-  jobs "$f" "" >> "$outfile"
+  for f in `rootls $d`
+  do
+    case "${f##*/}" in *[!A-Za-z0-9_-]*) continue ;; esac
+    printf 'F\troot\t%s\n' "$f" >> "$outfile"
+    jobs "$f" "" >> "$outfile"
+  done
 done
 
 # run-parts' directories: every file a job of root's
-for d in /etc/cron.hourly /etc/cron.daily /etc/cron.weekly /etc/cron.monthly /etc/cron.yearly
+for d in ${CRON_PARTS_DIRS:-/etc/cron.hourly /etc/cron.daily /etc/cron.weekly /etc/cron.monthly /etc/cron.yearly}
 do
   for f in `rootls $d`
   do
@@ -115,19 +129,36 @@ do
   done
 done
 
-# Users' crontabs, in the spool, each named after its user: Debian's is
-# /var/spool/cron/crontabs, Red Hat's and Arch's /var/spool/cron. Both are
-# read, since an offline root's need not be this host's kind; the
-# directories in /var/spool/cron (crontabs, atjobs) are not crontabs.
-for f in `rootls /var/spool/cron/crontabs; rootls /var/spool/cron`
+# periodic(8)'s directories (the BSDs): every executable file a job of
+# root's, whatever its name (100.clean-disks), as periodic runs them
+for d in ${CRON_PERIODIC_DIRS:-}
 do
-  [ -f "`rootfile "$f"`" ] || continue
-  u=${f##*/}
-  if is_account "$u"; then
-    printf 'F\troot|%s\t%s\n' "$u" "$f" >> "$outfile"
-    jobs "$f" "$u" >> "$outfile"
-  else
-    printf 'U\t%s\n' "$f" >> "$outfile"
-  fi
+  for f in `rootls $d`
+  do
+    case "${f##*/}" in .*) continue ;; esac
+    __h=`rootfile "$f"`
+    [ -f "$__h" ] && [ -x "$__h" ] || continue
+    printf 'F\troot\t%s\nJ\troot\t%s\t%s\n' "$f" "$f" "$f" >> "$outfile"
+  done
+done
+
+# Users' crontabs, in the spool, each named after its user: Debian's is
+# /var/spool/cron/crontabs, Red Hat's and Arch's /var/spool/cron (both
+# read, since an offline root's need not be this host's kind), FreeBSD's
+# /var/cron/tabs; the directories in /var/spool/cron (crontabs, atjobs)
+# are not crontabs.
+for d in ${CRON_USER_DIRS:-/var/spool/cron/crontabs /var/spool/cron}
+do
+  for f in `rootls $d`
+  do
+    [ -f "`rootfile "$f"`" ] || continue
+    u=${f##*/}
+    if is_account "$u"; then
+      printf 'F\troot|%s\t%s\n' "$u" "$f" >> "$outfile"
+      jobs "$f" "$u" >> "$outfile"
+    else
+      printf 'U\t%s\n' "$f" >> "$outfile"
+    fi
+  done
 done
 exit 0

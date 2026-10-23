@@ -32,6 +32,28 @@ default). `run_script` needs no changes: it already resolves
 Linux-shape one with the portable tools located and exported
 (the export rule in `doc/macos-strategy.md` applies unchanged).
 
+## The portable checks
+
+tiger itself and the checks under `scripts/` run on FreeBSD with
+what `FreeBSD/default/config` gives them: the tools (`DATE`, `MV`,
+`JOIN`...), the files (`SHADOWFILE` is `/etc/master.passwd`, cron's
+allow and deny are under `/var/cron` and `/var/at`) and the helpers.
+A helper is FreeBSD's own where the system's files differ
+(`gen_passwd_sets` reads master.passwd's ten fields, `gen_mounts`
+mount's lines, `file_access_list` is FreeBSD's modes with group
+wheel) and Linux's where they read the same thing the same way
+(`gen_group_sets`; `gen_cron` and `check_cron` with the directories
+the config names in `CRON_SYSTEM_DIRS`, `CRON_PERIODIC_DIRS` and
+`CRON_USER_DIRS`). The config names helpers by path rather than
+linking them: `make install` copies regular files only. A portable
+check that does not apply says so and stops (`check_issue`: getty
+does not show /etc/issue); one whose answer comes from elsewhere on
+FreeBSD reads it there (`check_umask` and `check_path` read
+login.conf). `tests/portable_bsd_check.sh` runs each with
+`OS=FreeBSD` on FreeBSD-shaped roots, and a whole `tigris --root`.
+Still Linux-shaped, and stopping at init001e: `check_aliases`,
+`check_exports`, `check_services` and `check_known`.
+
 ## Fixtures: files first, overrides for the rest
 
 1. Files go through `TIGRIS_ROOT` unchanged: `/etc/rc.conf`

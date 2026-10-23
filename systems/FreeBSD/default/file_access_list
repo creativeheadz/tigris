@@ -1,0 +1,84 @@
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# FreeBSD/default/file_access_list - 10/23/2026
+#     check_perms' database for FreeBSD: owner, group, the setuid and
+#     setgid bits and the nine permission bits each file should have,
+#     the level of a difference (A ALERT, F FAIL, W or . WARN) and the
+#     ids its owner and group findings take. A 0 is a bit that must be
+#     off, a 1 one that is expected, a . one not judged; only a bit on
+#     that should be off is reported. The modes are FreeBSD's own, from
+#     the base system's mtree (/etc/mtree/BSD.root.dist), passwd(5),
+#     crontab(5) and rc(8): system files are root's and group wheel's,
+#     the password database's master file and hashed copy (master.passwd,
+#     spwd.db) and the host keys only root may read, and nothing rc(8),
+#     cron or login reads may be written by anyone but root. A file the
+#     system does not have is skipped.
+#
+#-----------------------------------------------------------------------------
+file                    owner  group  s  g  r  w  x  r  w  x  r  w  x   LVL  OwnID  GrpID  PermID
+/                       root   wheel  0  0  1  1  1  1  0  1  1  0  1   W    001    002    003
+/bin                    root   wheel  0  0  1  1  1  1  0  1  1  0  1   W    001    002    003
+/bin/*                  root   .      .  .  .  .  .  .  0  .  .  0  .   W    001    002    003
+/boot                   root   wheel  0  0  1  1  1  1  0  1  1  0  1   W    001    002    003
+/boot/loader.conf       root   wheel  0  0  1  1  0  .  0  0  .  0  0   F    001    002    003
+/etc                    root   wheel  0  0  1  1  1  1  0  1  1  0  1   W    001    002    003
+/etc/crontab            root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    001    002    003
+/etc/csh.cshrc          root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    001    002    003
+/etc/csh.login          root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    001    002    003
+/etc/exports            root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    008    008    008
+/etc/fstab              root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    001    002    003
+/etc/group              root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    009    009    009
+/etc/hosts              root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    001    002    003
+/etc/hosts.allow        root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    010    010    010
+/etc/inetd.conf         root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    012    012    012
+/etc/login.access       root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    001    002    003
+/etc/login.conf         root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    001    002    003
+/etc/mail/aliases       root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    007    007    007
+/etc/master.passwd      root   wheel  0  0  1  1  0  0  0  0  0  0  0   A    001    002    003
+/etc/newsyslog.conf     root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    001    002    003
+/etc/passwd             root   wheel  0  0  1  1  0  1  0  0  1  0  0   A    014    014    014
+/etc/periodic           root   wheel  0  0  1  1  1  1  0  1  1  0  1   F    015    015    015
+/etc/pf.conf            root   wheel  0  0  1  1  0  .  0  0  .  0  0   W    001    002    003
+/etc/profile            root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    001    002    003
+/etc/pwd.db             root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    001    002    003
+/etc/rc.conf            root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    015    015    015
+/etc/rc.conf.local      root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    015    015    015
+/etc/rc.d               root   wheel  0  0  1  1  1  1  0  1  1  0  1   F    015    015    015
+/etc/rc.d/*             root   wheel  0  0  1  .  .  1  0  .  1  0  .   F    015    015    015
+/etc/resolv.conf        root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    016    016    016
+/etc/spwd.db            root   wheel  0  0  1  1  0  0  0  0  0  0  0   A    001    002    003
+/etc/ssh/ssh_host_*_key root   wheel  0  0  1  1  0  0  0  0  0  0  0   F    001    002    003
+/etc/ssh/sshd_config    root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    001    002    003
+/etc/sysctl.conf        root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    001    002    003
+/etc/syslog.conf        root   wheel  0  0  1  1  0  1  0  0  1  0  0   W    001    002    003
+/etc/ttys               root   wheel  0  0  1  1  0  1  0  0  1  0  0   F    001    002    003
+/root                   root   wheel  0  0  1  1  1  .  0  .  .  0  .   W    001    002    003
+/root/.cshrc            root   wheel  0  0  1  1  0  .  0  0  .  0  0   W    006    006    006
+/root/.login            root   wheel  0  0  1  1  0  .  0  0  .  0  0   W    006    006    006
+/root/.profile          root   wheel  0  0  1  1  0  .  0  0  .  0  0   W    006    006    006
+/root/.shrc             root   wheel  0  0  1  1  0  .  0  0  .  0  0   W    006    006    006
+/sbin                   root   wheel  0  0  1  1  1  1  0  1  1  0  1   W    001    002    003
+/sbin/*                 root   .      .  .  .  .  .  .  0  .  .  0  .   W    001    002    003
+/usr                    root   wheel  0  0  1  1  1  1  0  1  1  0  1   W    001    002    003
+/usr/bin                root   wheel  0  0  1  1  1  1  0  1  1  0  1   W    001    002    003
+/usr/bin/*              root   .      .  .  .  .  .  .  0  .  .  0  .   W    001    002    003
+/usr/local/etc/rc.d     root   wheel  0  0  1  1  1  1  0  1  1  0  1   F    015    015    015
+/usr/local/etc/rc.d/*   root   wheel  0  0  1  .  .  1  0  .  1  0  .   F    015    015    015
+/usr/local/etc/sudoers  root   wheel  0  0  1  0  0  1  0  0  0  0  0   W    001    002    003
+/usr/sbin               root   wheel  0  0  1  1  1  1  0  1  1  0  1   W    001    002    003
+/usr/sbin/*             root   .      .  .  .  .  .  .  0  .  .  0  .   W    001    002    003
+/var/cron/tabs          root   wheel  0  0  1  1  1  0  0  0  0  0  0   W    001    002    003

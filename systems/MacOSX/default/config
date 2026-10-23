@@ -20,6 +20,12 @@
 #     (see doc/macos-strategy.md). Only portable tools are located:
 #     anything Linux-shaped (iptables, /proc) lives in the Linux
 #     configs, and the checks that need it do not ship here.
+# MacOSX/default/config - 10/23/2026
+#     What tiger itself needs (DATE, MV, a hostname, GEN_PASSWD_SETS),
+#     and what the portable account, umask and permission checks do:
+#     until now tiger stopped at init001e on macOS, and so did each of
+#     those checks. The accounts are DirectoryService's; mount's lines
+#     are read as FreeBSD's are.
 #
 #-----------------------------------------------------------------------------
 
@@ -68,8 +74,44 @@ SORT=`findcmd sort`
 TR=`findcmd tr`
 # delete() in initdefs removes the checks' temp files through it
 RM=`findcmd rm`
+MV=`findcmd mv`
+HEAD=`findcmd head`
+TAIL=`findcmd tail`
+WC=`findcmd wc`
+JOIN=`findcmd join`
+UNIQ=`findcmd uniq`
+EXPAND=`findcmd expand`
+DF=`findcmd df`
+TIMEOUT=`findcmd timeout`
+GETFS=`findcmd mount`
+GETHOSTNAME=`findcmd hostname`
+EGREP="$GREP -E"
+SGREP="$GREP -s"
+DATE=`findcmd date`
+DATECMD="$DATE +%y%m%d"
+TIMECMD="$DATE +%H:%M:%S"
+
+# Symbolic links: test -L; ls -L describes what a link points at
+TESTLINK=-L
+LSLINK="-L"
+LSGROUP="-l"
+
+ETCSHELLS=/etc/shells
+# Users' crontabs (crontab(1)): /usr/lib/cron is a link to /var/at
+CRON_USER_DIRS="/var/at/tabs /usr/lib/cron/tabs"
+
+# The helpers: the accounts from DirectoryService, a user's crontab
+# where crontab(1) keeps it, mount's lines as FreeBSD's
+GEN_PASSWD_SETS=$BASEDIR/systems/MacOSX/default/gen_passwd_sets
+CHECK_CRON=$BASEDIR/systems/Linux/2/check_cron
+GET_MOUNTS=$BASEDIR/systems/FreeBSD/default/gen_mounts
+FILE_ACL=$BASEDIR/systems/MacOSX/default/file_access_list
 
 # The checks run as children of the configured shell: export what
 # they need, as the Linux configs do, or they see nothing
-export TESTEXEC
+export TESTEXEC TESTLINK LSLINK LSGROUP
 export AWK CAT CUT FIND GREP LS SED SORT TR RM
+export MV HEAD TAIL WC JOIN UNIQ EXPAND DF TIMEOUT GETFS
+export GETHOSTNAME EGREP SGREP DATE DATECMD TIMECMD
+export ETCSHELLS CRON_USER_DIRS
+export GEN_PASSWD_SETS CHECK_CRON GET_MOUNTS FILE_ACL

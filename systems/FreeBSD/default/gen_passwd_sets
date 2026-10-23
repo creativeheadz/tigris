@@ -1,0 +1,98 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# FreeBSD/default/gen_passwd_sets OUTFILE - 10/23/2026
+#     The accounts, as one set in passwd(5)'s seven fields, for
+#     check_passwd, check_accounts and check_path: OUTFILE gets the
+#     set's file name, and the set's .src file names its source.
+#     FreeBSD keeps the passwords in /etc/master.passwd (root's to
+#     read), whose ten fields are name, password, uid, gid, class,
+#     change, expire, gecos, home and shell (passwd(5)); /etc/passwd
+#     is pwd_mkdb's copy with every password a '*', read only when
+#     the master file is not there. The class, change and expire
+#     fields go; the password becomes the name of its hash, as on
+#     Linux: md5 ($1$), bcrypt ($2a$, $2b$, $2y$), sha256 ($5$),
+#     sha512 ($6$, the login.conf default), crypt3 (13 characters of
+#     DES), bsdicrypt (extended DES, _ and 19 more), nthash ($3$),
+#     unknown for anything else, * for an account that cannot log in
+#     with a password (*, or pw lock's *LOCKED* prefix), and empty
+#     for none; check_passwd judges the names against
+#     Tigris_Passwd_Hashes. An offline root's files are read inside
+#     it; NIS ('+' lines) is not asked.
+#
+#-----------------------------------------------------------------------------
+#
+
+[ -z "$AWK" ] && AWK=`command -v awk`
+[ -z "$WORKDIR" ] && WORKDIR=/tmp
+
+outfile=
+for parm
+do
+  case "$parm" in
+    -*) ;;
+    *) outfile=$parm ;;
+  esac
+done
+[ -n "$outfile" ] || { echo "ERROR: Missing argument (outfile)"; exit 1; }
+: > "$outfile"
+
+# etcfile PATH: where the audited system's PATH is (inside an offline root)
+etcfile()
+{
+  if [ -n "$TIGRIS_ROOT" ]; then
+    printf '%s\n' "$1" | AWK=$AWK sh "$BASEDIR/util/rootpath" "$TIGRIS_ROOT" "$TIGRIS_LINKS"
+  else
+    printf '%s\n' "$1"
+  fi
+}
+
+master=`etcfile /etc/master.passwd`
+if [ -n "$master" ] && [ -f "$master" ]; then
+  if [ ! -r "$master" ]; then
+    echo "--ERROR-- [run001e] The file /etc/master.passwd is available but not readable by the user running Tiger."
+    exit 0
+  fi
+  src=/etc/master.passwd fields=10
+else
+  master=`etcfile /etc/passwd`
+  [ -n "$master" ] && [ -f "$master" ] || exit 0
+  src=/etc/passwd fields=7
+fi
+
+set=$WORKDIR/etc_passwd.$$
+TIGRIS_FIELDS=$fields $AWK -F: '
+  BEGIN { OFS = ":"; ten = (ENVIRON["TIGRIS_FIELDS"] == 10) }
+  /^[ \t]*#/ || /^[ \t]*$/ || /^[+-]/ { next }
+  {
+    p = $2
+    if (p == "") h = ""
+    else if (p ~ /^\*/ || p ~ /^!/) h = "*"
+    else if (p ~ /^\$1\$/) h = "md5"
+    else if (p ~ /^\$2[aby]\$/) h = "bcrypt"
+    else if (p ~ /^\$5\$/) h = "sha256"
+    else if (p ~ /^\$6\$/) h = "sha512"
+    else if (p ~ /^_[A-Za-z0-9.\/]+$/ && length(p) == 20) h = "bsdicrypt"
+    else if (p ~ /^[A-Za-z0-9.\/]+$/ && length(p) == 13) h = "crypt3"
+    else if (p ~ /^\$3\$/) h = "nthash"
+    else h = "unknown"
+    if (ten) print $1, h, $3, $4, $8, $9, $10
+    else print $1, h, $3, $4, $5, $6, $7
+  }' < "$master" > "$set"
+echo "$src" > "$set.src"
+echo "$set" >> "$outfile"
+exit 0

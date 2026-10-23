@@ -21,6 +21,9 @@
 #                 writable by others is path011 or path012 with the level's
 #                 letter (pathmsg adds it); it was path006 and path007,
 #                 whose w forms meant other things in older versions.
+# 10/23/2026 atrimbitas  The initial PATH of FreeBSD's logins is
+#                 login.conf's, and macOS's start-up files set it through
+#                 path_helper: neither is path009w (this runs there now).
 # 05/02/2004 jfs  Try to avoid eval problems if handling variables with
 #                 special characters (such as space)
 # 10/07/2003 jfs Redirected LS error to /dev/null since dangling symlinks
@@ -404,6 +407,19 @@ environment=`__here /etc/environment` pamlogin=`__here /etc/pam.d/login`
 [ -r "$environment" ] && [ -r "$pamlogin" ] &&
   $GREP -q '^PATH=' "$environment" &&
   $GREP -q '^[^#]*pam_env\.so' "$pamlogin" && pamenvpath=Y
+# On FreeBSD login(1) sets it, for every shell, from the path capability
+# of the login class (login.conf(5)); then no start-up file need
+loginpath=
+[ "$OS" = FreeBSD ] && {
+  lc=`__here /etc/login.conf`
+  [ -r "$lc" ] && $GREP -q '^[^#]*:path=' "$lc" && loginpath=Y pamenvpath=Y
+}
+# setspath FILE: FILE (on the host) runs path_helper(8), which sets PATH
+# from /etc/paths, as macOS's /etc/profile and /etc/csh.login do
+setspath()
+{
+  [ "$OS" = MacOSX ] && $GREP -v '^[ 	]*#' "$1" 2>/dev/null | $GREP -q '/usr/libexec/path_helper'
+}
 [ -n "$Tigris_Global_PATH" ] && {
   for file in $Tigris_Global_PATH
     do
@@ -412,13 +428,15 @@ environment=`__here /etc/environment` pamlogin=`__here /etc/pam.d/login`
         case $file in
           /etc/profile|/etc/bashrc)
             found=`$GREP -v \# "$fh" | $GREP PATH | $GREP export 2>/dev/null`
+            setspath "$fh" && found=Y
             if [ -z "$found" ] && [ -z "$pamenvpath" ]; then
                 message WARN path009w "" "$file does not export an initial setting for PATH."
             fi
             ;;
           /etc/csh.login)
-            found="`$GREP -v \# "$fh" | $GREP PATH | $GREP setenv 2>/dev/null`" 
-            if [ -z "$found" ]; then
+            found="`$GREP -v \# "$fh" | $GREP PATH | $GREP setenv 2>/dev/null`"
+            setspath "$fh" && found=Y
+            if [ -z "$found" ] && [ -z "$loginpath" ]; then
                 message WARN path009w "" "$file does not setenv an initial setting for PATH."
             fi
             ;;

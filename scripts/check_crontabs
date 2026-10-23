@@ -56,6 +56,9 @@
 # check_crontabs  - 10/09/2026 - at.allow and at.deny read the same way
 #            (cron011w, cron012i); neither file means only root may use
 #            at, so that is silence, not a warning.
+# check_crontabs  - 10/23/2026 - atrimbitas - root's crontab is looked
+#            for where the system config's CRON_USER_DIRS says (FreeBSD's
+#            /var/cron/tabs), as gen_cron reads them.
 #
 # Tigris: offline
 #   the root's crontabs, cron.d and spool, through gen_cron.
@@ -260,8 +263,12 @@ delete $WORKDIR/cron.in.$$
 # Check for existence of root crontab
 # Not having a root crontab is not a weakness; on systemd systems it is
 # the norm. Worth knowing, not worth a warning.
-[ ! -r "`__here /var/spool/cron/crontabs/root`" ] && [ ! -r "`__here /var/spool/cron/root`" ] &&
-     message INFO cron004w "" "Root crontab does not exist"
+rootcron=
+for d in ${CRON_USER_DIRS:-/var/spool/cron/crontabs /var/spool/cron}
+do
+  [ -r "`__here "$d/root"`" ] && rootcron=Y
+done
+[ -z "$rootcron" ] && message INFO cron004w "" "Root crontab does not exist"
 
 # Check for existence of root cron.allow
 [ -z "$CRONALLOW" ] && CRONALLOW=/etc/cron.allow

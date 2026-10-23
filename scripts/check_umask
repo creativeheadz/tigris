@@ -27,6 +27,11 @@
 # 08/09/2003 - jfs - Fixed the script so it does not grok if no valid
 #              umask entries are available
 # 05/01/2003 - jfs - Fixed dependancies
+# 10/23/2026 - atrimbitas - FreeBSD and macOS: a login's umask is not
+#              the shell start-up files' there (login.conf's on
+#              FreeBSD, launchd's on macOS), so a file without one is
+#              no finding; an insecure one still is, and on FreeBSD the
+#              umask of login.conf's default class is judged too.
 #
 #-----------------------------------------------------------------------------
 # TODO
@@ -96,6 +101,42 @@ haveallfiles BASEDIR WORKDIR || exit 1
 echo
 echo "# Checking for correct umask settings..."
 
+# On FreeBSD a login's umask is the umask capability of its login
+# class in /etc/login.conf (login.conf(5); 022 when the class sets
+# none), on macOS launchd's (022 unless 'launchctl config user umask'
+# changed it): the shell start-up files below set none on either, so
+# one without an entry says nothing about the umask logins get.
+nomissing=
+case "$OS" in FreeBSD|MacOSX) nomissing=Y ;; esac
+
+# FreeBSD: the default class's umask, from login.conf's records (lines
+# joined where they end in a backslash, capabilities between colons,
+# the first of a name the one that counts, as getcap(3) reads them).
+# Insecure when it lets others write.
+[ "$OS" = FreeBSD ] && {
+  lc=`__here /etc/login.conf`
+  [ -n "$lc" ] && [ -r "$lc" ] && {
+    um=`$AWK '
+      rec == "" && /^[ \t]*#/ { next }
+      {
+        line = $0
+        if (sub(/\\\\$/, "", line)) { rec = rec line; next }
+        rec = rec line; n = split(rec, f, ":"); m = split(f[1], names, "|"); rec = ""
+        isdef = 0
+        for (k = 1; k <= m; k++) { nm = names[k]; gsub(/^[ \t]+|[ \t]+$/, "", nm); if (nm == "default") isdef = 1 }
+        if (!isdef || um != "") next
+        for (i = 2; i <= n; i++) { c = f[i]; gsub(/^[ \t]+|[ \t]+$/, "", c); if (c ~ /^umask=/) { um = substr(c, 7); break } }
+      }
+      END { print um }' < "$lc" 2>/dev/null`
+    case "$um" in
+      '') ;;
+      *[!0-7]*) message FAIL misc022f '' "The umask setting in /etc/login.conf is insecure ($um is not an octal mask)" ;;
+      *[2367]) ;;
+      *) message FAIL misc022f '' "The umask setting in /etc/login.conf is insecure ($um lets others write)" ;;
+    esac
+  }
+}
+
 for file in '/etc/profile' '/etc/csh.login' '/etc/bashrc'
 do
    herefile=`__here "$file"`
@@ -105,7 +146,7 @@ do
 
    if [ $Occurance = 0 ]; then
 	#echo "No umask entry"
-	message WARN misc021w "" "There are no umask entries in $file"
+	[ -n "$nomissing" ] || message WARN misc021w "" "There are no umask entries in $file"
 
    elif [ $Occurance = 1 ]; then
 	UMASK1=`$GREP umask "$herefile"  \
@@ -118,7 +159,7 @@ do
 		#echo "The umask setting in $file is insecure"
 		message FAIL misc022f '' "The umask setting in $file is insecure"
 	else 
-	message WARN misc021w "" "There are no valid umask entries in $file"
+	[ -n "$nomissing" ] || message WARN misc021w "" "There are no valid umask entries in $file"
 	fi
 
 

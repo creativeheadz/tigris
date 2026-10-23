@@ -1,0 +1,48 @@
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# MacOSX/default/file_access_list - 10/23/2026
+#     check_perms' database for macOS, in the FreeBSD one's columns.
+#     /etc, /var and /tmp are links into /private, and check_perms
+#     does not follow a link, so the files are named there. Only what
+#     holds on every release is judged: the files are root's and group
+#     wheel's, nothing that sudo, sshd, PAM or a login reads may be
+#     written by anyone but root, and the password files' master copy
+#     and the SSH host keys may be read by root alone. The system
+#     volume is sealed (and SIP guards /usr, /bin, /sbin), so their
+#     directories are left to check_sip; LaunchDaemons are
+#     check_launchd's.
+#
+#-----------------------------------------------------------------------------
+file                              owner  group  s  g  r  w  x  r  w  x  r  w  x   LVL  OwnID  GrpID  PermID
+/private/etc                      root   wheel  0  0  1  1  1  1  0  1  1  0  1   W    001    002    003
+/private/etc/bashrc               root   wheel  0  0  1  .  0  .  0  0  .  0  0   W    001    002    003
+/private/etc/csh.login            root   wheel  0  0  1  .  0  .  0  0  .  0  0   W    001    002    003
+/private/etc/group                root   wheel  0  0  1  .  0  1  0  0  1  0  0   F    009    009    009
+/private/etc/hosts                root   wheel  0  0  1  .  0  1  0  0  1  0  0   F    001    002    003
+/private/etc/master.passwd        root   wheel  0  0  1  .  0  0  0  0  0  0  0   A    001    002    003
+/private/etc/pam.d                root   wheel  0  0  1  1  1  1  0  1  1  0  1   F    001    002    003
+/private/etc/pam.d/*              root   wheel  0  0  1  .  0  .  0  0  .  0  0   F    001    002    003
+/private/etc/passwd               root   wheel  0  0  1  .  0  1  0  0  1  0  0   A    014    014    014
+/private/etc/profile              root   wheel  0  0  1  .  0  .  0  0  .  0  0   W    001    002    003
+/private/etc/ssh/ssh_host_*_key   root   wheel  0  0  1  .  0  0  0  0  0  0  0   F    001    002    003
+/private/etc/ssh/sshd_config      root   wheel  0  0  1  .  0  .  0  0  .  0  0   W    001    002    003
+/private/etc/sudoers              root   wheel  0  0  1  0  0  1  0  0  0  0  0   W    001    002    003
+/private/etc/sudoers.d            root   wheel  0  0  1  1  1  .  0  .  .  0  .   W    001    002    003
+/private/etc/zprofile             root   wheel  0  0  1  .  0  .  0  0  .  0  0   W    001    002    003
+/private/etc/zshrc                root   wheel  0  0  1  .  0  .  0  0  .  0  0   W    001    002    003
+/private/var/at/tabs              root   wheel  0  0  1  1  1  0  0  0  0  0  0   W    001    002    003
+/private/var/root                 root   wheel  0  0  1  1  1  .  0  .  .  0  .   W    001    002    003

@@ -1,0 +1,57 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# FreeBSD/default/gen_mounts [local] [rw] - 10/23/2026
+#     The mounted file systems, one "mountpoint type device" line each
+#     (a blank in the mount point escaped with a backslash), as the
+#     Linux gen_mounts gives them to check_perms. Read from mount(8),
+#     whose lines on FreeBSD and macOS alike are "device on mountpoint
+#     (type, flag, flag...)": "local" among the flags marks a local
+#     file system, "read-only" one mounted read-only. With local, only
+#     local ones, and not the kernel's own (devfs, fdescfs, procfs,
+#     linprocfs, linsysfs, mqueuefs), the automounter's (autofs) or a
+#     second view of another (nullfs, unionfs); with rw, not the
+#     read-only ones. The macOS config uses it too. Tigris_Mounts_Cmd
+#     replaces mount, for the tests.
+#
+#-----------------------------------------------------------------------------
+#
+
+[ -z "$AWK" ] && AWK=`command -v awk`
+[ -z "$GETFS" ] && GETFS=`command -v mount`
+[ -n "$Tigris_Mounts_Cmd" ] && GETFS=$Tigris_Mounts_Cmd
+[ -n "$GETFS" ] || exit 0
+
+$GETFS 2>/dev/null | TIGRIS_LOCAL=$1 TIGRIS_RW=$2 $AWK '
+  BEGIN { local = (ENVIRON["TIGRIS_LOCAL"] == "local"); rw = (ENVIRON["TIGRIS_RW"] == "rw") }
+  {
+    i = index($0, " on "); if (!i) next
+    dev = substr($0, 1, i - 1); rest = substr($0, i + 4)
+    if (substr(rest, length(rest)) != ")") next
+    j = 0
+    for (k = length(rest) - 1; k > 0; k--) if (substr(rest, k, 2) == " (") { j = k; break }
+    if (!j) next
+    mnt = substr(rest, 1, j - 1); opts = substr(rest, j + 2, length(rest) - j - 2)
+    n = split(opts, o, /,[ \t]*/); type = o[1]; isloc = 0; ro = 0
+    for (x = 2; x <= n; x++) { if (o[x] == "local") isloc = 1; if (o[x] == "read-only") ro = 1 }
+    if (local && (!isloc || type ~ /^(devfs|fdescfs|procfs|linprocfs|linsysfs|mqueuefs|autofs|nullfs|unionfs)$/)) next
+    if (rw && ro) next
+    if (dev == "" || mnt == "" || type == "") next
+    gsub(/ /, "\\ ", mnt)
+    print mnt, type, dev
+  }'
+exit 0

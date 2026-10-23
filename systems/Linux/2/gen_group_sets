@@ -22,6 +22,8 @@
 #
 # 10/07/2026 - atrimbitas - An offline root (--root): its own /etc/group,
 #                    resolved inside it, and nothing from NIS.
+# 10/23/2026 - atrimbitas - Comment lines left out (FreeBSD's group
+#                    starts with one); the FreeBSD config uses this too.
 #
 #-----------------------------------------------------------------------------
 #
@@ -42,7 +44,9 @@ GROUP=/etc/group
 [ -n "$TIGRIS_ROOT" ] &&
   GROUP=`printf '/etc/group\n' | AWK=$AWK sh "$BASEDIR/util/rootpath" "$TIGRIS_ROOT" "$TIGRIS_LINKS"`
 
-$GREP -v '^[-+]' "$GROUP" |
+# (a comment line is no group: glibc's files and FreeBSD's getgrent(3)
+# skip them, and FreeBSD installs one)
+$GREP -v '^[-+#]' "$GROUP" |
 $SORT > $WORKDIR/etc_group.$$
 echo "/etc/group" > $WORKDIR/etc_group.$$.src
 echo $WORKDIR/etc_group.$$

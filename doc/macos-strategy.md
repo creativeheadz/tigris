@@ -16,6 +16,23 @@ gets dispatch blocks for the new checks behind `Tigris_Check_*` gates,
 exactly like the Linux ones; `tigris.conf` and `tigris-quick.conf` carry the
 toggles identically, or `profile_check.sh` fails.
 
+## The portable checks
+
+tiger itself and the checks under `scripts/` that have no MacOSX
+shadow run with what `MacOSX/default/config` gives them: the tools,
+`gen_passwd_sets` (the accounts from DirectoryService: dslocal
+offline, `dscl` live, as the MacOSX check_passwd reads them),
+`CHECK_CRON` with `CRON_USER_DIRS` set to `/var/at/tabs`, FreeBSD's
+`gen_mounts` (mount's lines are the same) and a `file_access_list`
+naming `/private/etc`, since check_perms does not follow the `/etc`
+link. `check_umask` leaves the start-up files' missing umask alone
+(launchd sets it), `check_path` counts path_helper as setting PATH,
+and `check_issue` and `check_passwdformat` say they do not apply.
+`tests/portable_macos_check.sh` runs each with `OS=MacOSX` on
+macOS-shaped roots, and a whole `tigris --root`. Still stopping at
+init001e: `check_aliases`, `check_exports`, `check_services` and
+`check_known`.
+
 ## Fixtures without a Mac
 
 Two kinds of input, two mechanisms. Nothing else is allowed.

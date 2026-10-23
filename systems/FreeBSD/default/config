@@ -20,6 +20,14 @@
 #     (see doc/bsd-strategy.md). Only portable tools are located:
 #     anything Linux-shaped (iptables, /proc) lives in the Linux
 #     configs, and the checks that need it do not ship here.
+# FreeBSD/default/config - 10/23/2026
+#     What tiger itself needs (DATE, MV, a hostname, GEN_PASSWD_SETS),
+#     and what the portable account, group, cron, umask and permission
+#     checks do: until now tiger stopped at init001e on FreeBSD, and so
+#     did each of those checks. The helpers are FreeBSD's where its
+#     files differ (master.passwd, mount's lines, the permission
+#     database) and Linux's where they read the same thing the same way
+#     (/etc/group, the cron directories named below).
 #
 #-----------------------------------------------------------------------------
 
@@ -66,8 +74,65 @@ LS=`findcmd ls`
 SED=`findcmd sed`
 SORT=`findcmd sort`
 TR=`findcmd tr`
+RM=`findcmd rm`
+MV=`findcmd mv`
+HEAD=`findcmd head`
+TAIL=`findcmd tail`
+WC=`findcmd wc`
+JOIN=`findcmd join`
+UNIQ=`findcmd uniq`
+COMM=`findcmd comm`
+TEE=`findcmd tee`
+BASENAME=`findcmd basename`
+EXPAND=`findcmd expand`
+DF=`findcmd df`
+TIMEOUT=`findcmd timeout`
+GETFS=`findcmd mount`
+GETHOSTNAME=`findcmd hostname`
+EGREP="$GREP -E"
+SGREP="$GREP -s"
+DATE=`findcmd date`
+DATECMD="$DATE +%y%m%d"
+TIMECMD="$DATE +%H:%M:%S"
+
+# Symbolic links: test -L; ls -L describes what a link points at
+TESTLINK=-L
+LSLINK="-L"
+LSGROUP="-l"
+
+# Files: the valid shells; the password file that holds the hashes
+# (passwd(5)); who may use cron (crontab(1)) and at (at(1))
+ETCSHELLS=/etc/shells
+SHADOWFILE=/etc/master.passwd
+CRONALLOW=/var/cron/allow
+CRONDENY=/var/cron/deny
+ATALLOW=/var/at/at.allow
+ATDENY=/var/at/at.deny
+
+# Where cron finds its tables (cron(8), periodic(8)): the system
+# crontab's format in cron.d, the scripts periodic runs, and the
+# users' crontabs, each named after its user. Nothing runs run-parts
+# directories here: a blank, not empty, so gen_cron's Linux default
+# does not apply.
+CRON_SYSTEM_DIRS="/etc/cron.d /usr/local/etc/cron.d"
+CRON_PARTS_DIRS=" "
+CRON_PERIODIC_DIRS="/etc/periodic/daily /etc/periodic/weekly /etc/periodic/monthly /etc/periodic/security /usr/local/etc/periodic/daily /usr/local/etc/periodic/weekly /usr/local/etc/periodic/monthly /usr/local/etc/periodic/security"
+CRON_USER_DIRS=/var/cron/tabs
+
+# The helpers
+GEN_PASSWD_SETS=$BASEDIR/systems/FreeBSD/default/gen_passwd_sets
+GEN_GROUP_SETS=$BASEDIR/systems/Linux/2/gen_group_sets
+GEN_CRON_FILES=$BASEDIR/systems/Linux/2/gen_cron
+CHECK_CRON=$BASEDIR/systems/Linux/2/check_cron
+GET_MOUNTS=$BASEDIR/systems/FreeBSD/default/gen_mounts
+FILE_ACL=$BASEDIR/systems/FreeBSD/default/file_access_list
 
 # The checks run as children of the configured shell: export what
 # they need, as the Linux configs do, or they see nothing
-export TESTEXEC
+export TESTEXEC TESTLINK LSLINK LSGROUP
 export AWK CAT CUT FIND GREP LS SED SORT TR
+export RM MV HEAD TAIL WC JOIN UNIQ COMM TEE BASENAME EXPAND DF TIMEOUT GETFS
+export GETHOSTNAME EGREP SGREP DATE DATECMD TIMECMD
+export ETCSHELLS SHADOWFILE CRONALLOW CRONDENY ATALLOW ATDENY
+export CRON_SYSTEM_DIRS CRON_PARTS_DIRS CRON_PERIODIC_DIRS CRON_USER_DIRS
+export GEN_PASSWD_SETS GEN_GROUP_SETS GEN_CRON_FILES CHECK_CRON GET_MOUNTS FILE_ACL

@@ -189,6 +189,12 @@ jobs:
           sudo sh tests/accounting_bsd_check.sh
           sh tests/inetd_bsd_check.sh
           sudo sh tests/inetd_bsd_check.sh
+      - name: The portable checks and tiger itself with the FreeBSD and macOS configs, as a user and as root
+        run: |
+          sh tests/portable_bsd_check.sh
+          sudo sh tests/portable_bsd_check.sh
+          sh tests/portable_macos_check.sh
+          sudo sh tests/portable_macos_check.sh
       - name: Installed tree runs its helpers
         run: sh tests/install_check.sh
       - name: Progress lines and spinner

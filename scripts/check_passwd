@@ -63,6 +63,10 @@
 #                visudo (Savannah bug 36488)
 # 08/19/2018 npb Make pwck -r output part of report (Debian bug #512076)
 # 08/19/2018 jfs Added TR To the list of required commands
+# 10/23/2026 atrimbitas The shadow file is the system config's SHADOWFILE
+#                when it names one (FreeBSD's /etc/master.passwd), and a
+#                system without login.defs (FreeBSD) has no constraints
+#                read: its root directory was grepped for them.
 #
 # Tigris: needs root
 #   /etc/shadow is root's to read.
@@ -326,9 +330,11 @@ do
   done 
 done < $WORKDIR/pass.list.$$
 
-# See if the system is configured for shadow passwords.
+# See if the system is configured for shadow passwords: the hashes in a
+# file of their own, /etc/shadow or the one the system config names
+# (FreeBSD keeps them in /etc/master.passwd).
 [ "$Tigris_Check_PASSWD_SHADOW" != 'N' ] && {
-  [ -s "`__here /etc/passwd`" ] && [ -s "`__here /etc/shadow`" ] || {
+  [ -s "`__here /etc/passwd`" ] && [ -s "`__here "${SHADOWFILE:-/etc/shadow}"`" ] || {
     message WARN pass007w "" "System is not properly configured for shadow passwords."
   }
 }

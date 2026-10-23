@@ -35,6 +35,10 @@
 # and ISSUENETFILE. Instead, provide a different warning message if we do not 
 # have any files to compare with.
 #
+# check_issue - 10/23/2026 - atrimbitas - Not on FreeBSD or macOS, where
+# nothing shows /etc/issue at login: said, and left, instead of stopping
+# at init001e.
+#
 # Tigris: offline
 #   the root's /etc/issue and /etc/issue.net.
 #
@@ -114,6 +118,15 @@ done
 
 echo
 echo "# Performing check of /etc/issue(s) login message..."
+
+# FreeBSD's getty prints gettytab's im message, not /etc/issue
+# (gettytab(5)), and macOS's loginwindow neither: nothing shows the file
+# there, so it is not compared
+case "$OS" in
+  FreeBSD|MacOSX)
+    echo "# /etc/issue is not shown at login on $OS: not checked."
+    exit 0 ;;
+esac
 
 haveallcmds DIFF || exit 1
 haveallfiles BASEDIR WORKDIR || exit 1
