@@ -10,4 +10,10 @@ Exporting a directory to everyone means that anyone can
 look at your files.  The information gained can possibly
 be used to gain further access to the machine.
 
+On Linux, everyone is '*', an option list with no host before it
+('/srv (rw)', and the '(rw)' of '/srv host (rw)', where a blank
+parts it from the host), a path with no client after it, and
+0.0.0.0/0 or ::/0. The files are read as exportfs reads them:
+/etc/exports, then /etc/exports.d/*.exports.
+
 See `nfs013i'

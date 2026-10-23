@@ -16,9 +16,20 @@
 #     Please see the file `COPYING' for the complete copyright notice.
 #
 # Linux/2/gen_export_sets - 12/03/2001
-# 
+#
 # 12/03/2001 jfs  Make it export sets that can be understood by check_exports
-#                 this way it can appropriately find errors 
+#                 this way it can appropriately find errors
+# 10/23/2026 atrimbitas  Read as exportfs does: /etc/exports and then
+#                 /etc/exports.d/*.exports, one set each. A line per client,
+#                 "PATH [access=CLIENT] ro|rw [anon=..] [root=..]": no
+#                 access= for the world (*, a hostless "(options)", a path
+#                 with no client at all, 0.0.0.0/0, ::/0), ro unless rw is
+#                 said (the Linux default), the "-options" defaults applied,
+#                 and no Linux-only option (sync, no_subtree_check) left in
+#                 for check_exports to take for a host name.
+#
+# References:
+#   exports(5)
 #
 #-----------------------------------------------------------------------------
 #
@@ -29,7 +40,7 @@
 [ -z "$WORKDIR" ] && WORKDIR=/tmp
 
 EXPFILE=/etc/exports
-EXPFILEW=`echo $EXPFILE | $SED -e 's/^\///' | $SED -e 's/\\//\_/g'`
+EXPDIR=/etc/exports.d
 
 # The file read: this system's, or the offline root's (--root),
 # resolved inside it. The set still names it by its own path.
@@ -41,27 +52,80 @@ etcfile()
     echo "$1"
   fi
 }
-EXPHERE=`etcfile $EXPFILE`
 
-[ -r "$EXPHERE" ] && {
-  $GREP -v '^#' "$EXPHERE"  | {
-  while read dir acl 
-  do
-    echo $acl | 
-    $AWK -F ")" '{split($0,array); for (data in array)  print $data }' | {
-	while read hostaccess
-	do
-          [ ! -z "$hostaccess" ] && {
-		domain=`echo $hostaccess | $AWK -F "(" '{print $1}'`
-		[ ! -z "$domain" ] && access="access=$domain"
-		[ -z "$domain" ] && access=""
-		options=`echo $hostaccess | $AWK -F "(" '{print $2}' | $SED -e 's/,/ /g'`
-		echo $dir $access $options 
-	}
-	done 
-     }
-  done 
-  } > $WORKDIR/$EXPFILEW.$$
-  echo "$EXPFILE" > $WORKDIR/$EXPFILEW.$$.src
-  echo $WORKDIR/$EXPFILEW.$$
+# exp_sets FILE: FILE's entries (exports(5)), a line per client.
+# Continued lines are joined and comments dropped; the path may be quoted
+# (a blank in it is written \040, as exports itself allows); a client's
+# options are the line's "-options" defaults and then its own "(...)".
+exp_sets()
+{
+  $AWK '
+    function emit(client, opts,   n, o, i, mode, keep, world) {
+      mode = "ro"; keep = ""
+      n = split(opts, o, ",")
+      for (i = 1; i <= n; i++) {
+        if (o[i] == "rw" || o[i] == "ro") mode = o[i]
+        else if (o[i] ~ /^(anon|root)=/) keep = keep " " o[i]
+      }
+      world = (client == "" || client == "*" || client == "0.0.0.0/0" ||
+               client == "0.0.0.0/0.0.0.0" || client == "::/0")
+      print path (world ? "" : " access=" client) " " mode keep
+    }
+    {
+      line = $0
+      while (line ~ /\\$/ && (getline more) > 0)
+        line = substr(line, 1, length(line) - 1) " " more
+      sub(/#.*/, "", line); sub(/^[ \t]+/, "", line)
+      if (line == "") next
+      if (substr(line, 1, 1) == "\"") {
+        i = index(substr(line, 2), "\"")
+        if (i == 0) next
+        path = substr(line, 2, i - 1); line = substr(line, i + 2)
+      } else if ((i = match(line, /[ \t]/)) > 0) {
+        path = substr(line, 1, i - 1); line = substr(line, i)
+      } else {
+        path = line; line = ""
+      }
+      gsub(/ /, "\\040", path); gsub(/\t/, "\\011", path)
+      defaults = ""; clients = 0
+      n = split(line, t, /[ \t]+/)
+      for (k = 1; k <= n; k++) {
+        tok = t[k]
+        if (tok == "") continue
+        # an option list with blanks in it, put back together
+        while (index(tok, "(") && !index(tok, ")") && k < n) tok = tok t[++k]
+        if (substr(tok, 1, 1) == "-" && clients == 0) { defaults = substr(tok, 2); continue }
+        clients++
+        if ((p = index(tok, "(")) > 0) {
+          client = substr(tok, 1, p - 1)
+          opts = substr(tok, p + 1); sub(/\).*/, "", opts)
+        } else {
+          client = tok; opts = ""
+        }
+        emit(client, defaults "," opts)
+      }
+      # a path and no client: exported to everyone
+      if (clients == 0) emit("", defaults)
+    }' "$1"
 }
+
+n=0
+# exports first, then the drop-ins in the order of their names
+{
+  echo "$EXPFILE"
+  dir=`etcfile $EXPDIR`
+  [ -n "$dir" ] && [ -d "$dir" ] &&
+    for f in "$dir"/*.exports
+    do
+      [ -e "$f" ] && printf '%s\n' "$EXPDIR/${f##*/}"
+    done
+} | while IFS= read -r src
+do
+  here=`etcfile "$src"`
+  [ -n "$here" ] && [ -f "$here" ] && [ -r "$here" ] || continue
+  n=`expr $n + 1`
+  set_file=$WORKDIR/etc_exports.$$.$n
+  exp_sets "$here" > "$set_file"
+  printf '%s\n' "$src" > "$set_file.src"
+  echo "$set_file"
+done

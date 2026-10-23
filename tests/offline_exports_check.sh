@@ -38,7 +38,21 @@ cat > "$R/etc/exports" <<'EOF'
 /export/root (root=diskless1)
 /export/plain (root=stranger)
 / (ro,root=diskless1)
+/srv *(rw,sync,no_subtree_check)
+/srv2 (rw,sync)
+/srv3 *(sync)
+/lan 192.168.1.0/24(rw,sync) @trusted(rw)
+/mixed trusted(rw,sync) *(ro,sync)
+/gap trusted (rw)
+/bare
+/dflt -rw,sync trusted *
+"/with space" *(ro)
+/cont trusted(rw) \
+   *(rw)
 EOF
+mkdir -p "$R/etc/exports.d"
+printf '/media *(rw,sync)\n' > "$R/etc/exports.d/media.exports"
+printf '/nope *(rw)\n' > "$R/etc/exports.d/old.conf"
 printf 'diskless1 root=nfsrootimg:/export/root\n' > "$R/etc/bootparams"
 [ "$uid" = 0 ] && chown -R "$U:$G" "$R"
 
@@ -69,6 +83,30 @@ has '"id":"nfs011w".*Unprotected directory /export/plain is exported with root a
   ok "root access for a stranger: nfs011w" || bad "nfs011w"
 has '"id":"nfs008f".*Exporting the root filesystem (/) R/O with root access' &&
   ok "the root filesystem with root access: nfs008f" || bad "nfs008f"
+has '"id":"nfs006f".*Directory /srv exported R/W to everyone' &&
+  ok "*(rw,sync,no_subtree_check): R/W to everyone, nfs006f" || bad "/srv *(rw,sync)"
+has '"id":"nfs006f".*Directory /srv2 exported R/W to everyone' &&
+  ok "a hostless (rw,sync): R/W to everyone, nfs006f" || bad "/srv2 (rw,sync)"
+has '"id":"nfs007w".*Directory /srv3 exported R/O to everyone' &&
+  ok "*(sync): read-only by default, nfs007w" || bad "/srv3 *(sync)"
+has 'Directory /lan exported' && bad "/lan: a network and a netgroup are not everyone" ||
+  ok "a network and a netgroup: not everyone"
+has '"id":"nfs007w".*Directory /mixed exported R/O to everyone' && ! has 'Directory /mixed exported R/W' &&
+  ok "rw for one host, ro for the rest: nfs007w only" || bad "/mixed"
+has '"id":"nfs006f".*Directory /gap exported R/W to everyone' &&
+  ok "a blank before (rw): the options go to everyone, nfs006f" || bad "/gap"
+has '"id":"nfs007w".*Directory /bare exported R/O to everyone' &&
+  ok "a path with no client: exported to everyone, nfs007w" || bad "/bare"
+has '"id":"nfs006f".*Directory /dflt exported R/W to everyone' &&
+  ok "-rw defaults and a bare *: nfs006f" || bad "/dflt"
+has '"id":"nfs007w".*Directory /with\\\\040space exported R/O to everyone' &&
+  ok "a quoted path with a blank in it: nfs007w" || bad "quoted path"
+has '"id":"nfs006f".*Directory /cont exported R/W to everyone' &&
+  ok "a continued line: nfs006f" || bad "/cont"
+has '"id":"nfs006f".*Directory /media exported R/W to everyone' &&
+  ok "/etc/exports.d/*.exports is read: nfs006f" || bad "exports.d"
+has '/nope' && bad "a file in exports.d without .exports was read" ||
+  ok "exports.d files not named *.exports are not read"
 grep '"type":"finding"' "$json" | grep -q "$R" && bad "a finding names the root's directory on this host" ||
   ok "findings name the root's own paths, never where it is on this host"
 sh "$W/tests/schema_check.sh" "$json" > "$W/schema.out" 2>&1 && ok "the report validates" ||

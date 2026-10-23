@@ -116,13 +116,23 @@ case "$threads" in
     evidence="the kernel runs nfsd threads" ;;
 esac
 
-# Configured exports: what /etc/exports holds besides comments and
-# blank lines (the entries themselves are check_exports' business)
-exports=0
-exp=`rootfile /etc/exports`
-if [ -f "$exp" ] && $GREP -v '^[ 	]*#' "$exp" 2>/dev/null | $GREP -q '[^ 	]'; then
-  exports=1
-fi
+# Configured exports: what /etc/exports and /etc/exports.d/*.exports
+# (Linux's exportfs reads both) hold besides comments and blank lines
+# (the entries themselves are check_exports' business)
+# any_export: 1 when one of those files has an entry
+any_export()
+{
+  { echo /etc/exports; rootls /etc/exports.d 2>/dev/null | $GREP '/[^/.][^/]*\.exports$'; } |
+  while IFS= read -r __e
+  do
+    __eh=`rootfile "$__e"`
+    if [ -f "$__eh" ] && $GREP -v '^[ 	]*#' "$__eh" 2>/dev/null | $GREP -q '[^ 	]'; then
+      echo 1; break
+    fi
+  done
+}
+exports=`any_export`
+[ -n "$exports" ] || exports=0
 
 if [ -n "$evidence" ] && [ "$exports" = 0 ]; then
   message WARN nfs015w "Stop the server ('systemctl disable --now nfs-server') or export what it should serve." "NFS serves clients ($evidence) but /etc/exports exports nothing: an attack surface with no purpose."

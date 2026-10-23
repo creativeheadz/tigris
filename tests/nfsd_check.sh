@@ -5,7 +5,8 @@
 # rpcinfo output and nfsd threads are fixture files (Tigris_RPCInfo_Cmd
 # and Tigris_ProcDir), /etc/exports comes from a root of its own
 # (Tigris_Sysctl_Root, as tigris --root sets it): a daemon serving with
-# nothing exported (nfs015w), serving with exports (nothing), nothing
+# nothing exported (nfs015w), serving with exports (nothing; one in
+# /etc/exports.d counts only from a *.exports file), nothing
 # serving with exports and idle threads (nfs016i), the same with
 # running threads (an NFSv4-only server: nothing), and an rpcinfo that
 # fails (nothing can be said either way: nothing). Runs as a user and
@@ -47,6 +48,18 @@ printf '# nothing exported\n' > "$W/root/etc/exports"
 run "cat $W/rpc-nfs" 0
 has "[nfs015w] NFS serves clients (rpcinfo registers nfs) but /etc/exports exports nothing:" &&
   ok "serving with empty exports: nfs015w" || { bad "serving idle"; cat "$W/out"; }
+
+# exportfs reads /etc/exports.d/*.exports too: an export there counts,
+# one in a file named otherwise does not
+mkdir -p "$W/root/etc/exports.d"
+printf '/data *(ro)\n' > "$W/root/etc/exports.d/data.conf"
+run "cat $W/rpc-nfs" 0
+has "[nfs015w] NFS serves clients" &&
+  ok "an export in exports.d not named *.exports: nfs015w" || { bad "exports.d stray"; cat "$W/out"; }
+mv "$W/root/etc/exports.d/data.conf" "$W/root/etc/exports.d/data.exports"
+run "cat $W/rpc-nfs" 0
+[ -s "$W/out" ] && { bad "serving with exports.d"; cat "$W/out"; } || ok "serving with an export in exports.d: nothing"
+rm -r "$W/root/etc/exports.d"
 
 printf '/data *(ro)\n' > "$W/root/etc/exports"
 run "cat $W/rpc-nfs" 0

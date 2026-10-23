@@ -137,9 +137,9 @@ check_entry()
   readmost=0
   roothosts=
 
-# TODO: Does not recognise new /etc/exports format
-# directory	serverA (options) domainB (options)
-# Needs to be rewritten or gen_exports modified
+# The Linux format (directory client(options) client(options)) comes
+# here a line per client, in these words, from Linux's gen_export_sets:
+# any other word is a host the export is restricted to
   for acl
   do
     case $acl in
@@ -297,7 +297,7 @@ do
         END    { if(LINE != "") print LINE; }
       ' |
   $SED -e 's/,/ /g' |
-  while read dir acl
+  while read -r dir acl
   do
     check_entry $dir $acl
   done
