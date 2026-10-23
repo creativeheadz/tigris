@@ -10,9 +10,11 @@
 # FreeBSD's default ServerRoot; what the reader must take as the
 # server does (case, quotes, continuations, forged markers); an
 # Include ring and a configuration past the file limit; and an empty
-# root, where nothing is said. INFO findings only show with
-# Tigris_Show_INFO_Msgs=Y. Runs as a user and as root; the fixtures
-# read the same for both.
+# root, where nothing is said. Last, the check is on by default: a
+# whole run with the stock tigris.conf reports the Debian root's
+# Apache and says nothing of one on the empty root. INFO findings
+# only show with Tigris_Show_INFO_Msgs=Y. Runs as a user and as root;
+# the fixtures read the same for both.
 #
 TIGER=${TIGER:-`cd "\`dirname \"$0\"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -267,6 +269,26 @@ E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
 [ -s "$W/out" ] && { bad "empty"; cat "$W/out"; } ||
   ok "no Apache: nothing said"
+
+# On by default: a tigris --root run with the stock tigris.conf (the
+# quick profile, no filesystem scan) reports the Debian root's Apache,
+# and says nothing of Apache on the empty root
+[ "`id -u`" = 0 ] && chown -R 0:0 "$W"
+cp "$W/tigris.conf.base" "$W/tigris.conf"
+grep -q '^Tigris_Check_APACHE=Y' "$W/tigris.conf" && grep -q '^Tigris_Check_APACHE=Y' "$W/tigris-quick.conf" &&
+  ok "tigris.conf and tigris-quick.conf turn check_apache on" || bad "default off"
+whole() {  # whole ROOT: the report of a quick tigris --root run of ROOT
+  rm -f "$W"/log/security.report.*
+  ( cd "$W" && sh ./tigris -q --profile quick --root "$1" ) > "$W/raw" 2>&1
+  r=`ls "$W"/log/security.report.* 2>/dev/null | grep -v '\.jsonl$' | head -1`
+  [ -n "$r" ] && cat "$r" > "$W/report"
+}
+whole "$D"
+grep -q '^# Checking apache configuration files' "$W/report" && grep -q '\[apa008w\]' "$W/report" &&
+  ok "default run, Apache configured: check_apache reports" || { bad "default run"; cat "$W/raw" "$W/report"; }
+whole "$E"
+[ -s "$W/report" ] && ! grep -qi 'apache\|\[apa0' "$W/report" &&
+  ok "default run, no Apache: not a word of it" || { bad "default run empty"; grep -i 'apache\|apa0' "$W/report"; }
 
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail
