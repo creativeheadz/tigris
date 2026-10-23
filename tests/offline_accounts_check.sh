@@ -42,6 +42,7 @@ milo:x:$U:$G:Milo:/home/milo:/bin/bash
 eve:x:$((U + 1)):$G:Eve:/home/eve:/bin/sh
 dup:x:$((U + 1)):$G:Duplicate:/home/dup:/usr/sbin/nologin
 wren:x:$((U + 2)):$G:Wren:/home/wren:/bin/bash
+sync:x:4:65534:sync:/bin:/bin/sync
 EOF
 cat > "$R/etc/shadow" <<'EOF'
 root:$6$saltsalt$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzABCDEF:19000:0:99999:7:::
@@ -50,6 +51,7 @@ milo:*:19000:0:99999:7:::
 eve::19000:0:99999:7:::
 dup:*:19000:0:99999:7:::
 wren:$6$saltsalt$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzABCDEF:19000:0::7:::
+sync:*:19000:0:99999:7:::
 EOF
 printf 'root:x:0:\ncrew:x:%s:\n' "$G" > "$R/etc/group"
 printf '/bin/sh\n/bin/bash\n' > "$R/etc/shells"
@@ -57,9 +59,19 @@ printf 'console\nttyp0\n' > "$R/etc/securetty"
 echo 'alice ALL' > "$R/home/milo/.rhosts"
 echo '0 * * * * /bin/true' > "$R/var/spool/cron/crontabs/milo"
 chmod 777 "$R/home/wren"
+# milo's home is his own and 750; wren's is milo's by uid and open to
+# all. History files: milo's bash history a link to /dev/null (none
+# kept, on purpose), wren's zsh history a link elsewhere and her sh
+# history a directory, root's a plain file. sync is a system account
+# with a shell and a shared home (/bin), which is not judged.
+chmod 750 "$R/home/milo"
+ln -s /dev/null "$R/home/milo/.bash_history"
+ln -s /var/tmp/.h "$R/home/wren/.zsh_history"
+mkdir "$R/home/wren/.sh_history"
+: > "$R/root/.bash_history"
 # login.defs as Debian and Ubuntu ship it, and PAM, as everywhere
 mkdir -p "$R/etc/pam.d"
-printf '# Password aging controls:\nPASS_MAX_DAYS\t99999\nPASS_MIN_DAYS\t0\nPASS_WARN_AGE\t7\n#PASS_MIN_LEN\n' > "$R/etc/login.defs"
+printf '# Password aging controls:\nPASS_MAX_DAYS\t99999\nPASS_MIN_DAYS\t0\nPASS_WARN_AGE\t7\n#PASS_MIN_LEN\nUID_MIN\t1000\n' > "$R/etc/login.defs"
 printf 'auth required pam_unix.so\n' > "$R/etc/pam.d/login"
 # root's PATH: '.' in it, and a line that would write a file if sourced
 cat > "$R/.profile" <<EOF
@@ -96,6 +108,22 @@ has '"id":"acc004w".*Login ID milo is disabled, but has a .rhosts file' &&
 has '"id":"acc005w".*Login ID milo is disabled, but has a .cron. file' &&
   ok "its crontab, in /var/spool/cron/crontabs: acc005w" || bad "acc005w"
 has "\"id\":\"acc006w\".*Login ID wren's home directory (/home/wren) has .*world write access" && ok "a world-writable home: acc006w" || bad "acc006w"
+has "\"id\":\"acc026w\".*Login ID wren's home directory (/home/wren) is readable and searchable by everyone" &&
+  ok "a 777 home is open to read and search too: acc026w" || bad "acc026w"
+has "\"id\":\"acc027w\".*Login ID wren's home directory (/home/wren) is owned by milo (uid $U), not by wren (uid $((U + 2)))" &&
+  ok "a home owned by another account, the owner named from the root's passwd: acc027w" || bad "acc027w"
+grep '"type":"finding"' "$json" | grep -q "acc02[67]w.*Login ID milo" &&
+  bad "milo's 750 home, his own, was reported" || ok "a 750 home the account owns: no acc026w, no acc027w"
+grep '"type":"finding"' "$json" | grep -q "acc02[678]w.*Login ID sync" &&
+  bad "the system account sync (uid 4, home /bin, a shell) was judged" || ok "a system account's shared home is not judged"
+has "\"level\":\"INFO\",\"id\":\"acc028w\".*Login ID milo's .bash_history is a symbolic link to /dev/null" &&
+  ok "a history file linked to /dev/null: acc028w, INFO" || bad "acc028w /dev/null"
+has "\"level\":\"WARN\",\"id\":\"acc028w\".*Login ID wren's .zsh_history is a symbolic link to /var/tmp/.h, not a regular file" &&
+  ok "a history file linked elsewhere: acc028w, WARN" || bad "acc028w link"
+has "\"level\":\"WARN\",\"id\":\"acc028w\".*Login ID wren's .sh_history is not a regular file" &&
+  ok "a history file that is a directory: acc028w, WARN" || bad "acc028w directory"
+grep '"type":"finding"' "$json" | grep -q "acc028w.*Login ID root" &&
+  bad "root's plain .bash_history was reported" || ok "a plain history file is nothing"
 has '"id":"pass019w".*Login ID wren does not have password aging enabled' && ok "aging off, read from the root's shadow: pass019w" || bad "pass019w"
 has '"id":"pass023i".*never expire: PASS_MAX_DAYS is 99999 in /etc/login.defs' &&
   ok "login.defs is judged with /etc/pam.d/login there; 99999 is INFO: pass023i" || bad "pass023i"

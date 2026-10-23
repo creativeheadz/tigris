@@ -1,0 +1,26 @@
+Id: acc028w
+Severity: WARN, INFO
+Category: accounts
+Check: check_accounts
+Fix: Ask the account's owner why; remove the link or object so the shell writes a plain history file again, or accept it where no history is the policy.
+References: bash(1), HISTFILE; zsh(1), HISTFILE; ksh(1), HISTFILE; tcsh(1), savehist
+Controls: CIS 3.3, 5.1; NIST AC-2, AC-3; ISO 5.16, 5.18, 8.3; CE User access control
+
+A shell history file in the listed login ID's home (.bash_history,
+.sh_history, .zsh_history, .history, .ash_history, .histfile) is not a
+regular file. The shell writes what the account typed to it at the end
+of each session, which is often the only record of what an account did
+on a host without process accounting or auditd; an intruder who has
+taken an account replaces the file with a symbolic link to /dev/null,
+a directory or a FIFO so that nothing is kept, and sometimes with a
+link to a file of theirs so that the history goes where the account's
+owner will not look.
+
+A link to /dev/null is reported as INFO: it is the usual way for a user
+or an administrator to keep no history on purpose, and worth knowing
+about but no fault in itself. Anything else, a link to another place,
+a directory, a FIFO or a device, is WARN until the account's owner
+explains it. A history that is a regular file, present or absent, is
+not reported. Root and the accounts from UID_MIN (login.defs; else
+1000, or 500 on macOS) up are looked at, when they have a login shell
+and a home that exists.

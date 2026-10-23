@@ -57,7 +57,7 @@ EOF
   printf '# shells\n/bin/sh\n/bin/csh\n/bin/tcsh\n' > "$r/etc/shells"
   printf '#!/bin/sh\n' > "$r/bin/sh"; chmod 555 "$r/bin/sh"
   printf '# shrc\n' > "$r/home/alice/.shrc"; printf '# profile\n' > "$r/home/alice/.profile"
-  chmod 750 "$r/home/alice"
+  chmod 750 "$r/home/alice" "$r/root"
   cat > "$r/etc/crontab" <<'EOF'
 SHELL=/bin/sh
 PATH=/etc:/bin:/sbin:/usr/bin:/usr/sbin
@@ -111,7 +111,7 @@ bob:*LOCKED*$H6:51002:51002::0:0:Bob:/home/bob:/bin/sh
 eve:_J9..abcdefghijklmno:51003:51003::0:0:Eve:/home/eve:/bin/sh
 EOF
 awk -F: '$1 == "toor" || $1 == "bob" || $1 == "eve" { print $1 ":*:" $3 ":" $4 ":" $8 ":" $9 ":" $10 }' "$L/etc/master.passwd" >> "$L/etc/passwd"
-for u in bob eve; do mkdir -p "$L/home/$u"; printf '# shrc\n' > "$L/home/$u/.shrc"; done
+for u in bob eve; do mkdir -p "$L/home/$u"; printf '# shrc\n' > "$L/home/$u/.shrc"; chmod 750 "$L/home/$u"; done
 printf 'wheel:*:%s:root\n' "`awk -F: '$1 == "wheel" { print $3 }' "$L/etc/group"`" >> "$L/etc/group"
 chmod 777 "$L/home/alice"
 chmod 666 "$L/var/cron/tabs/alice"
@@ -155,10 +155,19 @@ noerr && has "[grp001w] Groupname \`wheel' exists multiple times in /etc/group."
 # check_accounts
 #
 run check_accounts "$C"
-noerr && [ "`count .`" = 0 ] && ok "check_accounts, clean: runs, silent" || { bad "accounts clean"; cat "$W/raw"; }
+if [ "$uid" = 0 ]; then
+  noerr && [ "`count .`" = 0 ] && ok "check_accounts, clean: runs, silent" || { bad "accounts clean"; cat "$W/raw"; }
+else
+  # as a user, the files are the runner's, whom the root's passwd calls
+  # root: alice's home cannot be hers, and that is the one finding
+  noerr && [ "`count .`" = 1 ] && has "[acc027w] Login ID alice's home directory (/home/alice) is owned by root (uid $uid), not by alice (uid 51001)." &&
+    ok "check_accounts, clean: silent but for alice's home, which a user cannot give her (acc027w)" || { bad "accounts clean"; cat "$W/raw"; }
+fi
 run check_accounts "$L"
-noerr && has "[acc006w] Login ID alice's home directory (/home/alice) has" && has "world write access." && [ "`count .`" = 1 ] &&
-  ok "check_accounts: a world-writable home: acc006w, and only that" || { bad "accounts loose"; cat "$W/raw"; }
+noerr && has "[acc006w] Login ID alice's home directory (/home/alice) has" && has "world write access." &&
+  has "[acc026w] Login ID alice's home directory (/home/alice) is readable and searchable by everyone" &&
+  [ "`grep -v 'acc027w' "$W/out" | grep -c .`" = 2 ] &&
+  ok "check_accounts: a world-writable home: acc006w and acc026w (open to read), and nothing else but ownership" || { bad "accounts loose"; cat "$W/raw"; }
 cp "$L/var/cron/tabs/alice" "$L/var/cron/tabs/bob"
 run check_accounts "$L"
 has "[acc005w] Login ID bob is disabled, but has a 'cron' file or cron entries." &&
@@ -264,14 +273,16 @@ cmp -s "$W/mounts" "$W/mounts.want" &&
 chmod 644 "$W/profiles/bsd"
 ( cd "$W" && OS=FreeBSD REV=14.1-RELEASE ARCH=amd64 sh ./tigris -q --profile bsd --root "$C" ) > "$W/raw" 2>&1
 report=`ls "$W"/log/security.report.* 2>/dev/null | grep -v '\.jsonl$' | head -1`
-# (as a user, the two checks that need root say they were skipped)
-if [ "$uid" = 0 ]; then passwd='Performing check of passwd files'; else passwd='Skipped check_passwd: it needs root'; fi
+# (as a user, the two checks that need root say they were skipped, and
+# alice's home is the runner's, not hers: the one WARN, acc027w)
+if [ "$uid" = 0 ]; then passwd='Performing check of passwd files'; warns='0 WARN'; else passwd='Skipped check_passwd: it needs root'; warns='1 WARN'; fi
 [ -n "$report" ] && ! grep -q 'init00\|--ERROR--\|not found' "$W/raw" "$report" &&
   grep -q 'Beginning security report for .* FreeBSD 14.1-RELEASE' "$report" && grep -q "$passwd" "$report" &&
   grep -q 'Checking the format of passwd and group files' "$report" && grep -q 'Performing check of user accounts' "$report" &&
   grep -q "Performing check of \`cron' entries" "$report" && grep -q 'Performing check of system file permissions' "$report" &&
-  grep -q 'Checking for correct umask settings' "$report" && grep -q '# Summary: 0 ALERT, 0 FAIL, 0 WARN' "$report" &&
-  ok "tigris --root with the FreeBSD config: runs its checks, nothing to report, no init001e" || { bad "tigris"; cat "$W/raw" $report; }
+  grep -q 'Checking for correct umask settings' "$report" && grep -q "# Summary: 0 ALERT, 0 FAIL, $warns" "$report" &&
+  { [ "$uid" = 0 ] || grep -q "acc027w" "$report"; } &&
+  ok "tigris --root with the FreeBSD config: runs its checks, nothing to report (as a user, alice's home ownership), no init001e" || { bad "tigris"; cat "$W/raw" $report; }
 
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

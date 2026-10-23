@@ -1,0 +1,21 @@
+Id: acc027w
+Severity: WARN
+Category: accounts
+Check: check_accounts
+Fix: chown the home directory to the account (chown -R user: ~user if the files in it are the account's too), or point the account at its own (usermod -d).
+References: chown(1); usermod(8); CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 7.2.9 (Ensure local interactive user home directories are configured)
+Controls: CIS 3.3, 5.1; NIST AC-2, AC-3; ISO 5.16, 5.18, 8.3; CE User access control
+
+The home directory of the listed login ID is owned by another uid. The
+owner of a home controls it: they can read and replace the shell's
+start-up files, so commands run as the account at its next login, and
+~/.ssh and authorized_keys, so they can log in as it (sshd's
+StrictModes refuses a home or .ssh the user does not own, which is
+one way this shows itself: key logins stop working). Homes end up
+with the wrong owner when an account is renumbered, a home is restored
+from elsewhere, or two accounts are pointed at one directory. CIS asks
+that an interactive user own their home. The comparison is by uid, not
+by name, so a second uid-0 account whose home is root's is not reported
+for that; it is pass017w's. Root and the accounts from UID_MIN
+(login.defs; else 1000, or 500 on macOS) up are judged, when they have
+a login shell and a home that exists.

@@ -22,6 +22,16 @@
 # (home directory accesibility, shell configuration files, dormant accounts
 # and .hushlogin files)
 #
+# 23/10/2026 atrimbitas  Home directories judged as CIS 7.2.9 has them, for
+#                 root and the accounts from UID_MIN (login.defs; else
+#                 1000, or 500 on macOS) up that have a login shell and a
+#                 home that exists: others may read or search it (acc026w;
+#                 writes stay acc006w), it is not the account's own by uid
+#                 (acc027w), and a shell history file in it that is not a
+#                 regular file (acc028w: a link to /dev/null is INFO, the
+#                 usual way to keep no history; anything else WARN, since
+#                 history sent elsewhere hides what the account did).
+#                 Offline too, through __here and the root's passwd.
 # 08/19/2019 jfs  Only complain for dormant accounts when the account
 #                 is not a system (uid greater than Tigris_Accounts_Trust)
 #                 as proposed by Richard Laager in Ubuntu Bug 248858
@@ -282,6 +292,63 @@ check_users()
        }
      }
 
+     # The home as CIS 7.2.9 has it (750 or stricter, the account's own),
+     # for root and the ordinary accounts, those from UID_MIN up. The
+     # system's accounts below it share homes by design (/, /bin,
+     # /var/lib/...), and a home that is no directory of the user's is
+     # nobody's to close.
+     ordinary=N
+     case "$uid" in
+       0) ordinary=Y ;;
+       ''|*[!0-9]*) ;;
+       *) [ "$uid" -ge "$uidmin" ] && ordinary=Y ;;
+     esac
+     case "$home" in
+       /|/dev|/dev/*|/nonexistent|/var/empty|/var/empty/*|/bin|/sbin|/usr|/usr/*|/etc|/etc/*|/var|/var/run|/run|/run/*|/proc|/tmp|/var/tmp) ordinary=N ;;
+     esac
+     [ "$ordinary" = Y ] && {
+       getpermit "$home/" | {
+         read _f owner group ur uw ux gr gw gx or ow ox suid sgid sticky
+         [ "$or$ox" != 00 ] && {
+           case "$or$ox" in
+             10) what=readable ;;
+             01) what=searchable ;;
+             *)  what="readable and searchable" ;;
+           esac
+           message WARN acc026w "" "Login ID $user's home directory ($home) is $what by everyone; CIS asks for 750 or stricter, so that other users cannot read the account's files."
+           changelog "WARN : chmod : o-rwx : $home/."
+         }
+         # the owner by uid: names collide (a second uid-0 account), uids do not
+         hown=`$LS -ldn -- "$h/" 2>/dev/null | $AWK '{ print $3 }'`
+         case "$hown" in
+           ''|*[!0-9]*|"$uid") ;;
+           *) message WARN acc027w "" "Login ID $user's home directory ($home) is owned by $owner (uid $hown), not by $user (uid $uid)." ;;
+         esac
+       }
+       # Shell history files that are not regular files: a link to
+       # /dev/null keeps no history, the usual way to turn it off
+       # (INFO); a link anywhere else, a directory, a FIFO or a device
+       # sends what the account did elsewhere or nowhere, which is what
+       # an intruder arranges (WARN). The names are each shell's own:
+       # .bash_history, .sh_history, .zsh_history, .history (tcsh),
+       # .ash_history, and zsh's .histfile.
+       for hist in "$h"/.*history "$h"/.histfile
+       do
+         [ -e "$hist" ] || [ -L "$hist" ] || continue
+         [ -f "$hist" ] && [ ! -L "$hist" ] && continue
+         histname=${hist##*/}
+         if [ -L "$hist" ]; then
+           target=`$LS -ld -- "$hist" 2>/dev/null | $SED 's/.* -> //'`
+           case "$target" in
+             /dev/null) message INFO acc028w "" "Login ID $user's $histname is a symbolic link to /dev/null: the shell keeps no history for this account." ;;
+             *) message WARN acc028w "" "Login ID $user's $histname is a symbolic link to $target, not a regular file: what the account does goes there, not into its history." ;;
+           esac
+         else
+           message WARN acc028w "" "Login ID $user's $histname is not a regular file, so no history of what the account does is kept."
+         fi
+       done
+     }
+
      # Check permissions on the parent home directory
      [ -n "$uid" ] && [ $uid -gt $Tigris_Accounts_Trust ] && {
        getpermit ${home%/*}/ | {
@@ -383,6 +450,17 @@ shells="/bin/sh$__nl/bin/csh$__nl/bin/bash$__nl/bin/tcsh$__nl/bin/ksh"
 [ -n "$ETCSHELLS" ] && [ -s "`__here $ETCSHELLS`" ] && {
   shells=`$AWK '/^[ \t]*#/ { next } NF { print $1 }' "\`__here $ETCSHELLS\`"`
 }
+
+# The first ordinary uid: login.defs' UID_MIN, from which shadow's tools
+# make accounts (the last UID_MIN line counts, as login.defs(5) reads
+# them); without one, 1000, or 500 on macOS, whose users start at 501.
+uidmin=
+ldefs=`__here /etc/login.defs`
+[ -n "$ldefs" ] && [ -f "$ldefs" ] &&
+  uidmin=`$AWK '$1 == "UID_MIN" { v = $2 } END { print v }' "$ldefs" 2>/dev/null`
+case "$uidmin" in
+  ''|*[!0-9]*) uidmin=1000; [ "$OS" = MacOSX ] && uidmin=500 ;;
+esac
 
 if [ -n "$Tigris_PasswdFiles" ]; then
   [ -f $Tigris_PasswdFiles ] && $CAT "$Tigris_PasswdFiles" > $WORKDIR/pass.list.$$
