@@ -26,6 +26,23 @@
 #             kept, Match blocks set aside, OpenSSH's defaults for what is
 #             not set (no UsePAM where sshd has no PAM stack: Alpine), and
 #             checked as sshd -T's output is.
+# 23/10/2026 - atrimbitas - The rest of what sshd -T says is judged, by
+#             sshd_config(5) and the CIS Ubuntu 24.04 benchmark (v2.0.0,
+#             section 5.1), live and offline alike; offline, what the
+#             files do not set takes the man page's default. WARN:
+#             StrictModes no, PermitTunnel, GatewayPorts, MaxSessions
+#             above 10 (5.1.17) and a DEBUG LogLevel (5.1.14 allows INFO
+#             or VERBOSE; the man page says DEBUG violates users'
+#             privacy). INFO, as every stock sshd has them: TCP and agent
+#             forwarding on (5.1.8 asks for DisableForwarding, Level 2
+#             on servers), no client-alive probes (5.1.7); and the
+#             hygiene options UseDNS yes, PrintLastLog no, an MD5
+#             FingerprintHash. Not judged: Port (22 is no weakness and
+#             moving it is obscurity) and TCPKeepAlive (its keepalives
+#             only drop dead connections; neither CIS nor the man page
+#             wants them off). MaxAuthTries 4 stays fine, as 5.1.16 has
+#             it. DisableForwarding yes overrides every forwarding
+#             option, so none is reported under it.
 # 01/07/2004 - rbrad - Applied Savannah Patch: 2439 to make POSIX compliant.
 # 11/19/2003 - jfs - This script is not POSIX compliant (yet)
 # 09/19/2003 - jfs - Applied patch from Ryan Braderitch fixing typoes (sp?)
@@ -255,10 +272,11 @@ sshd_written()
 	  if (k == "match") { inmatch = (v != "all"); next }
 	  if (inmatch || (k == "usepam" && !pam)) next
 	  if (k == "challengeresponseauthentication") k = "kbdinteractiveauthentication"
-	  if (k == "logingracetime" && seconds(v) >= 0) v = seconds(v)
+	  if ((k == "logingracetime" || k == "clientaliveinterval") && seconds(v) >= 0) v = seconds(v)
 	  if (!(k in seen)) { seen[k]; print k " " v } }
+	# what the files do not set takes the default sshd_config(5) documents
 	END {
-	  n = split("passwordauthentication yes|permitrootlogin prohibit-password|permitemptypasswords no|x11forwarding no|maxauthtries 6|usepam no|kbdinteractiveauthentication yes|logingracetime 120|hostbasedauthentication no|ignorerhosts yes|permituserenvironment no|loglevel info", d, "|")
+	  n = split("passwordauthentication yes|permitrootlogin prohibit-password|permitemptypasswords no|x11forwarding no|maxauthtries 6|usepam no|kbdinteractiveauthentication yes|logingracetime 120|hostbasedauthentication no|ignorerhosts yes|permituserenvironment no|loglevel info|allowtcpforwarding yes|allowagentforwarding yes|gatewayports no|permittunnel no|maxsessions 10|clientaliveinterval 0|clientalivecountmax 3|strictmodes yes|usedns no|printlastlog yes|fingerprinthash sha256|disableforwarding no", d, "|")
 	  for (i = 1; i <= n; i++) { split(d[i], kv, " "); if (!(kv[1] in seen) && (pam || kv[1] != "usepam")) print d[i] } }'
 }
 
@@ -324,12 +342,20 @@ if [ -n "$effective" ]; then
 	else
 		echo "# Checking the effective sshd configuration (sshd -T)..."
 	fi
+	# DisableForwarding yes overrides every forwarding option, whatever
+	# sshd -T still prints for each (sshd_config(5))
+	fwdoff=N
+	[ "`setting disableforwarding`" = yes ] && fwdoff=Y
 	# keyword, test, wanted, level, code, what the wrong value means.
 	# 'is' takes a case pattern; 'le' a number the value must not exceed;
 	# 'max' the same, where 0 means no limit (LoginGraceTime 0).
 	while read key test want level code text
 	do
 		case "$key" in ''|\#*) continue ;; esac
+		case "$key" in
+			x11forwarding|allowtcpforwarding|allowagentforwarding|permittunnel|gatewayports)
+				[ "$fwdoff" = Y ] && continue ;;
+		esac
 		value=`setting $key`
 		[ -z "$value" ] && continue
 		ok=N
@@ -353,7 +379,28 @@ hostbasedauthentication      is no                                              
 ignorerhosts                 is yes                                                          WARN ssh014w .rhosts and .shosts files are consulted
 permituserenvironment        is no                                                           WARN ssh015w users may set LD_PRELOAD and the like through authorized_keys
 loglevel                     is info|verbose|debug|debug1|debug2|debug3                      WARN ssh016w logins are not logged in enough detail to investigate
+loglevel                     is quiet|fatal|error|info|verbose                               WARN ssh030w DEBUG logging records what users do and type, which sshd_config(5) calls a violation of their privacy; CIS 5.1.14 allows INFO or VERBOSE
+strictmodes                  is yes                                                          WARN ssh026w the modes and owners of a user's home, .ssh and authorized_keys are not checked before a login is accepted, so a file others may write grants access
+permittunnel                 is no                                                           WARN ssh024w tun devices may be forwarded, giving a logged-in user a layer 2 or 3 tunnel into the networks this host reaches
+gatewayports                 is no                                                           WARN ssh023w remote port forwardings bind to every interface, so other hosts reach what a client forwards here
+maxsessions                  le 10                                                           WARN ssh025w more than ten sessions may be multiplexed over one connection; CIS 5.1.17 asks for 10 or fewer
+allowtcpforwarding           is no                                                           INFO ssh020i logged-in users may forward TCP ports through this host; CIS 5.1.8 asks for DisableForwarding yes where no one needs it
+allowagentforwarding         is no                                                           INFO ssh021i logged-in users may forward their agent to this host, where a compromised root could use their keys; CIS 5.1.8 asks for DisableForwarding yes
+usedns                       is no                                                           INFO ssh027i every connection waits on a reverse DNS lookup, and host names, which DNS can forge, may then be matched in from= and Match Host
+printlastlog                 is yes                                                          INFO ssh028i users are not shown their last login, so they cannot notice one that was not theirs
+fingerprinthash              is sha256                                                       INFO ssh029i key fingerprints are logged as MD5, a hash with known collisions
 EOF
+	# Client-alive probes (CIS 5.1.7): none with an interval of 0, the
+	# default everywhere; a count of 0 turns the disconnect off (OpenSSH
+	# 8.2 and later). They find dead connections, not idle users: a live
+	# client always answers, so this is no idle timeout.
+	alive=`setting clientaliveinterval`
+	count=`setting clientalivecountmax`
+	if [ "$alive" = 0 ]; then
+		message INFO ssh022i "" "sshd: clientaliveinterval is 0: unresponsive clients are never disconnected; CIS 5.1.7 asks for an interval above zero (the probes find dead connections, not idle users)"
+	elif [ -n "$alive" ] && [ "$count" = 0 ]; then
+		message INFO ssh022i "" "sshd: clientalivecountmax is 0: unanswered client-alive probes never disconnect a client; CIS 5.1.7 asks for a count above zero"
+	fi
 	weak=`setting ciphers | $TR ',' '\n' | $GREP -E 'cbc|arcfour|rc4|3des|blowfish|cast128' | $TR '\n' ' '`
 	[ -n "$weak" ] && message WARN ssh017w "" "sshd: weak ciphers are enabled: $weak"
 	weak=`setting macs | $TR ',' '\n' | $GREP -E 'md5|-96$|-96-etm|ripemd' | $TR '\n' ' '`

@@ -1,0 +1,16 @@
+Id: ssh026w
+Severity: WARN
+Category: ssh
+Check: check_ssh
+Fix: Set StrictModes yes (the default), then fix the files it refuses (chmod 700 ~/.ssh, 600 authorized_keys, go-w the home).
+References: sshd_config(5)
+Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
+
+StrictModes is no: sshd no longer checks the modes and ownership of a
+user's home directory, ~/.ssh and ~/.ssh/authorized_keys before it
+accepts a login with a key. With the check on (the default) an
+authorized_keys file others may write is refused, so no one can add a
+key of theirs to another account by way of a careless chmod or a
+group-writable home; with it off such a file is trusted and the key
+logs in. Turn it back on and fix the files it then refuses. The check
+never applies to ChrootDirectory, which sshd verifies unconditionally.

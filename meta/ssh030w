@@ -1,0 +1,15 @@
+Id: ssh030w
+Severity: WARN
+Category: ssh
+Check: check_ssh
+Fix: Set LogLevel VERBOSE (or INFO); use DEBUG only while chasing a problem.
+References: sshd_config(5); CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 5.1.14 (Ensure sshd LogLevel is configured)
+Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
+
+LogLevel is DEBUG, DEBUG1, DEBUG2 or DEBUG3. sshd_config(5) says that
+logging at a DEBUG level violates the privacy of users and is not
+recommended: the log then records the detail of every session, and at
+the higher levels fills the disk and the remote log with it. CIS allows
+INFO or VERBOSE only. VERBOSE adds the fingerprint of the key each
+login used, which an investigation wants; set that, and turn DEBUG on
+only while chasing a problem, on a test instance where you can.

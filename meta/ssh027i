@@ -1,0 +1,16 @@
+Id: ssh027i
+Severity: INFO
+Category: ssh
+Check: check_ssh
+Fix: Set UseDNS no (the default) once nothing relies on host-name matching.
+References: sshd_config(5)
+Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
+
+UseDNS is yes: sshd looks up the host name of every connecting address
+and checks that it resolves back, so each login waits for the resolver
+and connections stall when it is slow or down. With yes, host names may
+be matched in authorized_keys from= patterns and in Match Host blocks,
+and a name is only as trustworthy as the DNS that answered; with no
+(the default since OpenSSH 6.8, and what every distribution ships) only
+addresses are matched. A yes was set on purpose: make sure nothing
+depends on host-name matching, then set it back.

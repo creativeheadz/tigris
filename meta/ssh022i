@@ -1,0 +1,22 @@
+Id: ssh022i
+Severity: INFO
+Category: ssh
+Check: check_ssh
+Fix: Set ClientAliveInterval 15 and ClientAliveCountMax 3 (or your own values, both above zero).
+References: sshd_config(5); CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 5.1.7 (Ensure sshd ClientAliveInterval and ClientAliveCountMax are configured)
+Controls: CIS 4.1; NIST AC-12, SC-10; ISO 8.20; CE Secure configuration
+
+No client-alive probes are sent (ClientAliveInterval 0, the default), or
+unanswered ones never end the connection (ClientAliveCountMax 0, which
+disables the disconnect on OpenSSH 8.2 and later). sshd then keeps a
+session whose client has gone away (a crashed laptop, a dropped link)
+open until TCP gives up, if ever: a ghost session holding a shell, and
+whatever it had, until a reboot. With both above zero the server asks
+the client through the encrypted channel every interval seconds and
+drops it after count unanswered requests (15 and 3 give 45 seconds, the
+man page's example). CIS asks that both be above zero. This is a
+dead-connection check, not an idle timeout: an attached client answers
+whether or not its user is typing, so an idle but connected session is
+never cut by it (shell timeouts, TMOUT and the like, are a different
+matter). INFO because it is the default everywhere and the exposure is
+a stale session, not a way in.

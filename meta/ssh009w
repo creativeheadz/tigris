@@ -3,8 +3,11 @@ Severity: WARN
 Category: ssh
 Check: check_ssh
 Fix: Set MaxAuthTries 4.
-References: sshd_config(5)
+References: sshd_config(5); CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 5.1.16 (Ensure sshd MaxAuthTries is configured)
 Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
 
-MaxAuthTries is above 4, which gives a password-guessing client more
-attempts per connection before it is dropped. Set it to 4 or fewer.
+MaxAuthTries is above 4 (the default is 6), which gives a
+password-guessing client more attempts per connection before it is
+dropped. CIS asks for 4 or fewer, and 4 passes here; Lynis wants 3, and
+Tigris follows the benchmark. Once half the limit is reached the
+remaining failures are logged (sshd_config(5)).

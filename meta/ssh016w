@@ -2,9 +2,12 @@ Id: ssh016w
 Severity: WARN
 Category: ssh
 Check: check_ssh
-Fix: Set LogLevel INFO (or VERBOSE).
-References: sshd_config(5)
+Fix: Set LogLevel VERBOSE (or INFO).
+References: sshd_config(5); CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 5.1.14 (Ensure sshd LogLevel is configured)
 Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
 
-LogLevel is below INFO, so successful and failed logins are not logged
-in enough detail to investigate an incident. Set it to INFO or VERBOSE.
+LogLevel is QUIET, FATAL or ERROR, so successful and failed logins are
+not logged in enough detail to investigate an incident. CIS allows INFO
+(the default) or VERBOSE, which adds the fingerprint of the key each
+login used: set VERBOSE where keys are in use. Lynis marks INFO down;
+Tigris follows the benchmark. A DEBUG level is ssh030w.

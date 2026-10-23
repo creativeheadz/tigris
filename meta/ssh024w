@@ -1,0 +1,16 @@
+Id: ssh024w
+Severity: WARN
+Category: ssh
+Check: check_ssh
+Fix: Set PermitTunnel no (the default).
+References: sshd_config(5); ssh(1), -w; CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 5.1.8 (Ensure sshd DisableForwarding is enabled)
+Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
+
+PermitTunnel allows tun device forwarding (yes, point-to-point or
+ethernet): a logged-in user may bring up a layer 3 or layer 2 tunnel
+between their machine and this host (ssh -w), a VPN into every network
+this host is on, carrying any traffic, not only the TCP ports that
+AllowTcpForwarding governs. The default is no, so a yes was set on
+purpose; keep it to a Match block for the accounts meant to have a VPN
+here, and remember the device's permissions must allow the user too, as
+sshd_config(5) notes.

@@ -1,0 +1,20 @@
+Id: ssh020i
+Severity: INFO
+Category: ssh
+Check: check_ssh
+Fix: Set DisableForwarding yes (or AllowTcpForwarding no) where users need no port forwarding.
+References: sshd_config(5); CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 5.1.8 (Ensure sshd DisableForwarding is enabled)
+Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
+
+AllowTcpForwarding is on (yes, all, local or remote), so anyone who can
+log in may forward TCP ports through this host: reach services bound to
+localhost or to networks only this host can see, or expose a port of
+theirs here. That is OpenSSH's default and what every distribution
+ships, so this is INFO: a hardening the CIS benchmark asks for at Level
+2 on servers (Level 1 on workstations), through DisableForwarding yes,
+which turns off TCP, X11, agent, StreamLocal and tunnel forwarding at
+once. sshd_config(5) notes that denying forwarding does not improve
+security unless users are also denied shell access, since a shell can
+run a forwarder of its own; it still keeps the careless and the
+sftp-only out of your networks. Allow it per group with a Match block
+where some need it.

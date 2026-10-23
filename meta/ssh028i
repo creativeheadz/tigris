@@ -1,0 +1,14 @@
+Id: ssh028i
+Severity: INFO
+Category: ssh
+Check: check_ssh
+Fix: Set PrintLastLog yes (the default).
+References: sshd_config(5); NIST SP 800-53 Rev. 5, AC-9 (Previous Logon Notification)
+Controls: CIS 4.1; NIST AC-9; ISO 8.5; CE Secure configuration
+
+PrintLastLog is no: users are not told the date, time and origin of
+their previous login when they log in interactively, so one of them who
+did not make that login has no chance to notice it. The notice is cheap
+and the default, and the control NIST calls previous logon notification
+rests on it. Where the PAM stack shows the same through pam_lastlog it
+is redundant, and a reason to accept this finding.

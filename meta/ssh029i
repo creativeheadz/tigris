@@ -1,0 +1,15 @@
+Id: ssh029i
+Severity: INFO
+Category: ssh
+Check: check_ssh
+Fix: Set FingerprintHash sha256 (the default).
+References: sshd_config(5); ssh-keygen(1)
+Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
+
+FingerprintHash is md5: the key fingerprints sshd writes to its log
+(with LogLevel VERBOSE, the fingerprint of the key each login used) are
+MD5, which an attacker can produce collisions for and which the other
+tools (ssh-keygen -l, the client's known_hosts prompts) stopped using
+in OpenSSH 6.8. A log of MD5 fingerprints is harder to match against
+today's SHA256 ones when working out who logged in. The default is
+sha256.

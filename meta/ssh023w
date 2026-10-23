@@ -1,0 +1,16 @@
+Id: ssh023w
+Severity: WARN
+Category: ssh
+Check: check_ssh
+Fix: Set GatewayPorts no (the default).
+References: sshd_config(5); CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 5.1.8 (Ensure sshd DisableForwarding is enabled)
+Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
+
+GatewayPorts is yes or clientspecified: a remote port forwarding a user
+sets up (ssh -R) binds to every interface of this host instead of
+loopback, so any host that can reach this one reaches whatever the user
+forwarded, typically a service on their own machine or network, with
+no authentication from sshd on the way. The default is no, which is
+what every distribution ships; clientspecified lets each client
+choose, which is yes for the client that asks. Set it back to no, or
+allow it in a Match block for the accounts meant to publish a service.

@@ -1,0 +1,14 @@
+Id: ssh025w
+Severity: WARN
+Category: ssh
+Check: check_ssh
+Fix: Set MaxSessions 10 or fewer.
+References: sshd_config(5); CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 5.1.17 (Ensure sshd MaxSessions is configured)
+Controls: CIS 4.1, 5.4; NIST AC-17, IA-2; ISO 8.5, 8.20; CE Secure configuration, User access control
+
+MaxSessions is above 10: one authenticated connection may multiplex that
+many shell, login or subsystem (sftp) sessions, so a single client can
+hold far more of the server than the default allows. 10 is the default
+and what CIS asks for; Lynis wants 2 or fewer, and Tigris follows the
+benchmark and the upstream default instead. 1 turns multiplexing off;
+0 permits forwarding only, with no sessions at all.

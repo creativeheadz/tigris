@@ -153,6 +153,8 @@ check:check_ssh           | 4.1, 5.4           | AC-17, IA-2              | 8.5,
 id:ssh017w                | 3.10               | SC-8, SC-13              | 8.24                | Secure configuration
 id:ssh018w                | 3.10               | SC-8, SC-13              | 8.24                | Secure configuration
 id:ssh019w                | 3.10               | SC-8, SC-13              | 8.24                | Secure configuration
+id:ssh022i                | 4.1                | AC-12, SC-10             | 8.20                | Secure configuration
+id:ssh028i                | 4.1                | AC-9                     | 8.5                 | Secure configuration
 
 # ---- compilers, packages and updates
 id:cmp001i                | 4.8                | CM-7                     | 8.9                 | Secure configuration
