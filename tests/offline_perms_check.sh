@@ -12,7 +12,9 @@
 # /dev, an all-symlinks directory and an expected one that must stay
 # silent, a btmp with the wrong mode, and missing wtmp and lastlog.
 # Syslog stands in for messages; a second root with only a persistent
-# journal must need no text log at all. As root the test also makes
+# journal must need no text log at all, and its root-owned /root/.rhosts
+# others may read is judged on its mode, not its owner (the database
+# once expected a former maintainer there). As root the test also makes
 # two device nodes and gives utmp to the utmp group (silence then
 # proves the group was named from the root's group file); as a user
 # utmp instead carries the wrong mode and is reported.
@@ -62,10 +64,13 @@ else
 fi
 
 J=$W/journal
-mkdir -p "$J/etc" "$J/var/log/journal/deadbeef"
-printf 'root:x:0:0:root:/root:/bin/bash\n' > "$J/etc/passwd"
-printf 'root:x:0:\n' > "$J/etc/group"
+mkdir -p "$J/etc" "$J/var/log/journal/deadbeef" "$J/root"
+# root, by this root's passwd, is whoever runs the test: its files are
+# then root's, and a root-owned /root/.rhosts is judged on its mode only
+printf 'root:x:%s:%s:root:/root:/bin/bash\n' "$uid" "`id -g`" > "$J/etc/passwd"
+printf 'root:x:%s:\n' "`id -g`" > "$J/etc/group"
 echo entry > "$J/var/log/journal/deadbeef/system.journal"
+echo 'trusted.example root' > "$J/root/.rhosts"; chmod 644 "$J/root/.rhosts"
 
 {
   sed -n 's/^\(Tigris_Check_[A-Z_]*\)=.*/\1=N/p' "$W/tigris.conf"
@@ -143,6 +148,11 @@ grep -q '"id":"logf001f"' "$json2" &&
 grep '"type":"finding"' "$json2" | grep -q 'logf007f' &&
   bad "a persistent journal still wants a text log" ||
   ok "a persistent journal excuses messages and syslog"
+grep -q '"message":"The owner of /root/.rhosts' "$json2" &&
+  bad "a root-owned /root/.rhosts was told its owner is wrong" || ok "a root-owned /root/.rhosts: no wrong-owner finding"
+grep -q '"id":"perm001w".*/root/.rhosts should not have group read' "$json2" &&
+grep -q '"id":"perm001w".*/root/.rhosts should not have world read' "$json2" &&
+  ok "a /root/.rhosts others may read: perm001w" || bad "/root/.rhosts mode"
 grep '"type":"finding"' "$json2" | grep -q "$J" && bad "a finding names the second root's directory on this host" ||
   ok "the second report names the root's own paths too"
 sh "$W/tests/schema_check.sh" "$json2" > "$W/schema2.out" 2>&1 && ok "the second report validates" ||
