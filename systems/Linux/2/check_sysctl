@@ -38,6 +38,22 @@
 #                 nothing sets is left to the kernel's default, which depends
 #                 on the kernel the root boots: those are listed (lin041i),
 #                 not guessed at. The CPU's flaws are the running machine's.
+# 10/23/2026 - kernel.sysrq judged as the bitmask it is (sysrq.rst): 1
+#                 enables everything, and a mask that keeps 8 (dumps of
+#                 kernel state to the console) or 64 (signalling every
+#                 process) is as bad; Ubuntu's 176, Debian's 438 and the
+#                 16 systemd ships are fine. New keys: kernel.ctrl-alt-del,
+#                 net.ipv4.tcp_timestamps (WARN: no stock host has the bad
+#                 value), net.core.bpf_jit_harden and dev.tty.ldisc_autoload
+#                 (INFO: the kernel's defaults, which only Ubuntu changes).
+#                 Where a key has a stricter value than every distribution
+#                 ships (kptr_restrict 2, protected_fifos and
+#                 protected_regular 2, suid_dumpable 0) a second line
+#                 reports it at INFO, once the first passed: a hardening
+#                 opportunity, not a weakness. kernel.modules_disabled and
+#                 kernel.core_uses_pid are left out on purpose: the first
+#                 is unusable on a host that hot-plugs anything, and the
+#                 second names the core file and secures nothing.
 #
 # Tigris: offline
 #   the settings the root applies at boot, from its sysctl.d.
@@ -98,30 +114,46 @@ sysdir="${Tigris_Sysctl_Root:-}/proc/sys"
 }
 
 # One setting per line: key, test, value, level, code, what a bad value means.
-# The test is eq (must equal), ge (must be at least) or ne (must not be).
-# A setting this kernel does not have is skipped; so is one whose value is
-# not a plain number.
+# The test is eq (must equal), ge (must be at least), ne (must not be) or
+# mask (a bitmask: 1 means every bit, and none of the given bits may be
+# set). A key may have a second line, at INFO, for a value stricter than
+# the distributions ship; it is judged only when the line before it
+# passed, so a value fails at most once. A setting this kernel does not
+# have is skipped; so is one whose value is not a plain number.
+#
+# The levels follow what a stock Debian 13, Ubuntu 24.04, Fedora, Alpine
+# and Arch install has (procps' and systemd's sysctl.d, the kernel
+# configurations): a value every one of them ships is a hardening
+# opportunity (INFO), a value none of them ships is a weakness (WARN, FAIL).
 settings()
 {
   $CAT <<EOF
 # kernel
 kernel.kptr_restrict                      ge 1 WARN lin020w kernel addresses are readable by any user
+kernel.kptr_restrict                      ge 2 INFO lin043i kernel addresses are shown to root; 2 hides them from everyone
 kernel.dmesg_restrict                     eq 1 WARN lin021w the kernel log is readable by any user
 kernel.yama.ptrace_scope                  ge 1 WARN lin022w any process may attach to another of the same user with ptrace
 kernel.randomize_va_space                 eq 2 FAIL lin023f address space layout randomisation is not fully enabled
-kernel.sysrq                              ne 1 WARN lin024w every SysRq function is enabled from the keyboard and /proc/sysrq-trigger
+kernel.sysrq                              mask 72 WARN lin024w SysRq can dump kernel state to the console (8) or signal every process (64), from the keyboard and /proc/sysrq-trigger
 kernel.unprivileged_bpf_disabled          ge 1 WARN lin025w unprivileged users may load BPF programs
 kernel.perf_event_paranoid                ge 2 WARN lin026w unprivileged users may use performance monitoring
+kernel.ctrl-alt-del                       eq 0 WARN lin049w Ctrl-Alt-Del reboots at once, without syncing the disks, instead of going through init
+net.core.bpf_jit_harden                   ge 2 INFO lin047i BPF JIT hardening is not applied to every user's programs; 2 blinds the constants in all of them
+dev.tty.ldisc_autoload                    eq 0 INFO lin048i any user with a terminal can load a line discipline module into the kernel
 # file system
 fs.suid_dumpable                          ne 1 WARN lin027w setuid programs may dump core into directories any user can read
+fs.suid_dumpable                          eq 0 INFO lin044i setuid programs dump core, root-only or through the handler (CIS asks for 0: no dump at all)
 fs.protected_hardlinks                    eq 1 FAIL lin028f users may create hard links to files they do not own
 fs.protected_symlinks                     eq 1 FAIL lin029f symlinks in world-writable directories are followed whoever owns them
 fs.protected_fifos                        ge 1 WARN lin030w FIFOs in world-writable directories are opened whoever owns them
+fs.protected_fifos                        ge 2 INFO lin045i FIFOs in group-writable sticky directories are not covered; 2 covers them
 fs.protected_regular                      ge 1 WARN lin031w regular files in world-writable directories are opened whoever owns them
+fs.protected_regular                      ge 2 INFO lin046i regular files in group-writable sticky directories are not covered; 2 covers them
 # network
 net.ipv4.conf.all.send_redirects          eq 0 WARN lin032w the host sends ICMP redirects
 net.ipv4.conf.default.send_redirects      eq 0 WARN lin032w the host sends ICMP redirects on new interfaces
 net.ipv4.icmp_ignore_bogus_error_responses eq 1 WARN lin033w bogus ICMP error responses are logged, which floods the log
+net.ipv4.tcp_timestamps                   ne 2 WARN lin050w TCP timestamps come from one clock, without the per-connection offset that hides the uptime
 net.ipv6.conf.all.accept_redirects        eq 0 WARN lin034w IPv6 ICMP redirects are accepted
 net.ipv6.conf.default.accept_redirects    eq 0 WARN lin034w IPv6 ICMP redirects are accepted on new interfaces
 net.ipv6.conf.all.accept_source_route     eq 0 FAIL lin035f IPv6 source routing is accepted
@@ -136,7 +168,20 @@ good()
     eq) [ "$1" -eq "$3" ] ;;
     ge) [ "$1" -ge "$3" ] ;;
     ne) [ "$1" -ne "$3" ] ;;
+    mask) [ "$1" -ne 1 ] && [ $(( $1 & $3 )) -eq 0 ] ;;
   esac
+}
+
+# judge VALUE KEY TEST WANT LEVEL CODE TEXT [WHERE]: report VALUE when it
+# fails, once per key: a key's second line (the stricter value) is left
+# alone when its first already reported
+reported=
+judge()
+{
+  case " $reported " in *" $2 "*) return 0 ;; esac
+  good "$1" "$3" "$4" && return 0
+  reported="$reported $2"
+  message "$5" "$6" "" "$2 is $1${8:+ ($8)}: $7"
 }
 
 if [ -n "$TIGRIS_ROOT" ]; then
@@ -154,7 +199,7 @@ if [ -n "$TIGRIS_ROOT" ]; then
     [ $# -ge 2 ] || { echo "$key" >> $unset_keys; continue; }
     value=$1 file=$2
     case "$value" in ''|*[!0-9-]*) continue ;; esac
-    good "$value" "$test" "$want" || message $level $code "" "$key is $value (set in $file): $text"
+    judge "$value" "$key" "$test" "$want" "$level" "$code" "$text" "set in $file"
   done
   [ -s $unset_keys ] && message INFO lin041i "`$SORT -u $unset_keys | $AWK '{ printf "%s%s", (NR > 1 ? ", " : ""), $0 }'`." "Some hardening settings are set by nothing in the root's sysctl configuration: they are left to the kernel's defaults, which depend on the kernel it boots."
   delete $SYSCTL_CONF $unset_keys
@@ -170,7 +215,7 @@ do
   [ -r "$file" ] || continue
   value=`$CAT "$file" 2>/dev/null | $SED 's/[[:space:]].*//'`
   case "$value" in ''|*[!0-9-]*) continue ;; esac
-  good "$value" "$test" "$want" || message $level $code "" "$key is $value: $text"
+  judge "$value" "$key" "$test" "$want" "$level" "$code" "$text"
 done
 
 # The kernel's own verdict on each hardware speculation flaw: "Not affected",

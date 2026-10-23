@@ -8,5 +8,6 @@ Controls: CIS 4.1, 10.5; NIST CM-6, SI-16; ISO 8.9; CE Secure configuration
 
 fs.protected_fifos is 0, so a program that opens a file by name in a
 world-writable sticky directory can be handed a FIFO created by another
-user instead, and block or read what that user feeds it:
+user instead, and block or read what that user feeds it. 1 covers
+world-writable sticky directories, 2 group-writable ones too (lin045i):
   # sysctl -w fs.protected_fifos=1

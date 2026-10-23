@@ -1,0 +1,16 @@
+Id: lin053w
+Severity: WARN
+Category: network
+Check: check_network_config
+Fix: Stop the multicast routing daemon (pimd, smcroute, mrouted) unless this host is a multicast router.
+References: Linux kernel networking documentation (ip-sysctl, mc_forwarding)
+Controls: CIS 4.1; NIST SC-5, SC-7; ISO 8.20; CE Secure configuration
+
+The host routes multicast traffic between its interfaces:
+net.ipv4.conf.all.mc_forwarding is 1. The flag is read-only to
+sysctl; only a multicast routing daemon (pimd, smcroute, mrouted)
+turns it on, so one is or was running here. A host that is not meant
+to be a router should forward nothing (lin015w covers unicast), and a
+routing daemon is a network service with an attack surface of its
+own. The flag is the running kernel's, so an offline root (--root) is
+not judged.

@@ -1,0 +1,18 @@
+Id: lin052w
+Severity: WARN
+Category: network
+Check: check_network_config
+Fix: Set net.ipv4.conf.all.proxy_arp=0 in /etc/sysctl.d; an interface that must proxy takes conf/IFACE/proxy_arp=1 alone.
+References: Linux kernel networking documentation (ip-sysctl, proxy_arp); RFC 1027
+Controls: CIS 4.1; NIST SC-5, SC-7; ISO 8.20; CE Secure configuration
+
+Proxy ARP is on for every interface (net.ipv4.conf.all.proxy_arp is
+1): the host answers ARP requests for addresses that are not its own
+but that it has a route to, so its neighbours send that traffic to it.
+That is a router's job (RFC 1027), and done for one interface at a
+time: a VPN server or a container bridge sets conf/IFACE/proxy_arp on
+the interface concerned. On conf/all the host claims, on every network
+it is on, every address it can route, which draws its neighbours'
+traffic through it and lets a misrouted or malicious host sit between
+them. The kernel's default is 0 and no distribution changes it.
+  # sysctl -w net.ipv4.conf.all.proxy_arp=0

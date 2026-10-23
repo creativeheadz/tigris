@@ -2,12 +2,20 @@ Id: lin024w
 Severity: WARN
 Category: kernel
 Check: check_sysctl
-Fix: Set kernel.sysrq=176 (or 0) in /etc/sysctl.d.
-References: sysctl.d(5); Linux kernel sysrq documentation
+Fix: Set kernel.sysrq to a mask without 8 and 64 (Ubuntu's 176, systemd's 16), or 0, in /etc/sysctl.d.
+References: sysctl.d(5); Linux kernel documentation, admin-guide/sysrq (Linux Magic System Request Key Hacks)
 Controls: CIS 4.1, 10.5; NIST CM-6, SI-16; ISO 8.9; CE Secure configuration
 
-kernel.sysrq is 1, so every SysRq function is available from the console
-keyboard and /proc/sysrq-trigger, including rebooting, killing all
-processes and dumping memory. Distributions ship a restricted bitmask
-(Ubuntu 176, Debian 438); 0 disables it entirely:
+kernel.sysrq is 1, every SysRq function, or a bitmask that keeps the
+dangerous ones: 8 lets anyone at the console dump the kernel's state
+(tasks, memory, registers, blocked tasks) onto it, 64 lets them send
+SIGTERM or SIGKILL to every process, or call the OOM killer, from the
+keyboard or, as root, through /proc/sysrq-trigger. The functions are
+bits: 2 console log level, 4 keyboard control (SAK, unraw), 8
+debugging dumps, 16 sync, 32 remount read-only, 64 signalling
+processes, 128 reboot and power off, 256 nicing real-time tasks.
+Distributions ship a subset without 8 and 64: Ubuntu 176 (sync,
+remount, reboot), Debian's kernel 438, systemd's 50-default.conf
+(Fedora, Arch) 16; Alpine keeps the kernel's 1. 0 disables SysRq
+altogether:
   # sysctl -w kernel.sysrq=176

@@ -43,6 +43,17 @@
 #   net/ipv4/icmp_bogus_error_responses, which no kernel has, so it never
 #   fired; check_sysctl judges the real key,
 #   net.ipv4.icmp_ignore_bogus_error_responses (lin033w).
+# 10/23/2026 atrimbitas - Reverse path filtering judged as the kernel applies
+#   it, by the higher of conf/all and the interface's value: 0 on an
+#   interface, or on new ones (default), stays lin014f; 2 (loose, what
+#   systemd's and Ubuntu's sysctl.d set) is lin051w, since CIS 3.3.7 asks
+#   for strict (1) and loose passes a source address from behind another
+#   interface. Live, every interface is looked at. Proxy ARP on conf/all
+#   (lin052w) and multicast routing (lin053w, live only: a daemon turns it
+#   on, no sysctl.d can) are judged; they were read and never judged.
+#   bootp_relay stays unjudged: ip-sysctl.rst says it is not implemented.
+#   A file the kernel does not have counts as unknown (no finding), not
+#   as 1. Tigris_Sysctl_Root prefixes /proc for the tests.
 #
 # Tigris: offline
 #   the network settings the root applies at boot, from its sysctl.d.
@@ -115,21 +126,25 @@ echo "# Checking network configuration"
 	sysctl_configured > $SYSCTL_CONF
 }
 
+sysroot=${Tigris_Sysctl_Root:-}
+
 read_if_exist() {
-# Reads a file if it exists
-# Otherwise returns 1
+# Reads a /proc/sys file, returning its value (0, 1 or 2) as the status,
+# or 3 when this kernel does not have it: unknown, which no test below
+# acts on. (Until October 2026 a missing file read as 1.)
 # On an offline root: the value its sysctl.d sets, or 3 when nothing sets
-# it (the kernel's default, unknown here), which no test below acts on
+# it (the kernel's default, unknown here)
 	if [ -n "$TIGRIS_ROOT" ]; then
 		key=`echo "${1#/proc/sys/}" | $TR / .`
 		set -- `sysctl_value "$key"`
 		case "$1" in 0|1|2) return $1 ;; esac
 		return 3
 	fi
-	file=$1
-	value=1
-	[ -f $1 ] && value=`$CAT $file`
-	return $value
+	file=$sysroot$1
+	[ -f "$file" ] || return 3
+	value=`$CAT "$file" 2>/dev/null`
+	case "$value" in 0|1|2) return $value ;; esac
+	return 3
 }
 
 read_if_exist /proc/sys/net/ipv4/icmp_echo_ignore_all
@@ -163,6 +178,8 @@ ip_weak_end=$?
 # Aff info on this
 read_if_exist /proc/sys/net/ipv4/ip_always_defrag
 ip_always_defrag=$?
+# (bootp_relay is read and not judged: ip-sysctl.rst says the knob is not
+# implemented, so its value changes nothing)
 read_if_exist /proc/sys/net/ipv4/conf/all/bootp_relay
 bootp_relay=$?
 read_if_exist /proc/sys/net/ipv4/conf/all/mc_forwarding
@@ -186,14 +203,46 @@ secure_redirects=$?
 	message FAIL lin013f "" "The system is not protected against Syn flooding attacks"
 
 # An interface filters by the higher of conf/all and its own rp_filter
-# (ip-sysctl.rst), so only both at 0 leaves new interfaces unfiltered.
-# (The default's path read default/all until October 2026, so this half
-# never counted.)
-[ $rp_filter_all -eq 0 ] && [ $rp_filter_def -eq 0 ] && \
-	message FAIL lin014f "" "The system permits the transmission of IP packets with invalid addresses"
+# (ip-sysctl.rst): new interfaces by max(all, default), a live one by
+# max(all, its own). 0 leaves it unfiltered (lin014f); 2, loose mode, the
+# systemd and Ubuntu default, passes any source some route leads back to,
+# where strict mode (1, CIS 3.3.7) wants the route back through the
+# interface the packet came in on (lin051w). An unknown half (3) leaves
+# the other to decide: 2 is loose whatever the other is; 0 is unfiltered
+# only when both are 0. (The default's path read default/all until
+# October 2026, so this half never counted.)
+unfiltered= loose=
+rp_judge()  # rp_judge VALUE NAME: classify an interface by max(all, VALUE)
+{
+	case "$rp_filter_all,$1" in
+		*2*) loose="$loose, $2" ;;
+		0,0) unfiltered="$unfiltered, $2" ;;
+	esac
+}
+rp_judge $rp_filter_def "new interfaces (conf/default)"
+[ -z "$TIGRIS_ROOT" ] && for f in "$sysroot"/proc/sys/net/ipv4/conf/*/rp_filter
+do
+	case "$f" in */all/*|*/default/*|*/lo/*) continue ;; esac
+	[ -f "$f" ] || continue
+	rpv=`$CAT "$f" 2>/dev/null`
+	rpif=${f%/rp_filter}
+	case "$rpv" in 0|1|2) rp_judge "$rpv" "${rpif##*/}" ;; esac
+done
+[ -n "$unfiltered" ] && \
+	message FAIL lin014f "Unfiltered: ${unfiltered#, }. Set net.ipv4.conf.all.rp_filter=1 and net.ipv4.conf.default.rp_filter=1 in /etc/sysctl.d." "The system permits the transmission of IP packets with invalid addresses"
+[ -n "$loose" ] && \
+	message WARN lin051w "Loose on: ${loose#, }. Set net.ipv4.conf.all.rp_filter=1 and net.ipv4.conf.default.rp_filter=1 in /etc/sysctl.d (CIS 3.3.7), unless this host routes asymmetrically and needs loose mode." "Reverse path filtering is loose: a packet is accepted when some route leads back to its source, not only the interface it arrived on, so an address from behind another interface can be spoofed."
 
 [ $ip_fwd -eq 1 ]  && \
 	message WARN lin015w "" "The system has IP forwarding enabled"
+
+[ $proxy_arp -eq 1 ] && \
+	message WARN lin052w "Set net.ipv4.conf.all.proxy_arp=0 in /etc/sysctl.d; an interface that must proxy (a VPN or container bridge) takes its own conf/IFACE/proxy_arp=1." "The system answers ARP for other hosts' addresses on every interface (proxy ARP on conf/all), drawing their traffic to itself."
+
+# Multicast routing is switched on by a routing daemon (pimd, smcroute,
+# mrouted), not by sysctl.d: the running kernel alone can say
+[ -z "$TIGRIS_ROOT" ] && [ $mc_forwarding -eq 1 ] && \
+	message WARN lin053w "Stop the multicast routing daemon (pimd, smcroute, mrouted) unless this host is meant to route multicast." "The system routes multicast traffic between its interfaces (net.ipv4.conf.all.mc_forwarding is on, which only a multicast routing daemon sets)."
 
 # An interface accepts source-routed packets only when conf/all and its own
 # accept_source_route are both on (ip-sysctl.rst): conf/all at 0, as
@@ -202,7 +251,7 @@ secure_redirects=$?
 srcroute=
 if [ $ip_source_route_all -eq 1 ]; then
 	[ $ip_source_route_def -eq 1 ] && srcroute=Y
-	[ -z "$TIGRIS_ROOT" ] && for f in /proc/sys/net/ipv4/conf/*/accept_source_route
+	[ -z "$TIGRIS_ROOT" ] && for f in "$sysroot"/proc/sys/net/ipv4/conf/*/accept_source_route
 	do
 		case "$f" in */all/*|*/default/*|*/lo/*) continue ;; esac
 		[ "`$CAT "$f" 2>/dev/null`" = 1 ] && srcroute=Y

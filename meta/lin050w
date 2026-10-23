@@ -1,0 +1,18 @@
+Id: lin050w
+Severity: WARN
+Category: network
+Check: check_sysctl
+Fix: Set net.ipv4.tcp_timestamps=1 in /etc/sysctl.d.
+References: Linux kernel networking documentation (ip-sysctl, tcp_timestamps); RFC 7323
+Controls: CIS 4.1; NIST CM-6, SC-7; ISO 8.20; CE Secure configuration
+
+net.ipv4.tcp_timestamps is 2: TCP timestamps are sent, and all from
+one clock. A host elsewhere can read the clock's progress and tell
+how long this one has been up, and recognise its connections as one
+host's across addresses and over time. 1, the kernel's default on
+every distribution, gives each connection a random offset so the
+clock says nothing; 0 turns timestamps off, and with them the
+round-trip measurement and the protection against wrapped sequence
+numbers that RFC 7323 uses them for. Nothing ships 2: it was set
+here, and it undoes the reason 1 exists.
+  # sysctl -w net.ipv4.tcp_timestamps=1

@@ -1,0 +1,20 @@
+Id: lin048i
+Severity: INFO
+Category: kernel
+Check: check_sysctl
+Fix: Set dev.tty.ldisc_autoload=0 in /etc/sysctl.d, and list the line disciplines needed in /etc/modules-load.d.
+References: Linux kernel configuration help, CONFIG_LDISC_AUTOLOAD (drivers/tty/Kconfig); sysctl.d(5)
+Controls: CIS 4.1, 10.5; NIST CM-6, SI-16; ISO 8.9; CE Secure configuration
+
+dev.tty.ldisc_autoload is 1: when a program asks a terminal for a line
+discipline (the layer between the terminal and the kernel: n_hdlc,
+slip, ppp_async and others) that is not loaded, the kernel loads its
+module, and any user who holds a terminal can ask. That is one more
+way for an unprivileged user to put old and rarely used kernel code
+to work (n_hdlc gave CVE-2017-2636, a local privilege escalation).
+With 0 only root loads them, by modprobe or a file in
+/etc/modules-load.d. Ubuntu's kernel is built with
+CONFIG_LDISC_AUTOLOAD off, so there it is 0; Debian, Fedora, Arch and
+Alpine keep the kernel's 1. A hardening opportunity: Lynis asks for 0,
+the CIS Benchmarks do not name the key.
+  # sysctl -w dev.tty.ldisc_autoload=0

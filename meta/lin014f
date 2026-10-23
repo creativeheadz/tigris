@@ -3,13 +3,18 @@ Severity: FAIL
 Category: network
 Check: check_network_config
 Fix: Set net.ipv4.conf.all.rp_filter and .default.rp_filter to 1 (2 on asymmetric routes) in /etc/sysctl.d.
-References: sysctl.d(5); Linux kernel ip-sysctl documentation
+References: sysctl.d(5); Linux kernel ip-sysctl documentation; RFC 3704
 Controls: CIS 4.1; NIST SC-5, SC-7; ISO 8.20; CE Secure configuration
 
-It is possible to send IP spoofed packets from this machine. Spoofed
-packets are commonly used by trojans that make use of compromised hosts
-to deliver denial of service, man in the middle or connection hijacking.
-You should consider configuring your kernel to not permit this:
-  # sysctl -w net.ipv4.conf.all.rp_filter = 2
+An interface does no reverse path filtering: packets whose source
+address no route leads back to are accepted, so spoofed packets reach
+this host's services, and a compromised host here can send them.
+Spoofed packets are what denial of service, man in the middle and
+connection hijacking are built on. The kernel filters an interface by
+the higher of net.ipv4.conf.all.rp_filter and the interface's own
+value, so both are 0 for the interfaces named (new interfaces take
+conf/default). Strict mode is 1 (lin051w says why loose mode, 2, is
+less); Debian ships neither, Ubuntu, Fedora and Arch 2, Alpine 1:
+  # sysctl -w net.ipv4.conf.all.rp_filter=1
 and:
-  # sysctl -w net.ipv4.conf.default.rp_filter = 2
+  # sysctl -w net.ipv4.conf.default.rp_filter=1

@@ -114,6 +114,7 @@ id:lin033w                | 4.1                | CM-6, SC-7               | 8.20
 id:lin034w                | 4.1                | CM-6, SC-7               | 8.20                | Secure configuration
 id:lin035f                | 4.1                | CM-6, SC-7               | 8.20                | Secure configuration
 id:lin036w                | 7.3                | SI-2, SI-16              | 8.8                 | Security update management
+id:lin050w                | 4.1                | CM-6, SC-7               | 8.20                | Secure configuration
 
 # ---- logging
 check:check_logfiles      | 8.2, 8.3           | AU-9                     | 8.15                | -

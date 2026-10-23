@@ -1,0 +1,29 @@
+Id: lin051w
+Severity: WARN
+Category: network
+Check: check_network_config
+Fix: Set net.ipv4.conf.all.rp_filter=1 and net.ipv4.conf.default.rp_filter=1 in /etc/sysctl.d, unless the host routes asymmetrically.
+References: Linux kernel networking documentation (ip-sysctl, rp_filter); RFC 3704; CIS Benchmarks for Linux distributions, 3.3.7 (reverse path filtering)
+Controls: CIS 4.1; NIST SC-5, SC-7; ISO 8.20; CE Secure configuration
+
+Reverse path filtering is in loose mode (2): an incoming packet is
+dropped only when no route at all leads back to its source address.
+Strict mode (1) drops it unless the route back leaves through the
+interface it arrived on, which is what RFC 3704 recommends for a host
+with one way out and what CIS 3.3.7 asks for. The difference is a
+spoofed source: in loose mode a packet from outside carrying an
+address that belongs behind another interface (a container bridge, a
+VPN, a second network) is accepted, and whatever trusts that address
+by its source is fooled.
+
+The kernel applies the higher of conf/all and the interface's own
+value, so all and default must both be 1 for new interfaces, and on
+the running system every interface is judged by its own value. The
+finding names the interfaces concerned. systemd's 50-default.conf
+(Fedora, Arch) and Ubuntu's 10-network-security.conf set 2, because
+strict mode drops legitimate traffic where routing is asymmetric: the
+reply leaves by another interface than the request came in on. Where
+this host routes that way, keep loose mode and accept the finding.
+Alpine ships 1; Debian sets nothing, so the kernel's 0 (lin014f).
+  # sysctl -w net.ipv4.conf.all.rp_filter=1
+  # sysctl -w net.ipv4.conf.default.rp_filter=1
