@@ -41,9 +41,17 @@
 #                 chronyc and ntpq run under a five-second timeout: a
 #                 stopped or wedged daemon held chronyc 21 seconds a
 #                 call, and ntpq 10.
+# 10/23/2026 - OpenNTPD is found: its daemon is named ntpd, as the
+#                 reference one is, and a process named openntpd was
+#                 looked for, which never runs. It is told apart by its
+#                 process titles (ntp engine, dns engine), or by an
+#                 ntpd.conf without an ntp.conf, and judged by ntpctl
+#                 -s status under the same timeout: synced or not
+#                 (time002w, time003i), and its valid peers (time005w).
+#                 Tigris_Ntpctl_Cmd replaces it, for the tests.
 #
 # References:
-#   man 1 timedatectl, man 1 chronyc, man 8 systemd-timesyncd
+#   man 1 timedatectl, man 1 chronyc, man 8 systemd-timesyncd, man 8 ntpctl
 #
 # Tigris: live system
 #   Under --root it is skipped: it reads the running time daemon and the kernel clock.
@@ -86,7 +94,7 @@ done
 # elements are set.
 #
 [ "$Tigris_TESTMODE" = 'Y' ] && {
-  haveallcmds AWK CAT SED SORT || exit 1
+  haveallcmds AWK CAT GREP SED SORT TR || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
 
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
@@ -95,7 +103,7 @@ done
 
 #------------------------------------------------------------------------
 
-haveallcmds AWK CAT SED SORT || exit 1
+haveallcmds AWK CAT GREP SED SORT TR || exit 1
 
 root=${Tigris_Sysctl_Root:-}
 
@@ -114,15 +122,34 @@ findtool()
   return 1
 }
 
+# OpenNTPD's daemon is called ntpd too, as the reference ntpd and
+# NTPsec's are. It is told apart by its processes' titles, which it
+# sets to "ntpd: ntp engine" and "ntpd: dns engine" (and /proc shows in
+# cmdline), or else by its configuration: an ntpd.conf (/etc/ntpd.conf;
+# /etc/openntpd/ntpd.conf on Debian) and no ntp.conf.
+ntpd=ntpd
+if $GREP -qx ntpd "$root"/proc/[0-9]*/comm 2>/dev/null; then
+  titles=`$GREP -lx ntpd "$root"/proc/[0-9]*/comm 2>/dev/null | while IFS= read -r f
+    do
+      $TR '\000' ' ' < "${f%/comm}/cmdline" 2>/dev/null; echo
+    done`
+  case "$titles" in
+    *"ntp engine"*|*"dns engine"*) ntpd=openntpd ;;
+    *) { [ -f "$root/etc/ntpd.conf" ] || [ -f "$root/etc/openntpd/ntpd.conf" ]; } &&
+         [ ! -f "$root/etc/ntp.conf" ] && [ ! -f "$root/etc/ntpsec/ntp.conf" ] && ntpd=openntpd ;;
+  esac
+fi
+
 # The time daemons running, by the name people know them by
-daemons=`$CAT "$root"/proc/[0-9]*/comm 2>/dev/null | $AWK '
-  $0 == "chronyd" || $0 == "ntpd" || $0 == "openntpd" || $0 == "ptp4l" { d[$0] = 1 }
+daemons=`$CAT "$root"/proc/[0-9]*/comm 2>/dev/null | TIGRIS_NTPD=$ntpd $AWK '
+  $0 == "chronyd" || $0 == "ptp4l" { d[$0] = 1 }
+  $0 == "ntpd" { d[ENVIRON["TIGRIS_NTPD"]] = 1 }
   $0 == "systemd-timesyn" { d["systemd-timesyncd"] = 1 }
   END { for (n in d) print n }' | $SORT | $AWK '{ printf "%s%s", (NR > 1 ? " " : ""), $0 }'`
 
 case "$daemons" in
   '')
-    message WARN time001w "Install and enable one: systemd-timesyncd ('timedatectl set-ntp true') or chrony." "No time synchronisation daemon is running (chronyd, systemd-timesyncd, ntpd): the clock drifts, and logs, certificates and Kerberos tickets go wrong with it."
+    message WARN time001w "Install and enable one: systemd-timesyncd ('timedatectl set-ntp true') or chrony." "No time synchronisation daemon is running (chronyd, systemd-timesyncd, ntpd, OpenNTPD): the clock drifts, and logs, certificates and Kerberos tickets go wrong with it."
     exit 0
     ;;
   *' '*)
@@ -144,6 +171,7 @@ judge_sources()
   __good=`printf '%s\n' "$__counts" | $AWK '{ print $2 }'`
   case $__d in
     chronyd) __where="'pool' or 'server' lines in chrony.conf" ;;
+    openntpd) __where="'servers' or 'server' lines in ntpd.conf" ;;
     *) __where="'server' lines in ntp.conf" ;;
   esac
   if [ "$__total" = 0 ]; then
@@ -163,13 +191,14 @@ judge_sources()
 
 # Protocol depth, for the daemons that choose between sources. chronyd
 # and ntpd compare their sources and can be outvoted or lied to;
-# systemd-timesyncd follows one server, and OpenNTPD and ptp4l expose
-# no selection state worth judging, so they are left alone. Both
-# commands ask for numeric addresses, so no reverse lookup leaves
-# the box.
+# OpenNTPD says how many of its peers are valid (ntpctl -s status), and
+# no more; systemd-timesyncd follows one server, and ptp4l exposes no
+# selection state worth judging, so they are left alone. chronyc and
+# ntpq ask for numeric addresses, so no reverse lookup leaves the box;
+# ntpctl -s status names no peer.
 # A stopped or wedged daemon holds chronyc 21 seconds a call and ntpq
-# 10; both talk to a local socket, so five seconds is plenty. Without
-# a timeout command they run as they are.
+# 10; all three talk to a local socket, so five seconds is plenty.
+# Without a timeout command they run as they are.
 tmo=
 [ -n "$TIMEOUT" ] && tmo="$TIMEOUT -s KILL 5"
 stratum_n=
@@ -223,9 +252,40 @@ case " $daemons " in
     fi
     ;;
 esac
+# ntpctl -s status (ntpctl(8)) prints one line: "V/T peers valid, "
+# when peers are configured, "V/T sensors valid, " when sensors are, a
+# constraint's offset, then "clock synced, stratum N" or "clock
+# unsynced". A valid sensor is a reference clock.
+ctlout=
+case " $daemons " in
+  *" openntpd "*)
+    ctlcmd=${Tigris_Ntpctl_Cmd:-}
+    [ -z "$ctlcmd" ] && c=`findtool ntpctl` && ctlcmd="$c -s status"
+    if [ -n "$ctlcmd" ]; then
+      ctlout=`$tmo $ctlcmd 2>/dev/null | $AWK '
+        {
+          for (i = 1; i < NF; i++) {
+            if ($i !~ /^[0-9][0-9]*\/[0-9][0-9]*$/) continue
+            split($i, n, "/")
+            if ($(i + 1) == "peers") { good = n[1]; total = n[2] }
+            else if ($(i + 1) == "sensors" && n[1] > 0) clock = 1
+          }
+        }
+        /clock synced/ { st = "yes"
+          for (i = 1; i < NF; i++) if ($i == "stratum" && $(i + 1) ~ /^[0-9][0-9]*$/) stratum = $(i + 1) }
+        /clock unsynced/ { st = "no" }
+        END { if (st != "") { printf "count %d %d\n", total, good
+          if (clock) print "refclock"
+          print "synced " st
+          if (stratum != "") printf "stratum %d\n", stratum } }'`
+      judge_sources openntpd "$ctlout"
+    fi
+    ;;
+esac
 
-# Synchronised? chronyc for chronyd, timedatectl for the rest
-synced= source= stratum=
+# Synchronised? chronyc for chronyd, ntpctl for OpenNTPD when it
+# answers, timedatectl for the rest
+synced= source= stratum= by=
 case " $daemons " in
   *" chronyd "*)
     cmd=${Tigris_Chronyc_Cmd:-}
@@ -241,20 +301,31 @@ case " $daemons " in
     fi
     by=chronyd
     ;;
-  *)
-    cmd=${Tigris_Timedatectl_Cmd:-}
-    [ -z "$cmd" ] && c=`findtool timedatectl` && cmd="$c show"
-    if [ -n "$cmd" ]; then
-      case "`$cmd 2>/dev/null | $SED -n 's/^NTPSynchronized=//p'`" in
-        yes) synced=yes ;;
-        no) synced=no ;;
-      esac
-    fi
-    by=`echo "$daemons" | $SED 's/ .*//'`
-    stratum=$stratum_n
+  *" openntpd "*)
+    synced=`printf '%s\n' "$ctlout" | $SED -n 's/^synced //p'`
+    stratum_n=`printf '%s\n' "$ctlout" | $SED -n 's/^stratum \([0-9][0-9]*\)$/\1/p'`
+    by=openntpd
     ;;
 esac
+if [ "$by" != chronyd ] && [ -z "$synced" ]; then
+  cmd=${Tigris_Timedatectl_Cmd:-}
+  [ -z "$cmd" ] && c=`findtool timedatectl` && cmd="$c show"
+  if [ -n "$cmd" ]; then
+    case "`$cmd 2>/dev/null | $SED -n 's/^NTPSynchronized=//p'`" in
+      yes) synced=yes ;;
+      no) synced=no ;;
+    esac
+  fi
+  by=`echo "$daemons" | $SED 's/ .*//'`
+fi
+[ "$by" = chronyd ] || stratum=$stratum_n
 
+case "$by" in
+  chronyd) look="See 'chronyc sources'" ;;
+  openntpd) look="See 'ntpctl -s peers'" ;;
+  ntpd) look="See 'ntpq -p'" ;;
+  *) look="See 'timedatectl timesync-status'" ;;
+esac
 case "$synced" in
   yes)
     detail=
@@ -263,7 +334,7 @@ case "$synced" in
     [ -n "$detail" ] && detail=" ($detail)"
     message INFO time003i "" "The clock is synchronised by $by$detail."
     ;;
-  no)  message WARN time002w "See 'chronyc sources' or 'timedatectl timesync-status': the servers may be unreachable (a firewall blocking UDP port 123 outbound), or none is configured." "$by is running, but the clock is not synchronised." ;;
+  no)  message WARN time002w "$look: the servers may be unreachable (a firewall blocking UDP port 123 outbound), or none is configured." "$by is running, but the clock is not synchronised." ;;
 esac
 
 exit 0

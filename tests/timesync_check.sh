@@ -157,9 +157,15 @@ cat <<EOT
 EOT
 EOF
 printf '#!/bin/sh\nexec sleep 30\n' > "$W/ntpq-hung"
-go() {  # go NAME TIMEDATECTL CHRONYC SOURCES NTPQ
+# ntpctl -s status, as OpenNTPD's prints it
+printf '#!/bin/sh\necho "4/4 peers valid, clock synced, stratum 3"\n' > "$W/ctl-ok"
+printf '#!/bin/sh\necho "0/4 peers valid, clock unsynced"\n' > "$W/ctl-unsync"
+printf '#!/bin/sh\necho "1/4 peers valid, constraint offset 0s, clock synced, stratum 2"\n' > "$W/ctl-few"
+printf '#!/bin/sh\necho "1/1 sensors valid, clock synced, stratum 1"\n' > "$W/ctl-sensor"
+printf '#!/bin/sh\necho "ntpctl: connect: /var/run/ntpd.sock: No such file or directory" >&2\nexit 1\n' > "$W/ctl-none"
+go() {  # go NAME TIMEDATECTL CHRONYC SOURCES NTPQ [NTPCTL]
   cp "$W/tigris.conf.base" "$W/tigris.conf"
-  { echo "Tigris_Sysctl_Root='$W/$1'"; echo "Tigris_Timedatectl_Cmd='sh $W/$2'"; echo "Tigris_Chronyc_Cmd='sh $W/$3'"; echo "Tigris_Chronyc_Sources_Cmd='sh $W/$4'"; echo "Tigris_Ntpq_Cmd='sh $W/$5'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$W/$1'"; echo "Tigris_Timedatectl_Cmd='sh $W/$2'"; echo "Tigris_Chronyc_Cmd='sh $W/$3'"; echo "Tigris_Chronyc_Sources_Cmd='sh $W/$4'"; echo "Tigris_Ntpq_Cmd='sh $W/$5'"; echo "Tigris_Ntpctl_Cmd='sh $W/${6:-ctl-none}'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_timesync ) 2>&1 |
     awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
     tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
@@ -220,6 +226,38 @@ if command -v timeout >/dev/null 2>&1; then
   [ $((t1 - t0)) -lt 20 ] && has 'The clock is synchronised by ntpd.' && [ "`count time005w`" = 0 ] &&
     ok "a hung ntpq is given up on after five seconds" || { bad "ntpd hung ($((t1 - t0)) s)"; cat "$W/out"; }
 fi
+# OpenNTPD: its processes are ntpd too. Told apart by their titles
+# (ntpd's parent, its ntp engine, its dns engine), or by ntpd.conf
+# without ntp.conf; judged by ntpctl -s status, never by ntpq (the
+# ntpq given would find too few sources)
+title() { printf "$3" > "$W/$1/proc/$2/cmdline"; }
+procs ontp ntpd ntpd ntpd
+title ontp 2 '/usr/sbin/ntpd\000-s\000'; title ontp 3 'ntpd: ntp engine\000'; title ontp 4 'ntpd: dns engine\000'
+go ontp tdc-no chrony-ok sources-ok ntpq-few ctl-ok
+has '--INFO-- [time003i] The clock is synchronised by openntpd (stratum 3).' && [ "`count .`" = 1 ] &&
+  ok "OpenNTPD by its process titles: ntpctl decides (stratum 3), ntpq not asked" || { bad "openntpd titles"; cat "$W/out"; }
+go ontp tdc-yes chrony-ok sources-ok ntpq-few ctl-unsync
+has '--WARN-- [time002w] openntpd is running, but the clock is not synchronised.' && has "See 'ntpctl -s peers'" &&
+  has '--WARN-- [time005w] openntpd has only 0 of its 4 time sources answering' &&
+  ok "OpenNTPD unsynced, no valid peer: time002w and time005w, timedatectl not believed" || { bad "openntpd unsync"; cat "$W/out"; }
+go ontp tdc-no chrony-ok sources-ok ntpq-ok ctl-few
+has '--WARN-- [time005w] openntpd has only 1 of its 4 time sources answering' && has "'servers' or 'server' lines in ntpd.conf" &&
+  has 'synchronised by openntpd (stratum 2).' &&
+  ok "OpenNTPD with one valid peer of four, past a constraint: time005w" || { bad "openntpd few"; cat "$W/out"; }
+go ontp tdc-no chrony-ok sources-ok ntpq-ok ctl-sensor
+[ "`count time005w`" = 0 ] && has 'synchronised by openntpd (stratum 1).' &&
+  ok "OpenNTPD on a sensor alone: nothing to outvote" || { bad "openntpd sensor"; cat "$W/out"; }
+go ontp tdc-yes chrony-ok sources-ok ntpq-few ctl-none
+has 'The clock is synchronised by openntpd.' && [ "`count .`" = 1 ] &&
+  ok "ntpctl not answering: timedatectl decides, nothing judged" || { bad "openntpd no ntpctl"; cat "$W/out"; }
+procs ontpconf ntpd systemd-timesyn; mkdir -p "$W/ontpconf/etc/openntpd"; : > "$W/ontpconf/etc/openntpd/ntpd.conf"
+go ontpconf tdc-yes chrony-ok sources-ok ntpq-few ctl-ok
+has 'Running: openntpd systemd-timesyncd.' && [ "`count time005w`" = 0 ] &&
+  ok "OpenNTPD by Debian's /etc/openntpd/ntpd.conf, untitled: named in time004w" || { bad "openntpd conf"; cat "$W/out"; }
+: > "$W/ontpconf/etc/ntp.conf"
+go ontpconf tdc-yes chrony-ok sources-ok ntpq-few ctl-ok
+has 'Running: ntpd systemd-timesyncd.' && has '[time005w] ntpd has only 1 of its 2' &&
+  ok "an ntp.conf beside it, no title: the reference ntpd, judged by ntpq" || { bad "ntpd conf"; cat "$W/out"; }
 procs none sshd cron
 go none tdc-yes chrony-ok sources-ok ntpq-ok
 has '--WARN-- [time001w] No time synchronisation daemon is running' && [ "`count .`" = 1 ] && ok "no daemon: time001w" || { bad "none"; cat "$W/out"; }

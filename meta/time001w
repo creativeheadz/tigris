@@ -7,10 +7,10 @@ References: systemd-timesyncd(8), chronyd(8)
 Controls: CIS 8.4; NIST AU-8, SC-45; ISO 8.17
 
 No time synchronisation daemon is running (chronyd, systemd-timesyncd,
-ntpd or ptp4l were looked for). The clock then drifts, by seconds a day
-on ordinary hardware and more in virtual machines, and what depends on
-it goes wrong: logs from different machines no longer line up in an
-investigation, TLS certificates look expired or not yet valid, and
+ntpd, OpenNTPD or ptp4l were looked for). The clock then drifts, by
+seconds a day on ordinary hardware and more in virtual machines, and
+what depends on it goes wrong: logs from different machines no longer
+line up in an investigation, TLS certificates look expired or not yet valid, and
 Kerberos and TOTP codes are refused.
 
 To fix it, turn on the daemon the distribution ships: 'timedatectl

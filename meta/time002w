@@ -3,16 +3,18 @@ Severity: WARN
 Category: services
 Check: check_timesync
 Fix: Read chronyc sources (timedatectl timesync-status); open UDP 123 or configure servers.
-References: chronyc(1), timedatectl(1)
+References: chronyc(1), timedatectl(1), ntpctl(8)
 Controls: CIS 8.4; NIST AU-8, SC-45; ISO 8.17
 
 A time synchronisation daemon is running, but the clock is not
 synchronised: it has not reached a server, or the ones it reached were
 rejected. For chronyd this is chronyc tracking's "Leap status: Not
-synchronised"; for the others, timedatectl's NTPSynchronized=no. The
-clock drifts as if nothing were running.
+synchronised"; for OpenNTPD, ntpctl -s status's "clock unsynced"; for
+the others (and OpenNTPD when ntpctl does not answer), timedatectl's
+NTPSynchronized=no. The clock drifts as if nothing were running.
 
-To find out why, 'chronyc sources -v' or 'timedatectl
-timesync-status'. Usually the servers are unreachable (a firewall
+To find out why, 'chronyc sources -v', 'ntpctl -s peers' or
+'timedatectl timesync-status'. Usually the servers are unreachable (a firewall
 blocking outgoing UDP port 123, or no DNS), or none is configured
-(server or pool lines in chrony.conf, NTP= in timesyncd.conf).
+(server or pool lines in chrony.conf, servers or server lines in
+OpenNTPD's ntpd.conf, NTP= in timesyncd.conf).
