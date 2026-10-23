@@ -28,10 +28,26 @@
 # 08/29/2003 jfs - CHAGE errors redirected to /dev/null and grep is now $GREP
 # 08/09/2003 jfs - Renamed to check_passwdspec and added CHAGE to dependancies.
 # 07/10/2003 rbradetich@uswest.net - Initial release
+# 10/23/2026 atrimbitas - login.defs' password ageing is judged here, moved
+#                  from check_passwd: there it ran only where
+#                  /etc/pam.d/login was missing (on no mainstream
+#                  distribution) and only asked that the keys be there.
+#                  A key missing is pass007w still (PASS_MIN_LEN and
+#                  PASS_MAX_LEN not where PAM checks passwords); new
+#                  accounts' passwords never expiring is INFO (pass023i);
+#                  with expiry on, a minimum age of 0, one above the
+#                  maximum, or no warning undoes it (pass024w).
+#
+# References:
+#   man 5 login.defs, man 5 shadow, man 1 chage
+#   NIST SP 800-63B, 5.1.1.2 (no forced periodic changes)
+#   CIS Benchmarks for Ubuntu and RHEL: password expiration (365 days or
+#   less), minimum days (1 or more), warning days (7 or more)
 #
 # Tigris: offline
-#   the root's passwd and shadow, password aging worked out from the root's
-#   shadow as chage would (this host's chage reads this host's).
+#   the root's passwd, shadow and login.defs, password aging worked out
+#   from the root's shadow as chage would (this host's chage reads this
+#   host's).
 #
 #-----------------------------------------------------------------------------
 #
@@ -70,14 +86,14 @@ done
 #
 [ "$Tigris_TESTMODE" = 'Y' ] && {
   haveallfiles BASEDIR || exit 1
-  haveallcmds AWK CUT || exit 1
+  haveallcmds AWK CUT SORT || exit 1
   
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
   exit 0
 }
 #------------------------------------------------------------------------
 haveallfiles BASEDIR || exit 1
-haveallcmds AWK CUT || exit 1
+haveallcmds AWK CUT SORT || exit 1
 
 echo
 echo "# Verifying system specific password checks..."
@@ -127,5 +143,105 @@ IFS=:
   done
 }
 IFS=$saveifs
+
+# ---- login.defs: the password ageing accounts made from now on get
+#
+# useradd writes PASS_MAX_DAYS, PASS_MIN_DAYS and PASS_WARN_AGE into each
+# new account's shadow entry (login.defs(5)); pass019w above is about the
+# accounts there are. The files are read as shadow's tools read them:
+# KEY VALUE lines, # comments, the last of a key winning; /etc/login.defs,
+# or where there is none the vendor's /usr/etc/login.defs (openSUSE), then
+# the *.defs drop-ins of /usr/etc/login.defs.d and /etc/login.defs.d
+# (/etc's winning by name) in the order of their names.
+#
+# What counts as weak is deliberate. Passwords that never expire
+# (PASS_MAX_DAYS 99999, every distribution's default) are INFO: CIS
+# benchmarks ask for 365 days or less, NIST SP 800-63B says not to force
+# periodic changes at all, and pass019w already names each account whose
+# password never expires. With expiry on, the settings that undo it are
+# WARN: a minimum age of 0 (a password made to change can be changed back
+# at once), a minimum above the maximum, no warning before it expires.
+
+# defsfiles: the audited system's login.defs files, in the order read
+defsfiles()
+{
+  __main=${LOGINDEF:-/etc/login.defs}
+  [ -f "`__here "$__main"`" ] || __main=/usr/etc/login.defs
+  [ -f "`__here "$__main"`" ] && printf '%s\n' "$__main"
+  for __d in /usr/etc/login.defs.d /etc/login.defs.d
+  do
+    __dd=`__here "$__d"`
+    [ -n "$__dd" ] && [ -d "$__dd" ] || continue
+    for __f in "$__dd"/*.defs
+    do
+      [ -f "$__f" ] && printf '%s\t%s\n' "${__f##*/}" "$__d/${__f##*/}"
+    done
+  done | $AWK -F'\t' '{ last[$1] = $2 } END { for (n in last) print n "\t" last[n] }' |
+    LC_ALL=C $SORT | $AWK -F'\t' '{ print $2 }'
+}
+
+# defsread: "KEY<TAB>VALUE<TAB>FILE" for each key they set, FILE the last
+# of them to set it
+defsread()
+{
+  defsfiles | while IFS= read -r __f
+  do
+    __h=`__here "$__f"`
+    [ -n "$__h" ] && [ -f "$__h" ] || continue
+    src="$__f" $AWK '
+      { sub(/^[ \t]+/, "") }
+      /^#/ || NF < 2 { next }
+      { v = $2; gsub(/"/, "", v); val[$1] = v }
+      END { for (k in val) printf "%s\t%s\t%s\n", k, val[k], ENVIRON["src"] }' "$__h"
+  done | $AWK -F'\t' '{ v[$1] = $2; f[$1] = $3 } END { for (k in v) printf "%s\t%s\t%s\n", k, v[k], f[k] }'
+}
+
+# defsget KEY: "VALUE<TAB>FILE", nothing when no file sets KEY
+defsget()
+{
+  printf '%s\n' "$defs" | k="$1" $AWK -F'\t' '$1 == ENVIRON["k"] { print $2 "\t" $3 }'
+}
+
+# num VALUE: VALUE when it is a whole number (shadow takes -1 for unset);
+# ten digits or more, as many days as test can compare and still never
+num()
+{
+  case "$1" in
+    ''|-|*[!0-9-]*|?*-*) ;;
+    -*[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*) echo -1 ;;
+    *[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*) echo 999999999 ;;
+    *) printf '%s\n' "$1" ;;
+  esac
+}
+
+defs=`defsread`
+if [ -n "$defs" ]; then
+  # A control missing: PASS_MIN_LEN and PASS_MAX_LEN only where PAM does
+  # not check passwords (login.defs(5): PAM does it in their place)
+  pam=
+  [ -n "$PAMLOGINDEF" ] && [ -f "`__here "$PAMLOGINDEF"`" ] && pam=Y
+  for param in $Tigris_Passwd_Constraints
+  do
+    case "$param" in PASS_MIN_LEN|PASS_MAX_LEN) [ -n "$pam" ] && continue ;; esac
+    [ -n "`defsget "$param"`" ] ||
+      message WARN pass007w "" "Password control $param missing from ${LOGINDEF:-/etc/login.defs}."
+  done
+
+  v=`defsget PASS_MAX_DAYS`; max=`num "${v%%	*}"`; maxf=${v#*	}
+  v=`defsget PASS_MIN_DAYS`; min=`num "${v%%	*}"`; minf=${v#*	}
+  v=`defsget PASS_WARN_AGE`; warn=`num "${v%%	*}"`; warnf=${v#*	}
+  if [ -n "$max" ]; then
+    if [ "$max" -lt 0 ] || [ "$max" -ge 10000 ]; then
+      message INFO pass023i "" "Accounts made from now on get passwords that never expire: PASS_MAX_DAYS is $max in $maxf. CIS benchmarks ask for 365 days or less; NIST SP 800-63B advises against forcing periodic changes."
+    else
+      [ -n "$min" ] && [ "$min" -le 0 ] &&
+        message WARN pass024w "" "PASS_MIN_DAYS is $min in $minf while passwords expire after $max days: a user made to change an expiring password can change it back at once."
+      [ -n "$min" ] && [ "$min" -gt "$max" ] &&
+        message WARN pass024w "" "PASS_MIN_DAYS ($min, in $minf) is more than PASS_MAX_DAYS ($max): a password expires before its user may change it."
+      [ -n "$warn" ] && [ "$warn" -le 0 ] &&
+        message WARN pass024w "" "PASS_WARN_AGE is $warn in $warnf while passwords expire after $max days: users are not warned before theirs expires."
+    fi
+  fi
+fi
 
 exit 0

@@ -68,8 +68,8 @@
 #   /etc/shadow is root's to read.
 #
 # Tigris: offline
-#   the root's password files, shells and login.defs; this host's pwck and
-#   visudo are not run on it (check_passwdformat and check_sudo read the root's).
+#   the root's password files and shells; this host's pwck and visudo are
+#   not run on it (check_passwdformat and check_sudo read the root's).
 #
 #-----------------------------------------------------------------------------
 # TODO:
@@ -364,22 +364,9 @@ if [ -z "$TIGRIS_ROOT" ] && [ -n "`command -v visudo`" ] && [ -r /etc/sudoers ] 
 fi
         
 
-# Check the password constraints.
-[ -r "`__here $LOGINDEF`" ] && { [ -z "$PAMLOGINDEF" ] || [ ! -f "`__here $PAMLOGINDEF`" ]; } && \
-[ -n "$Tigris_Passwd_Constraints" ]  && {
-  for param in $Tigris_Passwd_Constraints
-    do
-    if [ ! `$GREP -v '#' "\`__here $LOGINDEF\`" | $GREP "$param"` ] >/dev/null 2>&1
-      then
-        message WARN pass007w "" "Password control $param missing from $LOGINDEF."
-    fi
-  done
-}
-
-# TODO: For Pam systemms the PAMLOGINDEF file needs to be checked instead
-# of login.defs
-#[ -f "$PAMLOGINDEF" ] && [ -n "$Tigris_Pam_Constraints" ]  && {
-#}
+# The password constraints in login.defs (Tigris_Passwd_Constraints) are
+# check_passwdspec's: until October 2026 they were judged here only where
+# /etc/pam.d/login did not exist, which is nowhere mainstream.
                                                                                                                                                                                                            
 # Cleanup the temporary files.
 [ ! -n "$Tigris_PasswdFiles" ] && {

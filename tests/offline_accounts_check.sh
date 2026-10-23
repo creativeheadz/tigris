@@ -57,6 +57,10 @@ printf 'console\nttyp0\n' > "$R/etc/securetty"
 echo 'alice ALL' > "$R/home/milo/.rhosts"
 echo '0 * * * * /bin/true' > "$R/var/spool/cron/crontabs/milo"
 chmod 777 "$R/home/wren"
+# login.defs as Debian and Ubuntu ship it, and PAM, as everywhere
+mkdir -p "$R/etc/pam.d"
+printf '# Password aging controls:\nPASS_MAX_DAYS\t99999\nPASS_MIN_DAYS\t0\nPASS_WARN_AGE\t7\n#PASS_MIN_LEN\n' > "$R/etc/login.defs"
+printf 'auth required pam_unix.so\n' > "$R/etc/pam.d/login"
 # root's PATH: '.' in it, and a line that would write a file if sourced
 cat > "$R/.profile" <<EOF
 PATH=.:/usr/bin:/bin
@@ -93,6 +97,11 @@ has '"id":"acc005w".*Login ID milo is disabled, but has a .cron. file' &&
   ok "its crontab, in /var/spool/cron/crontabs: acc005w" || bad "acc005w"
 has "\"id\":\"acc006w\".*Login ID wren's home directory (/home/wren) has .*world write access" && ok "a world-writable home: acc006w" || bad "acc006w"
 has '"id":"pass019w".*Login ID wren does not have password aging enabled' && ok "aging off, read from the root's shadow: pass019w" || bad "pass019w"
+has '"id":"pass023i".*never expire: PASS_MAX_DAYS is 99999 in /etc/login.defs' &&
+  ok "login.defs is judged with /etc/pam.d/login there; 99999 is INFO: pass023i" || bad "pass023i"
+grep '"type":"finding"' "$json" | grep -q 'pass024w\|pass007w' &&
+  bad "stock login.defs (99999, 0, 7; no PASS_MIN_LEN under PAM) gave a WARN" ||
+  ok "stock login.defs gives no WARN: PASS_MIN_DAYS 0 is not judged without expiry, PASS_MIN_LEN not asked for under PAM"
 has '"id":"root001w".*Remote root login allowed in /etc/securetty' && ok "securetty: root001w" || bad "root001w"
 has "\"id\":\"path004w\".*PATH in root's .profile contains '.'" && ok "'.' in root's PATH, from the root's /.profile: path004w" || bad "path004w"
 has '"id":"pass009f".*Login toor has a user id of 0' && ok "the format check runs in pwck's place: pass009f" || bad "pass009f"
@@ -137,6 +146,35 @@ for u in yes bcr s256 lck star xx
 do
   hash013 "$u" && bad "pass013w for $u" || ok "no pass013w for $u"
 done
+
+# login.defs' ageing, check_passwdspec alone on roots of its own
+defs() {  # defs DIR MAX MIN WARN [pam]: a root whose login.defs sets them
+  mkdir -p "$W/$1/etc"
+  printf 'PASS_MAX_DAYS %s\nPASS_MIN_DAYS %s\nPASS_WARN_AGE %s\n' "$2" "$3" "$4" > "$W/$1/etc/login.defs"
+  [ "$5" = pam ] && { mkdir -p "$W/$1/etc/pam.d"; : > "$W/$1/etc/pam.d/login"; }
+  ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$W/$1" sh ./systems/Linux/2/check_passwdspec ) 2>&1 |
+    awk '/^--[A-Z]+-- \[/ { if (s != "") print s; s = $0; next } /^ / && s != "" { sub(/^ +/, " "); s = s $0; next } END { if (s != "") print s }' > "$W/$1.out"
+}
+defs d1 90 0 7 pam
+grep -q 'pass024w.*PASS_MIN_DAYS is 0 in /etc/login.defs while passwords expire after 90 days' "$W/d1.out" &&
+  ok "expiry on with PASS_MIN_DAYS 0: pass024w" || bad "PASS_MIN_DAYS 0 with expiry: `cat "$W/d1.out"`"
+defs d2 30 60 7 pam
+grep -q 'pass024w.*PASS_MIN_DAYS (60, in /etc/login.defs) is more than PASS_MAX_DAYS (30)' "$W/d2.out" &&
+  ok "a minimum above the maximum: pass024w" || bad "min above max: `cat "$W/d2.out"`"
+defs d3 90 1 0 pam
+grep -q 'pass024w.*PASS_WARN_AGE is 0' "$W/d3.out" && ok "expiry on with no warning: pass024w" || bad "no warning: `cat "$W/d3.out"`"
+defs d4 90 1 7 pam
+[ ! -s "$W/d4.out" ] && ok "90, 1, 7 under PAM: quiet" || bad "a sound login.defs: `cat "$W/d4.out"`"
+defs d5 90 1 7
+grep -q 'pass007w.*PASS_MIN_LEN missing from /etc/login.defs' "$W/d5.out" &&
+  ok "without PAM, PASS_MIN_LEN is asked for: pass007w" || bad "PASS_MIN_LEN without PAM: `cat "$W/d5.out"`"
+# openSUSE: the vendor's file in /usr/etc, a drop-in in /etc/login.defs.d
+O=$W/suse; mkdir -p "$O/etc/login.defs.d" "$O/usr/etc" "$O/etc/pam.d"; : > "$O/etc/pam.d/login"
+printf 'PASS_MAX_DAYS 99999\nPASS_MIN_DAYS 0\nPASS_WARN_AGE 7\n' > "$O/usr/etc/login.defs"
+printf 'PASS_MAX_DAYS 60\n' > "$O/etc/login.defs.d/50-policy.defs"
+( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$O" sh ./systems/Linux/2/check_passwdspec ) > "$W/suse.out" 2>&1
+tr -s ' \n' '  ' < "$W/suse.out" | grep -q 'pass024w\] PASS_MIN_DAYS is 0 in /usr/etc/login.defs while passwords expire after 60 days' &&
+  ok "/usr/etc/login.defs with a login.defs.d drop-in on top: pass024w" || bad "vendor login.defs and drop-in: `cat "$W/suse.out"`"
 
 [ $fail -eq 0 ] && echo "PASS" || { echo "--- findings"; grep '"type":"finding"' "$json" | cut -c1-220; cat "$W/hash.out"; }
 exit $fail

@@ -1,10 +1,19 @@
 Id: pass007w
 Severity: WARN
 Category: accounts
-Check: check_passwd
+Check: check_passwd check_passwdspec
 Fix: Set PASS_MAX_DAYS, PASS_MIN_DAYS and PASS_WARN_AGE in /etc/login.defs.
 References: login.defs(5)
 Controls: CIS 5.1, 5.2; NIST AC-2, IA-5(1); ISO 5.16, 5.17; CE User access control
 
 Some password controls or constraints are missing.  These should be be
 applied to all users via their /etc/login.defs configuration values.
+
+The controls are Tigris_Passwd_Constraints (PASS_MIN_DAYS,
+PASS_MAX_DAYS, PASS_WARN_AGE and PASS_MIN_LEN by default), looked for
+in /etc/login.defs (or the vendor's /usr/etc/login.defs) and its
+login.defs.d drop-ins. Where PAM checks passwords (/etc/pam.d/login
+exists) PASS_MIN_LEN and PASS_MAX_LEN are not asked for: login.defs(5)
+leaves them to PAM. A missing ageing key gives new accounts no ageing
+at all. check_passwd reports the same id when the system is not set up
+for shadow passwords.

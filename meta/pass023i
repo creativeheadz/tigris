@@ -1,0 +1,22 @@
+Id: pass023i
+Severity: INFO
+Category: accounts
+Check: check_passwdspec
+Fix: Where policy follows the CIS benchmarks, set PASS_MAX_DAYS 365 or less (and PASS_MIN_DAYS 1, PASS_WARN_AGE 7) in /etc/login.defs.
+References: login.defs(5); NIST SP 800-63B, 5.1.1.2; CIS Benchmarks (Ubuntu, RHEL), password expiration
+Controls: CIS 5.2; NIST IA-5(1); ISO 5.17; CE User access control
+
+PASS_MAX_DAYS in login.defs is -1 or 10000 days or more (99999
+is every distribution's default), so useradd gives new accounts
+passwords that never expire.
+
+This is reported as INFO, not as a weakness, on purpose. NIST SP
+800-63B says verifiers should not (since its fourth revision, shall
+not) make users change passwords periodically, only when there is
+evidence they are compromised: forced rotation leads to predictable
+passwords. The CIS benchmarks for Ubuntu and RHEL still ask for
+PASS_MAX_DAYS of 365 or less, a PASS_MIN_DAYS of at least 1 and a
+PASS_WARN_AGE of at least 7, so an audit against them counts this as a
+gap. Existing accounts keep their own ageing (chage -l); pass019w names
+each one whose password never expires. With expiry on, check_passwdspec
+reports settings that undo it as pass024w.

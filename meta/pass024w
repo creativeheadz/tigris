@@ -1,0 +1,27 @@
+Id: pass024w
+Severity: WARN
+Category: accounts
+Check: check_passwdspec
+Fix: With PASS_MAX_DAYS set, set PASS_MIN_DAYS between 1 and PASS_MAX_DAYS and PASS_WARN_AGE to 7 or more in /etc/login.defs.
+References: login.defs(5); shadow(5); chage(1)
+Controls: CIS 5.2; NIST IA-5(1); ISO 5.17; CE User access control
+
+Passwords expire (PASS_MAX_DAYS in login.defs is a number of days), but
+another ageing setting undoes it for the accounts made from now on:
+
+  PASS_MIN_DAYS 0 (or less): a user made to change an expiring password
+  can change it again at once, back to the one they had, or through as
+  many as the password history remembers.
+
+  PASS_MIN_DAYS above PASS_MAX_DAYS: a new password expires before its
+  user is allowed to change it.
+
+  PASS_WARN_AGE 0 (or less): users are warned on the day their password
+  expires at the earliest, or not at all, and choose a new one in a
+  hurry, or get locked out and have it reset by someone else.
+
+The CIS benchmarks for Ubuntu and RHEL ask for a PASS_MIN_DAYS of at
+least 1 and a PASS_WARN_AGE of at least 7. When passwords never expire
+(the default) these settings are not judged: see pass023i. Existing
+accounts keep their own values (chage -l, chage -m and -W to change
+them).
