@@ -1,0 +1,25 @@
+Id: sum002f
+Severity: FAIL
+Category: boot
+Check: check_single
+Fix: Remove the unit or drop-in in /etc that replaces ExecStart=, so the service runs sulogin again (systemctl cat UNIT shows what it is made of).
+References: sulogin(8); systemd.special(7); systemd.unit(5); systemd.service(5)
+Controls: CIS 4.1; NIST AC-3, IA-2; ISO 8.5, 8.9; CE Secure configuration
+
+systemd's rescue.service or emergency.service starts a shell without
+sulogin. These are what rescue mode (rescue.target, "single" or
+systemd.unit=rescue.target on the kernel command line) and emergency
+mode (emergency.target, also entered on its own when a file system in
+fstab cannot be mounted at boot) run, as root, on the console. As
+systemd ships them they run systemd-sulogin-shell, which runs sulogin
+and asks for root's password; older releases ran sulogin through
+sh -c. Without it, anyone at the console, or with a virtual machine's
+console, who can choose the kernel command line or make the boot fail
+gets a root shell without a password.
+
+The unit file and its drop-ins are read as systemd reads them: the
+first unit of the name in /etc/systemd/system, /run/systemd/system or
+the vendor directories, then the .conf drop-ins of its .d directories.
+The usual cause is a drop-in that empties ExecStart= and sets a shell
+(ExecStart=-/bin/sh), added to get into a machine whose root password
+was lost. Remove it, or mask the unit if rescue mode is not wanted.

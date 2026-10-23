@@ -139,7 +139,7 @@ done < $BASEDIR/plant.list
 EOF
 chmod 755 "$W/plant"
 echo "$W/plant" > "$W/check.d/plant"
-printf 'WARN sum001w planted WARN\nWARN sum001w planted WARN again\nFAIL sum002f planted FAIL\n' > "$W/plant.list"
+printf 'WARN tst001w planted WARN\nWARN tst001w planted WARN again\nFAIL tst002f planted FAIL\n' > "$W/plant.list"
 ( cd "$W" && sh ./tigris -c tigris.conf.t -q ) > "$W/out" 2> "$W/err"; st=$?
 [ $st -eq 4 ] && ok "the planted run exits 4 (FAIL)" || bad "planted run exits $st: `cat "$W/err"`"
 report=`ls -t "$W"/log/security.report.* 2>/dev/null | grep -v jsonl | head -1`

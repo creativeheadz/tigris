@@ -15,21 +15,37 @@
 #
 #     Please see the file `COPYING' for the complete copyright notice.
 #
-# check_single: looks for 'sulogin' line in /etc/inittab which would
-# 		indicate a password requirement on single user mode
+# check_single: whether single-user (rescue) mode asks for root's password:
+#		sulogin in systemd's rescue and emergency services, or in
+#		/etc/inittab on a System V init system
 # 10.26.2001
 # Paul Telford <paul_telford@hp.com>
 # 07/25/2002 jfs      Changed -e lilo.conf to -r lilo.conf
 #                     Changed TigrisInstallDir to .
 # 01/15/2004 jfs      Fixed dependancies
-# 03/21/2005 jfs      Only run if running on the x86 architecture 
+# 03/21/2005 jfs      Only run if running on the x86 architecture
 #                     (Debian bug #288737)
 # 01/23/2014 jfs      Do not assume that /etc/inittab exists
+# 10/23/2026 atrimbitas - It runs on every architecture: the x86-only exit
+#                     (meant for lilo.conf) made it do nothing on every
+#                     64-bit host. systemd's rescue.service and
+#                     emergency.service, unit file and drop-ins, must run
+#                     sulogin (sum002f), and must not force it open when
+#                     root's password is locked (sum003w). The inittab is
+#                     judged only where System V init reads it: not under
+#                     systemd (RHEL 7 and 8 keep a stub that says so), not
+#                     busybox's. A lilo.conf without a password no longer
+#                     hides a missing sulogin line, and any runlevel S
+#                     entry running sulogin counts, not only Debian's.
+#
+# References:
+#   man 8 sulogin, man 5 inittab, man 8 systemd-sulogin-shell,
+#   man 5 systemd.unit, man 7 systemd.special (rescue.target, emergency.target)
 #
 #-----------------------------------------------------------------------------
 #
 # Tigris: offline
-#   the root's lilo.conf, grub menu and inittab.
+#   the root's systemd units, inittab, lilo.conf and grub menu.
 #
 TigrisInstallDir='.'
 
@@ -64,54 +80,218 @@ done
 # elements are set.
 #
 [ "$Tigris_TESTMODE" = 'Y' ] && {
-  haveallcmds GREP RM UNAME EGREP || exit 1
+  haveallcmds AWK CAT GREP SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
-  
+
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
   exit 0
 }
 #------------------------------------------------------------------------
 
-haveallcmds GREP RM UNAME EGREP || exit 1
+haveallcmds AWK CAT GREP SORT || exit 1
 haveallfiles BASEDIR WORKDIR || exit 1
-
-# The root's architecture is not this host's: under --root a present
-# configuration file is checked, whatever this host runs on.
-if [ -z "$TIGRIS_ROOT" ]; then
-  machine=`$UNAME -m`
-  # Only applies to the x86 architecture:
-  [ -z "`echo $machine | $EGREP 'i.86$'`" ] && exit 0
-fi
 
 echo
 echo "# Checking for single user-mode password..."
 
-# if we find a boot-loader password, great. 
-# If not, look for single-user mode password in inittab 
+nl='
+'
+# here_each: __here for each path of the audited system on standard input
+here_each()
+{
+  if [ -n "$TIGRIS_ROOT" ]; then rootpaths; else $CAT; fi
+}
 
+# root_locked: whether root's password is locked (! or * before it), as
+# far as the shadow file can be read (it is root's: not as a user)
+root_locked()
+{
+  __sh=`__here /etc/shadow`
+  [ -r "$__sh" ] || return 1
+  __pw=`$AWK -F: '$1 == "root" { print $2; exit }' "$__sh" 2>/dev/null`
+  case "$__pw" in '!'*|'*'*) return 0 ;; esac
+  return 1
+}
+
+# ---- systemd: rescue.service and emergency.service
+#
+# rescue.target and emergency.target (systemd.unit=rescue or "single" on
+# the kernel's command line, or a boot that fails) start these, as root on
+# the console. Stock, they run sulogin, which asks for root's password:
+# systemd-sulogin-shell since systemd 240, sh -c "sulogin; ..." before.
+# A unit is read as systemd reads it: the first unit file of its name in
+# the unit directories (/etc, /run, then the vendor's), then the .conf
+# drop-ins of every UNIT.d, the first directory's of a name winning, in
+# the order of their names. A unit linked to /dev/null, or empty, is
+# masked and starts nothing.
+unitdirs="/etc/systemd/system /run/systemd/system /usr/local/lib/systemd/system /usr/lib/systemd/system /lib/systemd/system"
+
+# unitfiles UNIT: the files UNIT is made of, where they are here, one a line
+unitfiles()
+{
+  __m=`for __d in $unitdirs; do printf '%s\n' "$__d/$1"; done | here_each |
+    while IFS= read -r __h
+    do
+      [ -n "$__h" ] || continue
+      if [ "$__h" = "$TIGRIS_ROOT/dev/null" ]; then echo masked; break; fi
+      [ -e "$__h" ] || continue
+      if [ -f "$__h" ] && [ -s "$__h" ]; then printf '%s\n' "$__h"; else echo masked; fi
+      break
+    done`
+  case "$__m" in ''|masked) return 0 ;; esac
+  printf '%s\n' "$__m"
+  # the drop-ins, "name<TAB>path", the first of a name kept, by name; then
+  # each where it is here (one linked to /dev/null hides the vendor's of
+  # its name, and is no file)
+  for __d in $unitdirs
+  do
+    __dd=`__here "$__d/$1.d"`
+    [ -n "$__dd" ] && [ -d "$__dd" ] || continue
+    for __c in "$__dd"/*.conf
+    do
+      [ -e "$__c" ] || [ -L "$__c" ] && printf '%s\t%s\n' "${__c##*/}" "$__d/$1.d/${__c##*/}"
+    done
+  done | $AWK -F'\t' '!seen[$1]++' | LC_ALL=C $SORT | $AWK -F'\t' '{ print $2 }' | here_each |
+  while IFS= read -r __h
+  do
+    [ -n "$__h" ] && [ -f "$__h" ] && printf '%s\n' "$__h"
+  done
+}
+
+# unitjudge FILE...: what the [Service] sections of these files, read in
+# turn, come to: "exec<TAB>commands", the ExecStart= lines left after the
+# last empty one (which resets them), joined by " ; "; "sulogin<TAB>1"
+# when one of them runs sulogin or systemd-sulogin-shell; "force<TAB>1"
+# when sulogin is told to let root in without a password if root's is
+# locked: sulogin -e (--force), or systemd-sulogin-shell with
+# SYSTEMD_SULOGIN_FORCE true in Environment=, which passes it --force.
+unitjudge()
+{
+  for __f
+  do
+    printf '\001\n'
+    $AWK '{ print }' "$__f"
+  done | $AWK '
+    $0 == "\001" { sec = ""; buf = ""; next }
+    {
+      line = buf $0
+      # a line ending in a backslash goes on in the next (systemd.syntax(7))
+      if (line ~ /\\$/) { buf = substr(line, 1, length(line) - 1) " "; next }
+      buf = ""
+      sub(/^[ \t]+/, "", line)
+      if (line == "" || line ~ /^[#;]/) next
+      if (line ~ /^\[/) { sec = line; sub(/[ \t]+$/, "", sec); next }
+      if (sec != "[Service]" || line !~ /=/) next
+      key = line; sub(/[ \t]*=.*/, "", key)
+      val = line; sub(/^[^=]*=[ \t]*/, "", val); sub(/[ \t]+$/, "", val)
+      if (key == "ExecStart") {
+        if (val == "") n = 0; else cmd[++n] = val
+      } else if (key == "Environment") {
+        if (val == "") { force = 0; next }
+        v = val; gsub(/"/, " ", v)
+        k = split(v, w, /[ \t]+/)
+        for (i = 1; i <= k; i++)
+          if (w[i] ~ /^SYSTEMD_SULOGIN_FORCE=/) {
+            b = tolower(substr(w[i], 23))
+            force = (b == "1" || b == "yes" || b == "y" || b == "true" || b == "t" || b == "on")
+          }
+      }
+    }
+    END {
+      out = ""; su = 0; fo = 0
+      for (i = 1; i <= n; i++) {
+        c = cmd[i]
+        out = out (i > 1 ? " ; " : "") c
+        if (c ~ /(^|[\/ \t";=-])sulogin([ \t";]|$)/) {
+          su = 1
+          if (c ~ /sulogin[ \t]([^;"]*[ \t])?(-e|--force)([ \t";]|$)/) fo = 1
+        }
+        if (c ~ /systemd-sulogin-shell([ \t";]|$)/) { su = 1; if (force) fo = 1 }
+      }
+      if (n > 0) printf "exec\t%s\n", out
+      if (su) print "sulogin\t1"
+      if (fo) print "force\t1"
+    }'
+}
+
+for unit in rescue.service emergency.service
+do
+  files=`unitfiles "$unit"`
+  [ -n "$files" ] || continue
+  # (this host's paths, one a line: a blank in one does not split it)
+  saveifs=$IFS; IFS=$nl
+  # shellcheck disable=SC2086
+  set -- $files
+  IFS=$saveifs
+  judged=`unitjudge "$@"`
+  cmd=`printf '%s\n' "$judged" | $AWK -F'\t' '$1 == "exec" { print substr($0, 6) }'`
+  [ -n "$cmd" ] || continue
+  case "$nl$judged$nl" in
+    *"${nl}sulogin	1$nl"*)
+      case "$nl$judged$nl" in
+        *"${nl}force	1$nl"*)
+          root_locked &&
+            message WARN sum003w "" "$unit runs sulogin told to let root in without a password when root's password is locked, and it is: anyone at the console who can reach rescue or emergency mode gets a root shell without a password ($cmd)."
+          ;;
+      esac
+      ;;
+    *)
+      message FAIL sum002f "" "$unit starts without sulogin: anyone at the console who can reach rescue or emergency mode gets a root shell without a password ($cmd)."
+      ;;
+  esac
+done
+
+# ---- System V init: /etc/inittab
+#
+# Under systemd the inittab is not read (RHEL 7 and 8 keep one that says
+# so in comments), and busybox's init reads one with no runlevels and no
+# initdefault entry: only a System V inittab, with an initdefault entry,
+# on a system whose init is not systemd, is judged.
+sysd=
+if [ -n "$TIGRIS_ROOT" ]; then
+  case "`__here /sbin/init`" in */systemd) sysd=Y ;; esac
+else
+  [ -d /run/systemd/system ] && sysd=Y
+fi
+[ -n "$sysd" ] && exit 0
+
+INITTAB=`__here /etc/inittab`
+[ -r "$INITTAB" ] || exit 0
+$AWK -F: '!/^[ \t]*#/ && $3 == "initdefault" { found = 1 } END { exit !found }' "$INITTAB" || exit 0
+
+# A boot loader password stops anyone at the console booting into
+# single-user mode (or with init=/bin/sh) in the first place.
 LILOCONF=`__here /etc/lilo.conf`
 GRUBMENU=`__here /boot/grub/menu.lst`
-INITTAB=`__here /etc/inittab`
-if [ -r "$LILOCONF" ]
-then
-	$GREP "password=" "$LILOCONF" 1> /dev/null
-	if [ $? -eq 0 ]
-	then
-		exit 0
-	fi
-elif [ -r "$GRUBMENU" ]
-then
-	$GREP "password" "$GRUBMENU" 1> /dev/null
-	if [ $? -eq 0 ]
-	then
-		exit 0
-	fi
-elif [ -r "$INITTAB" ]
-then
-	SULOGIN_STRING="~~:S:wait:/sbin/sulogin"
-	$GREP "$SULOGIN_STRING" "$INITTAB" 1> /dev/null
-	if [ $? -eq 1 ]
-	then
-		message FAIL sum001f "" "Recommend addition to /etc/inittab:  $SULOGIN_STRING"
-	fi
-fi
+[ -r "$LILOCONF" ] && $GREP '^[[:blank:]]*password[[:blank:]]*=' "$LILOCONF" >/dev/null && exit 0
+[ -r "$GRUBMENU" ] && $GREP '^[[:blank:]]*password[[:blank:]]' "$GRUBMENU" >/dev/null && exit 0
+
+# sulogin in single-user mode: an entry for runlevel S whose process runs
+# it ("~~:S:wait:/sbin/sulogin" on Debian, "su1:S:wait:/sbin/sulogin" on
+# Gentoo), or, on Red Hat's upstart releases, SINGLE=/sbin/sulogin in
+# /etc/sysconfig/init
+single=`$AWK -F: '
+  /^[ \t]*#/ || NF < 4 { next }
+  $2 ~ /[Ss]/ {
+    p = $0; sub(/^[^:]*:[^:]*:[^:]*:/, "", p)
+    if (p ~ /(^|[\/ \t])sulogin([ \t]|$)/) {
+      print (p ~ /sulogin[ \t](.*[ \t])?(-e|--force)([ \t]|$)/ ? "force" : "sulogin")
+      exit
+    }
+  }' "$INITTAB"`
+SYSCONFIG=`__here /etc/sysconfig/init`
+[ -z "$single" ] && [ -r "$SYSCONFIG" ] &&
+  $GREP '^[[:blank:]]*SINGLE=[^#]*sulogin' "$SYSCONFIG" >/dev/null && single=sulogin
+
+case "$single" in
+  sulogin) ;;
+  force)
+    root_locked &&
+      message WARN sum003w "" "/etc/inittab runs sulogin --force in single-user mode and root's password is locked: anyone at the console gets a root shell there without a password."
+    ;;
+  *)
+    message FAIL sum001f "" "Recommend addition to /etc/inittab:  ~~:S:wait:/sbin/sulogin"
+    ;;
+esac
+
+exit 0

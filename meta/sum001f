@@ -11,3 +11,10 @@ mode boot.  Either add a password to your boot loader or add the line:
 ~~:S:wait:/sbin/sulogin
 to your /etc/inittab file.  This line should be added immediately before
 the line containing "rc 0".
+
+Only a System V init system is judged this way: one whose inittab has
+an initdefault entry and whose init is not systemd, which does not read
+the inittab (its rescue and emergency services are sum002f's). Any
+runlevel S entry that runs sulogin counts, and so does
+SINGLE=/sbin/sulogin in /etc/sysconfig/init on Red Hat's upstart
+releases.

@@ -1,0 +1,23 @@
+Id: sum003w
+Severity: WARN
+Category: boot
+Check: check_single
+Fix: Remove SYSTEMD_SULOGIN_FORCE from the rescue and emergency units (or --force from the inittab's sulogin line), or give root a password.
+References: sulogin(8); systemd.special(7); https://systemd.io/ENVIRONMENT/
+Controls: CIS 4.1; NIST AC-3, IA-2; ISO 8.5, 8.9; CE Secure configuration
+
+Single-user mode runs sulogin, but told to let root in without a
+password when root's password is locked, and root's password is locked
+(! or * before it in /etc/shadow, as Ubuntu installs it, and as Debian
+does when sudo is chosen). sulogin -e (--force) does that, and so does
+systemd-sulogin-shell, which systemd's rescue.service and
+emergency.service run, when SYSTEMD_SULOGIN_FORCE=1 is in their
+environment. Anyone at the console who can reach rescue or emergency
+mode (the kernel command line, or a boot that fails) then gets a root
+shell without any password.
+
+The setting is often added to get past "the root account is locked" in
+emergency mode. Remove it and use sudo from a working boot, or a boot
+loader password and a rescue medium, to repair a broken system; or set
+a root password, which sulogin then asks for. Without read access to
+/etc/shadow (not running as root) it is not reported.
