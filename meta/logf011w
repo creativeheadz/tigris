@@ -1,0 +1,34 @@
+Id: logf011w
+Severity: WARN
+Category: logging
+Check: check_logfiles
+Fix: Install logrotate, name the files in /etc/logrotate.d, and enable logrotate.timer (or the cron.daily job).
+References: logrotate(8); logrotate.conf(5); rsyslog.conf(5); syslog-ng.conf(5); CIS Distribution Independent Linux Benchmark 4.2.3 (Ensure logrotate is configured)
+Controls: CIS 8.2, 8.3; NIST AU-9; ISO 8.15
+
+A syslog daemon (rsyslog, syslog-ng or the classic syslogd) is
+configured to write log files on this Linux host, and they are not
+rotated: logrotate is not installed, or it has no /etc/logrotate.conf,
+or no entry in it or in what it includes (/etc/logrotate.d) matches the
+file, or nothing runs it (no logrotate.timer enabled, no cron.daily,
+cron.d or crontab job). A log file that is never rotated grows until
+the disk is full; a full /var stops the daemon, the services around it,
+and the record of what happened. The detail says which of the four it
+is and names the files.
+
+Every distribution that ships rsyslog or syslog-ng ships a logrotate
+entry for its files (/etc/logrotate.d/rsyslog, syslog-ng) and runs
+logrotate from a timer or cron.daily, so a stock host says nothing; so
+does a host that logs to the journal alone, which has no text logs to
+rotate (journald bounds its own size with SystemMaxUse). Only files
+that exist are judged: rsyslog creates a file at its first message,
+and Debian's and Ubuntu's stock rules name one (/var/log/mail.err)
+that their logrotate stanza leaves out, which on a host without mail
+errors is never created; where it is, it is reported. A path with a
+date or variable in it ($YEAR, %HOSTNAME%) makes a new file by itself
+and is left out.
+
+To fix it, install logrotate, put the files in a stanza under
+/etc/logrotate.d (the syslog package's own is the model), and enable
+the timer ('systemctl enable --now logrotate.timer') or restore
+/etc/cron.daily/logrotate.

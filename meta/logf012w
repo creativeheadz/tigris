@@ -1,0 +1,28 @@
+Id: logf012w
+Severity: WARN
+Category: logging
+Check: check_logfiles
+Fix: Start the syslog daemon (systemctl enable --now rsyslog), or make the journal persistent.
+References: rsyslog.conf(5); syslog-ng.conf(5); journald.conf(5); CIS Distribution Independent Linux Benchmark 4.2 (Configure Logging)
+Controls: CIS 8.2, 8.3; NIST AU-9; ISO 8.15
+
+A syslog daemon is configured on this Linux host (rsyslog by
+/etc/rsyslog.conf, syslog-ng by its syslog-ng.conf, the classic syslogd
+by /etc/syslog.conf), none is running (rsyslogd, syslog-ng, syslogd,
+metalog), and the journal is not kept on disk (/var/log/journal is
+missing or empty). Nothing records the system log: the files the daemon
+wrote stop where it stopped, and look complete to whoever reads them
+later, while whatever journald holds in memory goes with the next
+reboot. A stopped or crashed rsyslog on a host whose journal is
+volatile is exactly the quiet an intruder wants.
+
+This is judged live only. Where journald runs with a volatile journal
+and no syslog daemon, check_audit's logf008w says so as well; this
+finding adds the configured daemon that is not doing its job. A host
+whose journal is persistent keeps its logs whether rsyslog runs or not,
+and gets nothing here.
+
+Start the daemon ('systemctl enable --now rsyslog'), or, if the text
+logs are not wanted, remove its configuration and make the journal
+persistent (Storage=persistent in /etc/systemd/journald.conf, or
+'mkdir /var/log/journal', then restart systemd-journald).

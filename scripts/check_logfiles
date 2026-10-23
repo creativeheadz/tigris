@@ -44,11 +44,31 @@
 #     if running a user != root. We don't care since we are not checking
 #     file content)
 # check_logfiles - 04/03/2004 - rbrad Added logfiles support for Tru64.
+# check_logfiles - 10/23/2026 - Linux: where a syslog daemon is configured
+#     to write files (rsyslog by /etc/rsyslog.conf, syslog-ng by its
+#     syslog-ng.conf, the classic syslogd by /etc/syslog.conf with a
+#     syslogd to read it, as check_remotelog decides it), the files it
+#     writes and that exist must be rotated: logrotate installed, with
+#     /etc/logrotate.conf and an entry (in it or what it includes)
+#     matching each file, and a timer or cron job running it; otherwise
+#     logf011w (WARN: the disk fills, and the logs go with it). A
+#     journal-only host has no text logs and nothing to rotate; a file
+#     the daemon has not created yet (stock Debian's and Ubuntu's
+#     mail.err) is judged once it is there. Live only: a syslog daemon configured
+#     but none running (rsyslogd, syslog-ng, syslogd, metalog) while the
+#     journal is not kept on disk is logf012w (WARN: nothing records the
+#     system log). Both read the root's files through the root helpers;
+#     the running processes come from /proc live.
+#
+# References:
+#   logrotate(8), logrotate.conf(5), rsyslog.conf(5), syslog-ng.conf(5),
+#   syslog.conf(5), journald.conf(5)
 #
 #-----------------------------------------------------------------------------
 #
 # Tigris: offline
-#   the root's log files (paths chosen for this host's $OS).
+#   the root's log files (paths chosen for this host's $OS), its syslog
+#   and logrotate configuration.
 #
 TigrisInstallDir="."
 
@@ -86,10 +106,10 @@ done
 # elements are set.
 #
 [ "$Tigris_TESTMODE" = 'Y' ] && {
-  haveallcmds AWK || exit 1
+  haveallcmds AWK CAT GREP SED SORT || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   haveallvars TESTLINK HOSTNAME
-  
+
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
   exit 0
 }
@@ -99,7 +119,7 @@ done
 echo
 echo "# Checking for existence of log files..."
 
-haveallcmds AWK || exit 1
+haveallcmds AWK CAT GREP SED SORT || exit 1
 
 check_fileperm () {
   file=$1
@@ -248,10 +268,154 @@ if [ -n "$MESSAGES" ] ; then
     if [ ! -f "$MESSAGEShere" ] ; then
         #echo "...Warning: $MESSAGES does not exist"
         message FAIL logf007f "" "Log file $MESSAGES does not exist"
-    else 
-        check_fileperm $MESSAGES 110100000 || 
+    else
+        check_fileperm $MESSAGES 110100000 ||
     	    message FAIL logf005f "" "Log file $MESSAGES permission should be 640"
     fi
 fi
- 
+
+[ "$OS" = "Linux" ] || exit 0
+
+#####
+# Linux: the syslog daemon's files are rotated, and the daemon runs
+#####
+# (the root helpers read the audited root, or the tests' Tigris_Sysctl_Root)
+root=${Tigris_Sysctl_Root:-}
+
+# commas: the lines on standard input as one, ", " between them
+commas()
+{
+  $AWK '{ printf "%s%s", (NR > 1 ? ", " : ""), $0 } END { if (NR) print "" }'
+}
+
+# Which syslog daemon is configured: rsyslog by its rsyslog.conf,
+# syslog-ng by its syslog-ng.conf, the classic syslogd (sysklogd,
+# inetutils, busybox) by /etc/syslog.conf where a syslogd is there to
+# read it
+daemons=
+[ -f "`rootfile /etc/rsyslog.conf`" ] && daemons="$daemons rsyslog"
+[ -f "`rootfile /etc/syslog-ng/syslog-ng.conf`" ] && daemons="$daemons syslog-ng"
+if [ -f "`rootfile /usr/sbin/syslogd`" ] || [ -f "`rootfile /sbin/syslogd`" ]; then
+  [ -f "`rootfile /etc/syslog.conf`" ] && daemons="$daemons syslogd"
+fi
+daemons=${daemons# }
+[ -n "$daemons" ] || exit 0
+
+# The files they write. rsyslog and syslogd: the action field of a
+# selector line (/path or -/path), and rsyslog's omfile file="..."; a
+# directive ($WorkDirectory), a module/input/include statement and a
+# template are not rules. syslog-ng: file("/path") drivers. A dynamic
+# name ($YEAR, %variable) makes a new file by itself and is left out, as
+# are /dev and /proc.
+files=`{
+  case " $daemons " in *" rsyslog "*)
+    { echo /etc/rsyslog.conf; rootls /etc/rsyslog.d 2>/dev/null | $GREP '\.conf$'; } | rootcat 2>/dev/null |
+    $AWK '
+    /^[ \t]*(#|[$]|module|global|input|include|template|parser|ruleset|set |unset |call )/ { next }
+    NF >= 2 && $NF ~ /^-?\/[^ \t]/ { p = $NF; sub(/^-/, "", p); print p }
+    /[fF]ile[ \t]*=[ \t]*"\// { s = $0; while (match(s, /[fF]ile[ \t]*=[ \t]*"\/[^"]+"/)) { p = substr(s, RSTART, RLENGTH); sub(/^[^"]*"/, "", p); sub(/"$/, "", p); print p; s = substr(s, RSTART + RLENGTH) } }' ;;
+  esac
+  case " $daemons " in *" syslog-ng "*)
+    { echo /etc/syslog-ng/syslog-ng.conf; rootls /etc/syslog-ng/conf.d 2>/dev/null | $GREP '\.conf$'; } | rootcat 2>/dev/null |
+    $AWK '
+    /^[ \t]*#/ { next }
+    { s = $0; while (match(s, /file[ \t]*\([ \t]*"\/[^"]+"/)) { p = substr(s, RSTART, RLENGTH); sub(/^[^"]*"/, "", p); sub(/"$/, "", p); print p; s = substr(s, RSTART + RLENGTH) } }' ;;
+  esac
+  case " $daemons " in *" syslogd "*)
+    { echo /etc/syslog.conf; rootls /etc/syslog.d 2>/dev/null; } | rootcat 2>/dev/null |
+    $AWK '/^[ \t]*#/ { next } NF >= 2 && $NF ~ /^-?\/[^ \t]/ { p = $NF; sub(/^-/, "", p); print p }' ;;
+  esac
+} | $GREP -v '[$%]' | $GREP -v -e '^/dev/' -e '^/proc/' | $SORT -u`
+
+# Only the files that are there. rsyslog creates a file at its first
+# message, and the stock Debian and Ubuntu rules name one (mail.err)
+# their logrotate stanza does not: on a host that has never had a mail
+# error it does not exist, and a file that is not there cannot fill a
+# disk. It is judged once it exists.
+files=`printf '%s\n' "$files" | while read -r f
+do
+  [ -n "$f" ] && [ -f "\`rootfile "$f"\`" ] && echo "$f"
+done`
+
+dname=`printf '%s\n' "$daemons" | $SED 's/ / and /g'`
+if [ -n "$files" ]; then
+  nfiles=`printf '%s\n' "$files" | $GREP -c .`
+  # logrotate: the program, its configuration and what runs it
+  logrotate=
+  for p in /usr/sbin/logrotate /usr/bin/logrotate /sbin/logrotate /bin/logrotate
+  do
+    [ -f "`rootfile $p`" ] && { logrotate=$p; break; }
+  done
+  lrconf=`rootfile /etc/logrotate.conf`
+  if [ -z "$logrotate" ]; then
+    message WARN logf011w "$dname writes `printf '%s\n' "$files" | commas`. Install logrotate: its configuration for $dname comes with the package." "$dname writes $nfiles log files and logrotate is not installed: nothing rotates them, so they grow until the disk is full and the logs are lost with it."
+  elif [ ! -f "$lrconf" ]; then
+    message WARN logf011w "$dname writes `printf '%s\n' "$files" | commas`. Restore /etc/logrotate.conf (the package's copy includes /etc/logrotate.d)." "$dname writes $nfiles log files and logrotate has no /etc/logrotate.conf: it rotates nothing, so they grow until the disk is full and the logs are lost with it."
+  else
+    # The file patterns logrotate.conf and what it includes name: the
+    # tokens starting with / outside the braces (quotes dropped), an
+    # include line's argument apart; a path is matched against each as a
+    # shell pattern (/var/log/*.log), so the data is a pattern, never a
+    # command
+    incs=`$AWK '!/^[ \t]*#/ && $1 == "include" && $2 ~ /^\// { print $2 }' "$lrconf" 2>/dev/null`
+    patterns=`{ echo /etc/logrotate.conf
+      for inc in $incs
+      do
+        if [ -d "\`rootfile "$inc"\`" ]; then rootls "$inc" 2>/dev/null; else echo "$inc"; fi
+      done
+    } | rootcat 2>/dev/null | $AWK '
+    /^[ \t]*#/ { next }
+    {
+      line = $0
+      if (depth == 0 && line !~ /^[ \t]*include[ \t]/) {
+        n = split(line, t, /[ \t]+/)
+        for (i = 1; i <= n; i++) { w = t[i]; gsub(/"/, "", w); if (w ~ /^\//) print w }
+      }
+      depth += gsub(/[{]/, "&", line) - gsub(/[}]/, "&", line)
+      if (depth < 0) depth = 0
+    }'`
+    # (set -f: the patterns must not be expanded against this host's
+    # files on the way to case)
+    unrotated=`printf '%s\n' "$files" | ( set -f; while read -r f
+    do
+      hit=
+      for p in $patterns
+      do
+        case "$f" in $p) hit=1; break ;; esac
+      done
+      [ -n "$hit" ] || echo "$f"
+    done )`
+    if [ -n "$unrotated" ]; then
+      message WARN logf011w "Rotated by nothing: `printf '%s\n' "$unrotated" | commas`. Name them in a file under /etc/logrotate.d (the $dname package ships one)." "$dname writes log files that no logrotate entry rotates: they grow until the disk is full, and the logs are lost with it."
+    else
+      # What runs it: logrotate.timer enabled, or a cron job
+      runs=
+      for w in '/etc/systemd/system/*.wants/logrotate.timer' '/run/systemd/system/*.wants/logrotate.timer' '/usr/lib/systemd/system/*.wants/logrotate.timer' '/lib/systemd/system/*.wants/logrotate.timer'
+      do
+        [ -n "`rootglob "$w"`" ] && { runs=logrotate.timer; break; }
+      done
+      if [ -z "$runs" ]; then
+        for c in /etc/cron.daily/logrotate /etc/cron.hourly/logrotate /etc/cron.weekly/logrotate /etc/periodic/daily/logrotate
+        do
+          [ -f "`rootfile $c`" ] && { runs=$c; break; }
+        done
+      fi
+      if [ -z "$runs" ]; then
+        { echo /etc/crontab; rootls /etc/cron.d 2>/dev/null; } | rootcat 2>/dev/null | $GREP -v '^[ \t]*#' | $GREP -q logrotate && runs=cron
+      fi
+      [ -n "$runs" ] || message WARN logf011w "Enable the timer ('systemctl enable --now logrotate.timer') or restore /etc/cron.daily/logrotate." "logrotate is installed and configured for the $nfiles log files $dname writes, but no timer or cron job runs it: they grow until the disk is full, and the logs are lost with it."
+    fi
+  fi
+fi
+
+# Live: the configured daemon runs, or the journal keeps the logs
+if [ -z "$TIGRIS_ROOT" ]; then
+  if ! $CAT "$root"/proc/[0-9]*/comm 2>/dev/null | $AWK '$0 == "rsyslogd" || $0 == "syslog-ng" || $0 == "syslogd" || $0 == "metalog" { y = 1 } END { exit !y }'; then
+    journal=`rootfile /var/log/journal`
+    if [ ! -d "$journal" ] || [ -z "`$LS -A "$journal" 2>/dev/null`" ]; then
+      message WARN logf012w "Start it ('systemctl enable --now rsyslog'), or make the journal persistent (Storage=persistent in journald.conf, or mkdir /var/log/journal)." "$dname is configured but no syslog daemon is running, and the journal is not kept on disk: nothing records the system log, and the files $dname wrote stop where it stopped."
+    fi
+  fi
+fi
+
 exit 0
