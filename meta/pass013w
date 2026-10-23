@@ -8,3 +8,17 @@ Controls: CIS 5.2; NIST IA-5(1), SC-13; ISO 5.17, 8.24; CE User access control
 
 The listed username is not using an acceptable, cryptographic method for the
 password hash.
+
+Acceptable, unless Tigris_Passwd_Hashes says otherwise, are yescrypt,
+gost-yescrypt, scrypt, bcrypt, sha512crypt and sha256crypt (and the SM3
+ones). DES crypt (crypt3: only the first 8 characters of the password
+count) and md5crypt are reported, as are the other legacy formats
+crypt(5) lists (sha1crypt, sunmd5, nt, bsdicrypt, bcrypt's $2x$): all
+are fast enough to search for the password on one GPU. A hash in a
+format Tigris does not recognise is reported as such rather than taken
+for a locked account: it may be one the system accepts. Only ! or * in
+front of the hash means locked.
+
+Changing ENCRYPT_METHOD affects passwords set from then on; each
+account's password must be set again (passwd, or chpasswd) for its hash
+to change.

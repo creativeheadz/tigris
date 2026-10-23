@@ -108,5 +108,35 @@ grep '"type":"finding"' "$json" | grep -q "$R" && bad "a finding names the root'
 sh "$W/tests/schema_check.sh" "$json" > "$W/schema.out" 2>&1 && ok "the report validates" ||
   { grep -q SKIP "$W/schema.out" && ok "(schema not checked: $(cat "$W/schema.out"))" || { bad "schema"; cat "$W/schema.out"; }; }
 
-[ $fail -eq 0 ] && echo "PASS" || { echo "--- findings"; grep '"type":"finding"' "$json" | cut -c1-220; }
+# Password hashes, check_passwd called directly (so it runs as a user too)
+# on a root of its own: DES, md5crypt, a legacy format and one Tigris does
+# not know must each be reported; yescrypt, bcrypt, sha256crypt and the
+# locked ones (! or * in front, the x placeholder) must not.
+H=$W/hashes; mkdir -p "$H/etc"
+n=2000
+: > "$H/etc/passwd"; : > "$H/etc/shadow"
+for a in 'des abJnggxhB/yWI' 'md5u $1$saltsalt$abcdefghijklmnopqrstuv' 'sha1u $sha1$40000$saltsalt$abcdefghijklmnopqrstuvwxyz12' \
+         'odd $9$abc$defghijklmnop' 'yes $y$j9T$saltsaltsaltsaltsalt$abcdefghijklmnopqrstuvwxyzABCDEFGHIJK' \
+         'bcr $2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234' 's256 $5$saltsalt$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ' \
+         'lck !$6$saltsalt$abcdefghijklmnop' 'star *' 'xx x'
+do
+  set -f; set -- $a; set +f; n=$((n + 1))   # (no glob: one hash is *)
+  printf '%s:x:%s:%s::/nonexistent:/usr/sbin/nologin\n' "$1" "$n" "$n" >> "$H/etc/passwd"
+  printf '%s:%s:19000:1:90:7:::\n' "$1" "$2" >> "$H/etc/shadow"
+done
+( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$H" sh ./scripts/check_passwd ) 2>&1 |
+  awk '/^--[A-Z]+-- \[/ { if (s != "") print s; s = $0; next } /^ / && s != "" { sub(/^ +/, " "); s = s $0; next } END { if (s != "") print s }' > "$W/hash.out"
+hash013() { grep 'pass013w' "$W/hash.out" | grep -q "\`$1'"; }
+for u in des md5u sha1u
+do
+  hash013 "$u" && ok "a weak hash ($u) is reported: pass013w" || bad "pass013w for $u"
+done
+grep 'pass013w' "$W/hash.out" | grep -q "\`odd' has a password hash in a format Tigris does not recognise" &&
+  ok "a hash in a format Tigris does not know is reported, not taken for locked" || bad "pass013w for an unknown format"
+for u in yes bcr s256 lck star xx
+do
+  hash013 "$u" && bad "pass013w for $u" || ok "no pass013w for $u"
+done
+
+[ $fail -eq 0 ] && echo "PASS" || { echo "--- findings"; grep '"type":"finding"' "$json" | cut -c1-220; cat "$W/hash.out"; }
 exit $fail

@@ -55,6 +55,12 @@
 #      An offline root (--root): its own /etc/passwd and /etc/shadow,
 #      resolved inside it, and nothing from NIS or LDAP, which would be
 #      asked over the network and are not the image.
+# Linux/2/gen_passwd_sets - 10/23/2026 - atrimbitas
+#      Only ! or * in front (and the x placeholder) mean locked. The
+#      legacy crypt(5) formats are named (sha1crypt, sunmd5, nt,
+#      bsdicrypt, bcrypt-x) and any other is "unknown", so that
+#      check_passwd reports them (pass013w) instead of taking them for
+#      locked accounts.
 #
 #-----------------------------------------------------------------------------
 #
@@ -111,6 +117,11 @@ zappasswd()
   while read user passwd rest
   do
     case $passwd in
+# Locked: ! or * before anything ("!!" for a new account on Fedora, "!*"
+# for systemd's, "!$6$..." after passwd -l, "*" for Debian's system
+# accounts); x stands for a password kept in a shadow file, and with none
+# there, there is none to match.
+      '!'*|'*'*|x) passwd="*" ;;
 # Normal UNIX passwds (13 chars)
       [a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./][a-zA-Z0-9\./])
 	     passwd="crypt3"
@@ -126,18 +137,28 @@ zappasswd()
       " ") passwd=""
 	   ;;
 # Other crypt(5) hashes by their prefix: yescrypt is the default of
-# Debian 11, Ubuntu 22.04 and Fedora 35 on. Anything else, ! and * among
-# it, is locked (they were all taken for locked, so every yescrypt
-# password made its account "disabled").
+# Debian 11, Ubuntu 22.04 and Fedora 35 on. (Until October 2026 anything
+# not named here was taken for locked: first every yescrypt password,
+# then the legacy formats below and any hash Tigris does not know, which
+# may well be one a user logs in with.)
       \$y\$*) passwd="yescrypt" ;;
       \$gy\$*) passwd="gost-yescrypt" ;;
       \$7\$*) passwd="scrypt" ;;
       \$2[aby]\$*) passwd="bcrypt" ;;
+      \$2x\$*) passwd="bcrypt-x" ;;
       \$5\$*) passwd="sha256" ;;
       \$6\$*) passwd="sha512" ;;
+      \$sm3\$*) passwd="sm3crypt" ;;
+      \$sm3y\$*) passwd="sm3-yescrypt" ;;
       \$1\$*) passwd="md5" ;;
-	*|!!)
-	     passwd="*"
+      \$sha1\$*) passwd="sha1crypt" ;;
+      \$md5[\$,]*) passwd="sunmd5" ;;
+      \$3\$*) passwd="nt" ;;
+      _[a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./][a-zA-Z0-9./])
+	     passwd="bsdicrypt" ;;
+# A format not named here is reported, not passed over as locked
+	*)
+	     passwd="unknown"
 	   ;;
     esac
     echo "$user:$passwd:$rest" 

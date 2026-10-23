@@ -144,13 +144,17 @@ check_passwd_entries()
   do
 
     # Check the password hash: gen_passwd_sets names it (crypt3, md5,
-    # sha256, sha512, yescrypt, ...), * is locked, empty is none. The
-    # system's values are compared, never parsed: until October 2026 they
-    # went through eval, so an image's could run as code.
-    [ -z "$Tigris_Passwd_Hashes" ] && Tigris_Passwd_Hashes='crypt3|md5|sha256|sha512|yescrypt|gost-yescrypt|bcrypt|scrypt'
+    # sha256, sha512, yescrypt, ..., unknown), * is locked, empty is none.
+    # The system's values are compared, never parsed: until October 2026
+    # they went through eval, so an image's could run as code. DES
+    # (crypt3) and md5crypt were acceptable by default until then too:
+    # DES reads 8 characters at most, and both fall to a GPU search.
+    [ -z "$Tigris_Passwd_Hashes" ] && Tigris_Passwd_Hashes='sha256|sha512|yescrypt|gost-yescrypt|bcrypt|scrypt|sm3crypt|sm3-yescrypt'
     case "$hash" in
       "") message FAIL pass011f "" "Username \`$login' has an empty password field." ;;
       '*') ;;
+      unknown) matchlist "$hash" "$Tigris_Passwd_Hashes" ||
+           message WARN pass013w "" "Username \`$login' has a password hash in a format Tigris does not recognise: one the system may accept, or a way of locking the account Tigris does not know." ;;
       *) matchlist "$hash" "$Tigris_Passwd_Hashes" ||
            message WARN pass013w "" "Username \`$login' is not using an acceptable password hash ($hash)." ;;
     esac
