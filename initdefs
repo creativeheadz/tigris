@@ -959,6 +959,60 @@ sysctl_value()
     END { if (f != "") printf "%s\t%s\n", v, f }' "$SYSCTL_CONF"
 }
 
+# grub2_password FILE: whether the GRUB 2 configuration FILE (as the
+# audited system names it: /boot/grub/grub.cfg, /boot/grub2/grub.cfg)
+# asks for a password before a boot entry can be edited. GRUB asks only
+# when superusers is set, and then for a password a password or
+# password_pbkdf2 line gives one of them: a password line alone protects
+# nothing. FILE is read with the custom.cfg beside it, which the stock
+# 41_custom block sources. The 01_users block grub2-mkconfig writes on
+# Red Hat's systems sets both only when user.cfg beside FILE (where
+# grub2-setpassword puts it) has GRUB2_PASSWORD, and ${GRUB2_PASSWORD}
+# is read from there wherever it is used. Prints "ok" (and "user.cfg"
+# when the password is that file's), "nosuper" for a password without
+# superusers, or "none".
+grub2_password()
+{
+  __gf=`__here "$1"`
+  [ -n "$__gf" ] && [ -f "$__gf" ] || { echo none; return 0; }
+  __gc=`__here "${1%/*}/custom.cfg"`
+  __gu=`__here "${1%/*}/user.cfg"`
+  [ -n "$__gu" ] && [ -f "$__gu" ] || __gu=
+  set -- "$__gf"
+  [ -n "$__gc" ] && [ -f "$__gc" ] && set -- "$__gf" "$__gc"
+  gu="$__gu" $AWK '
+    BEGIN {
+      q = sprintf("%c", 39)
+      if (ENVIRON["gu"] != "")
+        while ((getline l < ENVIRON["gu"]) > 0)
+          if (l ~ /^[ \t]*GRUB2_PASSWORD=/) {
+            v = l; sub(/^[ \t]*GRUB2_PASSWORD=/, "", v); gsub(/["]/, "", v); gsub(q, "", v)
+            sub(/[ \t]+$/, "", v); upw = (v != "")
+          }
+    }
+    /^[ \t]*### BEGIN \/etc\/grub\.d\/01_users ###/ { in01 = 1; next }
+    /^[ \t]*### END \/etc\/grub\.d\/01_users ###/ { in01 = 0; next }
+    {
+      line = $0; sub(/^[ \t]+/, "", line)
+      if (line ~ /^#/ || (in01 && !upw)) next
+      if (line ~ /^set[ \t]+superusers=/) {
+        v = line; sub(/^set[ \t]+superusers=/, "", v); gsub(/["]/, "", v); gsub(q, "", v)
+        sub(/[ \t;].*/, "", v)
+        if (v != "") su = 1
+      } else if (line ~ /^password(_pbkdf2)?[ \t]/) {
+        n = split(line, w, /[ \t]+/)
+        if (n < 3) next
+        s = w[3]; gsub(/["]/, "", s); gsub(q, "", s)
+        if (s ~ /^\$[{]?GRUB2_PASSWORD[}]?$/) { if (upw) { pw = 1; fromu = 1 } }
+        else if (s != "") pw = 1
+      }
+    }
+    END {
+      if (pw && su) print "ok" (fromu ? " user.cfg" : "")
+      else print (pw ? "nosuper" : "none")
+    }' "$@"
+}
+
 # skip_check SCRIPT: whether a check runs here, from what its header says.
 # When it does not, a "# Skipped" line goes in the report and a skip record
 # in the JSON, and it returns 0.

@@ -260,11 +260,16 @@ INITTAB=`__here /etc/inittab`
 $AWK -F: '!/^[ \t]*#/ && $3 == "initdefault" { found = 1 } END { exit !found }' "$INITTAB" || exit 0
 
 # A boot loader password stops anyone at the console booting into
-# single-user mode (or with init=/bin/sh) in the first place.
+# single-user mode (or with init=/bin/sh) in the first place: LILO's,
+# GRUB Legacy's, or GRUB 2's with superusers set (grub2_password).
 LILOCONF=`__here /etc/lilo.conf`
 GRUBMENU=`__here /boot/grub/menu.lst`
 [ -r "$LILOCONF" ] && $GREP '^[[:blank:]]*password[[:blank:]]*=' "$LILOCONF" >/dev/null && exit 0
 [ -r "$GRUBMENU" ] && $GREP '^[[:blank:]]*password[[:blank:]]' "$GRUBMENU" >/dev/null && exit 0
+for f in /boot/grub/grub.cfg /boot/grub2/grub.cfg
+do
+  case "`grub2_password "$f"`" in ok*) exit 0 ;; esac
+done
 
 # sulogin in single-user mode: an entry for runlevel S whose process runs
 # it ("~~:S:wait:/sbin/sulogin" on Debian, "su1:S:wait:/sbin/sulogin" on

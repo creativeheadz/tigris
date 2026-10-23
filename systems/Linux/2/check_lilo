@@ -34,6 +34,18 @@
 # 02/10/2018 jfs   Only complain if grub is world readable when it has a
 #                  password configured (Ubuntu bug 248843)
 #                  Look for grub in the proper location (as used in Grub 2)
+# 10/23/2026 atrimbitas - GRUB 2's configuration is read where Fedora, RHEL
+#                  and SUSE keep it too (/boot/grub2/grub.cfg; they got
+#                  boot005w), with user.cfg (grub2-setpassword) and
+#                  custom.cfg, and a password counts only with superusers
+#                  set, without which GRUB asks for none (grub2_password).
+#                  It runs on every architecture; only on x86, where a
+#                  LILO or GRUB is to be expected, does finding neither
+#                  say boot005w.
+#
+# References:
+#   https://www.gnu.org/software/grub/manual/grub/html_node/Authentication-and-authorisation.html
+#   man 8 grub2-setpassword (Red Hat), man 5 lilo.conf
 #
 # Tigris: needs root
 #   the boot loader's configuration is root's to read.
@@ -77,22 +89,24 @@ done
 # elements are set.
 #
 [ "$Tigris_TESTMODE" = 'Y' ] && {
-  haveallcmds GREP RM UNAME EGREP || exit 1
+  haveallcmds AWK GREP RM UNAME EGREP || exit 1
   haveallfiles BASEDIR WORKDIR || exit 1
   
   echo "--CONFIG-- [init003c] $0: Configuration ok..."
   exit 0
 }
 #------------------------------------------------------------------------
-haveallcmds GREP RM UNAME EGREP || exit 1
+haveallcmds AWK GREP RM UNAME EGREP || exit 1
 haveallfiles BASEDIR WORKDIR || exit 1
 
-# The root's architecture is not this host's: under --root a present
-# configuration file is checked, whatever this host runs on.
+# A configuration that is there is checked on any architecture (GRUB
+# boots arm64 and others too); finding none is reported only where a LILO
+# or GRUB is to be expected: on x86, or under --root, whose architecture
+# is not this host's.
+expected=Y
 if [ -z "$TIGRIS_ROOT" ]; then
   machine=`$UNAME -m`
-  # Only applies to the x86 or amd64 architectures:
-  [ -z "`echo $machine | $EGREP 'i.86$|^x86_64$'`" ] && exit 0
+  [ -z "`echo $machine | $EGREP 'i.86$|^x86_64$'`" ] && expected=N
 fi
 
 echo
@@ -131,49 +145,60 @@ then
 
 fi
 
-if [ -r "`__here /boot/grub/grub.cfg`" ] ; then
-    # Grub2 configuration file is  /boot/grub/grub.cfg
-    # Note: This configuration file can import additional files
-    # but these are not reviewed by the script
-   file=/boot/grub/grub.cfg
-elif [ -r "`__here /etc/grub.conf`" ] ; then
-   # Old SuSE versions use /etc/grub.conf.
-   file=/etc/grub.conf
-elif [ -r "`__here /boot/grub/menu.lst`" ] ; then
-   #  Old Debian version use /boot/grub/menu.lst
-   file=/boot/grub/menu.lst
-else
-   # try this for other Linux systems
-   file=/boot/grub/grub.conf
-fi 
+# grubperm FILE: GRUB's file that holds the password should be root's to
+# read alone. (Without a password there is nothing in it to hide.)
+grubperm()
+{
+	getpermit "$1" |
+	while read filename rowner rgroup rur ruw rux rgr rgw rgx ror row rox rsuid rsgid rstk
+	do
+	    if [ $rgr -eq 1 -o $rgw -eq 1 -o $rgx -eq 1 ]; then
+		message WARN boot003w "" "The Grub bootloader configuration file $1 has group permissions. Should be 0600 o 0400."
+	    fi
+	    if [ $ror -eq 1 -o $row -eq 1 -o $rox -eq 1 ]; then
+		message FAIL boot004f "" "The Grub bootloader configuration file $1 has world readable permissions. Should be 0600 o 0400."
+	    fi
+	done
+}
 
-herefile=`__here "$file"`
-if [ -r "$herefile" ]
-then
+# GRUB 2: /boot/grub (Debian, Ubuntu, Arch) or /boot/grub2 (Fedora, RHEL,
+# SUSE). A password protects the boot entries only with superusers set.
+grub2=
+for file in /boot/grub/grub.cfg /boot/grub2/grub.cfg
+do
+	[ -r "`__here "$file"`" ] || continue
+	found="Y"; grub2="Y"
+	case "`grub2_password "$file"`" in
+	  ok*user.cfg)
+		grubperm "$file"; grubperm "${file%/*}/user.cfg" ;;
+	  ok*)
+		grubperm "$file" ;;
+	  nosuper)
+		message WARN boot008w "" "The Grub bootloader configuration file ($file) sets a password but no superusers (set superusers=), so GRUB asks for none." ;;
+	  *)
+		message WARN boot008w "" "The Grub bootloader configuration file ($file) does not have a password configured." ;;
+	esac
+done
 
+# GRUB Legacy (0.9x): old SuSE's /etc/grub.conf, old Debian's
+# /boot/grub/menu.lst, other systems' /boot/grub/grub.conf, the first
+# there. A password line is all it takes.
+if [ -z "$grub2" ]; then
+  for file in /etc/grub.conf /boot/grub/menu.lst /boot/grub/grub.conf
+  do
+	herefile=`__here "$file"`
+	[ -r "$herefile" ] || continue
 	found="Y"
-	# GRUB password checks
-        if [ -z "`$EGREP '^[[:blank:]]*password' "$herefile"`" ] ; then
-                message WARN boot008w "" "The Grub bootloader configuration file ($file) does not have a password configured."
-	else 
-
-        # If GRUB *does* have a password then we check its permissions. Otherwise, we 
-        # do not complain on permissions
-            getpermit $file |
-            while read filename rowner rgroup rur ruw rux rgr rgw rgx ror row rox rsuid rsgid rstk
-            do
-
-            if [ $rgr -eq 1 -o $rgw -eq 1 -o $rgx -eq 1 ]; then
-                message WARN boot003w "" "The Grub bootloader configuration file $file has group permissions. Should be 0600 o 0400."
-            fi
-            if [ $ror -eq 1 -o $row -eq 1 -o $rox -eq 1 ]; then
-                message FAIL boot004f "" "The Grub bootloader configuration file $file has world readable permissions. Should be 0600 o 0400."
-            fi
-	    done
-        fi
+	if [ -z "`$EGREP '^[[:blank:]]*password' "$herefile"`" ] ; then
+		message WARN boot008w "" "The Grub bootloader configuration file ($file) does not have a password configured."
+	else
+		grubperm "$file"
+	fi
+	break
+  done
 fi
 
-[ "$found" != 'Y' ] && {
+[ "$found" != 'Y' ] && [ "$expected" = Y ] && {
 	message WARN boot005w "" "Could not access LILO's or Grub's configuration file"
 }
 

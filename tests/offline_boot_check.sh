@@ -4,8 +4,9 @@
 #
 # Two roots run with the boot and single-user checks on. The first has
 # a group- and world-readable lilo.conf with no password and a
-# group- and world-readable grub.cfg that does set one: every leg must
-# be reported by the root's own paths. It boots with systemd: its
+# group- and world-readable grub.cfg that does set one (a superuser and
+# its password): every leg must be reported by the root's own paths.
+# It boots with systemd: its
 # rescue.service runs sulogin and must pass, its emergency.service has a
 # drop-in that starts a bare shell and must be reported, and the sysvinit
 # inittab left behind (no sulogin in it) must not be read. The second
@@ -17,7 +18,10 @@
 # check_single then runs alone on smaller roots: busybox's inittab, other
 # distributions' sulogin lines, lilo passwords, sulogin forced open with
 # root locked (and not locked), a masked unit; and on this host, whatever
-# its architecture (it once did nothing unless that was i?86).
+# its architecture (it once did nothing unless that was i?86). check_lilo
+# runs alone too (as a user, called directly) on GRUB 2 roots: Red Hat's
+# /boot/grub2 with and without grub2-setpassword's user.cfg, a password
+# without superusers, a password in custom.cfg.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -39,7 +43,7 @@ printf 'root:x:0:0:root:/root:/bin/bash\nmilo:x:%s:%s:Milo:/home/milo:/bin/bash\
 printf 'root:x:0:\ncrew:x:%s:\n' "$G" > "$R/etc/group"
 printf '# lilo\nimage=/boot/vmlinuz\n' > "$R/etc/lilo.conf"
 chmod 644 "$R/etc/lilo.conf"
-printf 'password s3cret\nmenuentry x {\n}\n' > "$R/boot/grub/grub.cfg"
+printf 'set superusers="admin"\npassword_pbkdf2 admin grub.pbkdf2.sha512.10000.AB12.CD34\nmenuentry x {\n}\n' > "$R/boot/grub/grub.cfg"
 chmod 644 "$R/boot/grub/grub.cfg"
 # systemd: its units as systemd 240 and later ship them, and a drop-in
 # that hands emergency mode a shell; the inittab sysvinit left behind
@@ -149,6 +153,51 @@ printf '%s\n' "$out" | grep -q 'emergency.service' && bad "a masked emergency.se
   ok "a unit masked in /etc (linked to /dev/null) starts nothing: quiet"
 printf 'root:$y$j9T$salt$hash:19000:0:99999:7:::\n' > "$sd/etc/shadow"
 [ -z "`single "$sd"`" ] && ok "SYSTEMD_SULOGIN_FORCE=1 with root's password set: quiet" || bad "forced, root unlocked: `single "$sd"`"
+# GRUB 2, check_lilo alone (called directly, it runs as a user too)
+lilo() {
+  ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$1" sh ./systems/Linux/2/check_lilo ) 2>&1 |
+    $AWK '/^--[A-Z]+-- \[/ { if (s != "") print s; s = $0; next } /^ / && s != "" { sub(/^ +/, " "); s = s $0; next } END { if (s != "") print s }'
+}
+rh=$W/rh; mkdir -p "$rh/etc" "$rh/boot/grub2"
+# what grub2-mkconfig's 01_users writes on Red Hat's systems: superusers
+# and a password only when user.cfg has GRUB2_PASSWORD
+cat > "$rh/boot/grub2/grub.cfg" <<'EOF'
+### BEGIN /etc/grub.d/01_users ###
+if [ -f ${prefix}/user.cfg ]; then
+  source ${prefix}/user.cfg
+  if [ -n "${GRUB2_PASSWORD}" ]; then
+    set superusers="root"
+    export superusers
+    password_pbkdf2 root ${GRUB2_PASSWORD}
+  fi
+fi
+### END /etc/grub.d/01_users ###
+menuentry 'Fedora Linux' --unrestricted {
+}
+EOF
+chmod 600 "$rh/boot/grub2/grub.cfg"
+out=`lilo "$rh"`
+printf '%s\n' "$out" | grep -q 'boot008w.*(/boot/grub2/grub.cfg) does not have a password configured' &&
+  ok "/boot/grub2/grub.cfg is read; 01_users without user.cfg sets no password: boot008w" || bad "grub2 without user.cfg: $out"
+printf '%s\n' "$out" | grep -q 'boot005w' && bad "boot005w though /boot/grub2/grub.cfg is there" ||
+  ok "with /boot/grub2/grub.cfg there, no boot005w"
+printf 'GRUB2_PASSWORD=grub.pbkdf2.sha512.10000.AB12.CD34\n' > "$rh/boot/grub2/user.cfg"
+chmod 600 "$rh/boot/grub2/user.cfg"
+[ -z "`lilo "$rh"`" ] && ok "grub2-setpassword's user.cfg, both files 0600: quiet" || bad "grub2 with user.cfg: `lilo "$rh"`"
+chmod 644 "$rh/boot/grub2/user.cfg"
+lilo "$rh" | grep -q 'boot004f.*/boot/grub2/user.cfg has world readable' &&
+  ok "a world-readable user.cfg holding the hash: boot004f" || bad "user.cfg permissions: `lilo "$rh"`"
+ns=$W/ns; mkdir -p "$ns/etc" "$ns/boot/grub"
+printf 'password_pbkdf2 admin grub.pbkdf2.sha512.10000.AB12.CD34\n' > "$ns/boot/grub/grub.cfg"
+lilo "$ns" | grep -q 'boot008w.*sets a password but no superusers' &&
+  ok "a password without superusers protects nothing: boot008w" || bad "no superusers: `lilo "$ns"`"
+printf 'source ${config_directory}/custom.cfg\n' > "$ns/boot/grub/grub.cfg"
+printf 'set superusers="admin"\npassword admin s3cret\n' > "$ns/boot/grub/custom.cfg"
+chmod 600 "$ns/boot/grub/grub.cfg"
+[ -z "`lilo "$ns"`" ] && ok "a superuser and password in custom.cfg count" || bad "custom.cfg: `lilo "$ns"`"
+sysv grub; mkdir -p "$W/grub/boot/grub"; cp "$ns/boot/grub/grub.cfg" "$ns/boot/grub/custom.cfg" "$W/grub/boot/grub/"
+[ -z "`single "$W/grub"`" ] && ok "a GRUB 2 password stands in for sulogin too" || bad "GRUB 2 password for check_single: `single "$W/grub"`"
+
 # on this host, live, whatever its architecture
 ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_single ) 2>&1 | grep -q '^# Checking for single user-mode password' &&
   ok "it runs on this host (`uname -m`)" || bad "check_single did not run on `uname -m`"
