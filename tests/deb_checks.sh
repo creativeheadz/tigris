@@ -5,12 +5,13 @@
 # Run as root in a throwaway Debian or Ubuntu container. It modifies one
 # packaged binary, deletes another, adds a stray file to /usr/sbin, an
 # override (dpkg-statoverride, without --update) that a binary does not
-# match, a removed-but-not-purged package in the dpkg status and a
-# diversion whose diverted-to copy was changed, then
-# runs deb_checkmd5sums, deb_nopackfiles and deb_statoverride
-# from a root-owned copy of this tree and checks that exactly those six
-# are reported. Where /usr is not merged it also copies /bin/su to
-# /usr/bin/su, a stray there however packaged its twin is.
+# match, a removed-but-not-purged package in the dpkg status, a
+# diversion whose diverted-to copy was changed and three strays named so
+# that a shell's read or a dpkg -S pattern would take them for
+# /usr/bin/diff, then runs deb_checkmd5sums, deb_nopackfiles and
+# deb_statoverride from a root-owned copy of this tree and checks that
+# exactly those are reported. Where /usr is not merged it also copies
+# /bin/su to /usr/bin/su, a stray there however packaged its twin is.
 # deb_nopackfiles runs again with Tigris_DPKG_Optimize=N, its dpkg -S
 # lookup, which must find the same unowned files. Then it copies the
 # container's root, changes and all, into a directory and runs the three
@@ -41,6 +42,12 @@ dpkg-statoverride --add root root 0700 /usr/bin/cmp
 dpkg-divert --local --no-rename --divert /usr/bin/tac.distrib --add /usr/bin/tac >/dev/null
 cp /usr/bin/tac /usr/bin/tac.distrib && echo tampered >> /usr/bin/tac.distrib
 printf '\nPackage: zz-tiger-unpurged\nStatus: deinstall ok config-files\nArchitecture: amd64\nVersion: 1.0\n' >> /var/lib/dpkg/status
+# Strays a shell's read or a dpkg -S pattern would take for the packaged
+# /usr/bin/diff: a trailing blank, a backslash, a *
+for name in '/usr/bin/diff ' '/usr/bin/d\iff' '/usr/bin/dif*'
+do
+  echo x > "$name"
+done
 # Where /usr is not merged, /bin/su and /usr/bin/su are two files: a copy
 # at the second is a stray, though dpkg owns the first
 unmerged=
@@ -79,6 +86,17 @@ expect "lin042w.*zz-tiger-unpurged" "removed but not purged package reported (li
 expect "lin005f.*/usr/bin/tac.distrib" "modified copy of a diverted binary reported (lin005f)"
 [ -n "$unmerged" ] &&
   expect "lin001w.*/usr/bin/su'" "/usr/bin/su beside the packaged /bin/su reported where /usr is not merged (lin001w)"
+named()   # named NAME WHAT: a lin001w for exactly that name
+{
+  if grep lin001w "$W/report" | grep -q -F "\`$1'"; then
+    echo "ok   $2"
+  else
+    echo "FAIL $2"; fail=1
+  fi
+}
+named '/usr/bin/diff ' "stray whose name ends in a blank reported by its name (lin001w)"
+named '/usr/bin/d\iff' "stray with a backslash in its name reported by its name (lin001w)"
+named '/usr/bin/dif*' "stray with a * in its name reported by its name (lin001w)"
 if [ "`grep -c lin039w "$W/report"`" = 1 ]; then
   echo "ok   no other override mismatches"
 else
@@ -86,15 +104,21 @@ else
 fi
 
 # Docker drops /usr/sbin/policy-rc.d into images; nothing else may be unowned
-planted='zz-tiger-stray\|policy-rc.d'
-[ -n "$unmerged" ] && planted="$planted\\|/usr/bin/su'"
+cat > "$W/planted" <<'EOF'
+`/usr/sbin/zz-tiger-stray'
+`/usr/sbin/policy-rc.d'
+`/usr/bin/diff '
+`/usr/bin/d\iff'
+`/usr/bin/dif*'
+EOF
+[ -n "$unmerged" ] && echo "\`/usr/bin/su'" >> "$W/planted"
 unowned=`grep -c 'lin001w' "$W/report"`
-others=`grep 'lin001w' "$W/report" | grep -vc "$planted"`
+others=`grep 'lin001w' "$W/report" | grep -v -c -F -f "$W/planted"`
 if [ "$others" -eq 0 ]; then
   echo "ok   no other unowned files ($unowned lin001w in all)"
 else
   echo "FAIL $others unexpected unowned files:"
-  grep 'lin001w' "$W/report" | grep -v "$planted" | head -5
+  grep 'lin001w' "$W/report" | grep -v -F -f "$W/planted" | head -5
   fail=1
 fi
 

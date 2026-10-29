@@ -17,6 +17,11 @@
 #
 # Linux/deb_nopackfiles - 23/08/2001
 # 
+# 10/29/2026 - atrimbitas - A file's name is read as it is (IFS= read -r)
+#              and given to dpkg -S with *, ?, [, ] and \ escaped, since
+#              dpkg -S reads a pattern: a stray named /usr/bin/dif* or
+#              /usr/bin/d\iff matched /usr/bin/diff and went unreported,
+#              and one named "/usr/bin/diff " was reported as /usr/bin/diff.
 # 10/29/2026 - atrimbitas - Only the names merged-/usr really aliases count
 #              as one file: bin, sbin, lib, lib32, lib64, libo32 and libx32
 #              where each links to the same directory under /usr. The dpkg
@@ -176,15 +181,20 @@ if [ "$Tigris_DPKG_Optimize" = "N" ]
 then
         binfiles |
         # We are not using -maxdepth here, but we could...
-        while read file
+        while IFS= read -r file
         do
-                pack=`$DPKG --admindir="$admindir" -S "$file" 2>/dev/null`
+                # dpkg -S takes a pattern: escape what it would expand
+                case $file in
+                *[][*?\\]*) pat=$(printf '%s\n' "$file" | $SED 's/[][*?\\]/\\&/g') ;;
+                *) pat=$file ;;
+                esac
+                pack=`$DPKG --admindir="$admindir" -S "$pat" 2>/dev/null`
                 # dpkg may list it by its aliased name, /bin/foo
                 if [ "$pack" = "" ] ; then
                         for dir in $aliased ; do
                                 case $file in
                                 /usr/$dir/*)
-                                        pack=`$DPKG --admindir="$admindir" -S "${file#/usr}" 2>/dev/null` ;;
+                                        pack=`$DPKG --admindir="$admindir" -S "${pat#/usr}" 2>/dev/null` ;;
                                 esac
                         done
                 fi
@@ -208,7 +218,7 @@ else
         $GREP -x -F -v -f $WORKDIR/dpkg-packages.list |
         # To search for diversions
         $GREP -x -F -v -f $WORKDIR/dpkg-diversions.list |
-        while read file
+        while IFS= read -r file
         do
           message WARN lin001w "" "File \`$file' does not belong to any package."
         done
