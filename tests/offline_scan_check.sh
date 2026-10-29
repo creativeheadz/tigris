@@ -16,7 +16,10 @@
 # file does not know their gid, though this host does: every file must
 # then be one "without a defined group", which only the root's group file
 # can say. Every finding must name the root's paths. As root a device file
-# outside /dev is added. Needs GNU find.
+# outside /dev is added. Tigris_FSScan_PruneDirs holds an empty entry and
+# two directories whose names hold a quote, one with a command substitution
+# after it: their world-writable directories must go unreported, the rest
+# of the scan must still run, and the command must not. Needs GNU find.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -40,6 +43,9 @@ printf 'root:x:0:\n' > "$R/etc/group"
 printf '\177ELF' > "$R/usr/bin/zz-suid"; chmod 4755 "$R/usr/bin/zz-suid"
 printf '#!/bin/sh\necho hi\n' > "$R/usr/bin/zz-sgid-script"; chmod 2755 "$R/usr/bin/zz-sgid-script"
 chmod 777 "$R/srv/drop"; chmod 1777 "$R/srv/shared" "$R/etc/zz-drop"
+# pruned: a quote in a name, and a command substitution after one
+mkdir -p "$R/srv/it's/zz-ww" "$R/srv/zz'\$(touch zz-pwned)'/zz-ww"
+chmod 777 "$R/srv/it's/zz-ww" "$R/srv/zz'\$(touch zz-pwned)'/zz-ww"
 # /tmp world writable and not sticky; what is under it is its users'
 # business; /var/tmp as it should be
 chmod 777 "$R/tmp" "$R/tmp/zz-sub"; chmod 1777 "$R/var/tmp"
@@ -61,7 +67,8 @@ fi
   echo 'Tigris_Deb_CheckMD5Sums=N'; echo 'Tigris_Deb_NoPackFiles=N'; echo 'Tigris_Deb_StatOverride=N'
   echo 'Tigris_Check_FILESYSTEM=Y'
   for s in Setuid Setgid Devs SymLinks ofNote WDIR WFILE Unowned; do echo "Tigris_FSScan_$s=Y"; done
-  echo "Tigris_FSScan_PruneDirs=''"
+  # (an empty entry between them, which once pruned the whole scan)
+  echo 'Tigris_FSScan_PruneDirs="/srv/it'"'"'s||/srv/zz'"'"'\$(touch zz-pwned)'"'"'"'
 } > "$W/profiles/scan"
 chmod 644 "$W/profiles/scan"
 
@@ -92,6 +99,10 @@ has '[fsys020f] File /etc/zz-open is world writable (-rw-rw-rw-, owner' && has '
 has '[fsys021w] 2 world-writable files under /home/milo' && ! has 'File /home/milo/zz-a ' &&
   ok "two in a home directory: counted, not listed: fsys021w" || bad "fsys021w"
 has "Unusual filename \`...' found" && ok "a directory named ...: fsys005a" || bad "fsys005a"
+grep -q "zz-ww" "$report" && bad "a directory in Tigris_FSScan_PruneDirs was scanned" ||
+  ok "directories in Tigris_FSScan_PruneDirs, quotes in their names: not scanned"
+[ -z "`find "$W" -name zz-pwned`" ] && ok "a command substitution in a pruned name did not run" ||
+  bad "a command substitution in Tigris_FSScan_PruneDirs ran"
 has '[fsys013w] /etc/zz-hostlink is a dangling symlink' &&
   ok "an absolute link to a file this host has and the root does not: dangling inside the root" || bad "dangling"
 has '/etc/zz-ok is a dangling' && bad "a link to a file the root has was called dangling" || ok "a link to a file the root has is not dangling"

@@ -346,30 +346,39 @@ counter=1
 rw=rw
 [ "x$Tigris_FSScan_ReadOnly" = 'xY' ] && rw=
 
-# Directories the admin does not want scanned (pipe-separated find -path patterns)
+# Directories the admin does not want scanned (pipe-separated find -path
+# patterns). The patterns, and the root they are in, reach eval only as
+# variables it expands, never as text it parses: a quote in either broke
+# the find command, and could have run one. An empty entry is skipped (it
+# was -path '/*', which pruned the whole scan).
 pruneopt=
+nprune=0
 if [ -n "$Tigris_FSScan_PruneDirs" ]; then
   saveIFS=$IFS
   IFS='|'
   set -f
   for prunedir in $Tigris_FSScan_PruneDirs
   do
+    [ -n "$prunedir" ] || continue
+    nprune=`$EXPR $nprune + 1`
     # Match the directory and anything below it: a mount point inside a
     # pruned directory is a starting point of its own for find
+    eval "prune$nprune=\$TIGRIS_ROOT\${prunedir%/} prunebelow$nprune=\$TIGRIS_ROOT\${prunedir%/}/\*"
     [ -n "$pruneopt" ] && pruneopt="$pruneopt -o"
-    pruneopt="$pruneopt -path '$TIGRIS_ROOT${prunedir%/}' -o -path '$TIGRIS_ROOT${prunedir%/}/*'"
+    pruneopt="$pruneopt -path \"\$prune$nprune\" -o -path \"\$prunebelow$nprune\""
   done
   set +f
   IFS=$saveIFS
-  pruneopt="\( $pruneopt \) -prune -o"
+  [ -n "$pruneopt" ] && pruneopt="\( $pruneopt \) -prune -o"
 fi
 
 {
   if [ -n "$TIGRIS_ROOT" ]; then
-    # the root, all of it, but what a running system mounts there
-    # (read below takes one level of backslashes and eval the next; printf,
-    # since dash's echo would take another)
-    printf '%s\n' "\\\\( -path '$TIGRIS_ROOT/proc' -o -path '$TIGRIS_ROOT/sys' -o -path '$TIGRIS_ROOT/run' \\\\) -prune -o"
+    # the root, all of it, but what a running system mounts there, the
+    # root named by its variable (read below takes one level of
+    # backslashes and eval the next; printf, since dash's echo would take
+    # another)
+    printf '%s\n' '\\( -path "$TIGRIS_ROOT/proc" -o -path "$TIGRIS_ROOT/sys" -o -path "$TIGRIS_ROOT/run" \\) -prune -o'
     echo "$TIGRIS_ROOT"
   elif [ ! -n "$FINDXDEV" ]; then
     echo "$FINDPRUNE"
