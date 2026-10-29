@@ -332,7 +332,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ["debian:stable", "debian:sid", "ubuntu:24.04"]
+        # bullseye is the last release whose image has not merged /usr
+        image: ["debian:stable", "debian:sid", "ubuntu:24.04", "debian:bullseye"]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Plant problems and check they are found

@@ -17,6 +17,12 @@
 #
 # Linux/deb_nopackfiles - 23/08/2001
 # 
+# 10/29/2026 - atrimbitas - Only the names merged-/usr really aliases count
+#              as one file: bin, sbin, lib, lib32, lib64, libo32 and libx32
+#              where each links to the same directory under /usr. The dpkg
+#              -S lookup tried the /bin name on any system, so on one not
+#              merged a stray /usr/bin/su beside /bin/su passed as packaged.
+#              The temporary files go after either lookup.
 # 10/07/2026 - atrimbitas - Auditing an offline root (--root): its files and
 #              its dpkg database (dpkg --admindir), its directories taken
 #              only where they are directories of its own, not links.
@@ -146,6 +152,17 @@ if [ -z "$dirlist" ]; then
 	exit 1
 fi
 
+# On merged-/usr systems /bin, /sbin, /lib and the other aliased
+# directories are links to the same directories under /usr, and dpkg may
+# have recorded a file under either name. Elsewhere they are different
+# files, and a stray /usr/bin/su is not the packaged /bin/su.
+aliased=""
+for dir in bin sbin lib lib32 lib64 libo32 libx32 ; do
+	if [ -L "$R/$dir" ] && [ "`rootfile /$dir`" -ef "`rootfile /usr/$dir`" ] ; then
+		aliased="$aliased $dir"
+	fi
+done
+
 # The files under them, by their path on the system audited
 binfiles()
 {
@@ -162,9 +179,15 @@ then
         while read file
         do
                 pack=`$DPKG --admindir="$admindir" -S "$file" 2>/dev/null`
-                # On merged-/usr systems dpkg may record the file under /bin, /sbin or /lib
-                [ "$pack" = "" ] && [ "${file#/usr/}" != "$file" ] &&
-                pack=`$DPKG --admindir="$admindir" -S "${file#/usr}" 2>/dev/null`
+                # dpkg may list it by its aliased name, /bin/foo
+                if [ "$pack" = "" ] ; then
+                        for dir in $aliased ; do
+                                case $file in
+                                /usr/$dir/*)
+                                        pack=`$DPKG --admindir="$admindir" -S "${file#/usr}" 2>/dev/null` ;;
+                                esac
+                        done
+                fi
                 [ "$pack" = "" ] && {
                 message WARN lin001w "" "File \`$file' does not belong to any package." 
                 }
@@ -172,11 +195,10 @@ then
 else
         # Alternative (optimal but not following standard way)
 	seddirlist=`echo $dirlist | $SED -e 's/ /\\\\\|/g; s/\//\\\\\//g'`
-	# On merged-/usr systems /bin, /sbin and /lib link into /usr and dpkg
-	# may record a file under either path, so rewrite them to /usr
+	# Give files recorded under an aliased name, /bin/foo, their /usr name
 	usrmerge=
-	for dir in bin sbin lib ; do
-		[ -L "$R/$dir" ] && usrmerge="$usrmerge -e s,^/$dir/,/usr/$dir/,"
+	for dir in $aliased ; do
+		usrmerge="$usrmerge -e s,^/$dir/,/usr/$dir/,"
 	done
 	$FIND "$admindir/info" -name "*.list" -type f -exec cat {} + |
         $SED -n $usrmerge -e "/^\($seddirlist\)/p" > $WORKDIR/dpkg-packages.list
@@ -190,8 +212,8 @@ else
         do
           message WARN lin001w "" "File \`$file' does not belong to any package."
         done
-        delete $WORKDIR/dpkg-packages.list $WORKDIR/dpkg-diversions.list
 fi
+delete $WORKDIR/dpkg-packages.list $WORKDIR/dpkg-diversions.list
 
 # Packages removed but not purged leave their configuration files
 # behind: stale root-owned config a reinstall would trust again
