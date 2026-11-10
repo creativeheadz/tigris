@@ -3,9 +3,10 @@
 # tests/nginx_check.sh - check_nginx against a root of its own
 #
 # A fake root with a bad server (weak protocols and ciphers, an open
-# key, a missing certificate, no logging, no HSTS, listings on, and a
-# regex location plus a quoted-braces if that must not confuse the
-# block tracking), a clean HTTPS server, a plain HTTP one, a
+# key, a missing certificate, no logging, debug error logging, no
+# HSTS, listings on, and a regex location plus a quoted-braces if
+# that must not confuse the block tracking), a clean HTTPS server
+# (its info-level error_log silent), a plain HTTP one, a
 # group-readable key, and a disabled site that must not be read. Then
 # a root for the http scope (logging off and HSTS there), one for the
 # compiled-in main path and user root, and an offline root.
@@ -48,6 +49,7 @@ server {
   location /images/ {
     autoindex on;
   }
+  error_log /var/log/nginx/bad.log debug;
 }
 EOF
 cat > "$r/etc/nginx/sites-enabled/20-good" <<'EOF'
@@ -55,6 +57,7 @@ server {
   listen 443 ssl;
   server_name good.example;
   access_log /var/log/nginx/good.log;
+  error_log /var/log/nginx/good-error.log info;
   ssl_certificate /etc/nginx/ssl/good.pem;
   ssl_certificate_key /etc/nginx/ssl/good.key;
   ssl_protocols TLSv1.2 TLSv1.3;
@@ -79,6 +82,9 @@ has "[ngx005f] ssl_protocols in /etc/nginx/nginx.conf line 8 allows SSLv3: broke
   ok "SSLv3 at http scope: ngx005f" || { bad "sslv3"; cat "$W/out"; }
 has "[ngx012w] Errors are thrown away (error_log /dev/null in /etc/nginx/nginx.conf line 9): failures leave no trace." &&
   ok "error_log to /dev/null: ngx012w" || { bad "error_log"; cat "$W/out"; }
+has "[ngx013w] Error logging runs at debug level (error_log /var/log/nginx/bad.log in /etc/nginx/sites-enabled/10-bad line 15):" &&
+  [ "`count 'ngx013w'`" = 1 ] &&
+  ok "error_log at debug: ngx013w, once, with its line" || { bad "debug log"; cat "$W/out"; }
 has "[ngx006w] ssl_protocols in /etc/nginx/sites-enabled/10-bad line 7 allows TLSv1, TLSv1.1: deprecated since 2021; TLS 1.2 is the floor." &&
   ok "TLS 1.0 and 1.1, both named: ngx006w" || { bad "tls"; cat "$W/out"; }
 has "[ngx007w] ssl_ciphers in /etc/nginx/sites-enabled/10-bad line 8 names weak ciphers (RC4-MD5): clients can negotiate down to them." &&

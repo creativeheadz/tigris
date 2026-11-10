@@ -1,0 +1,12 @@
+Id: ngx013w
+Severity: WARN
+Category: services
+Check: check_nginx
+Fix: Log errors at info or above (error_log /var/log/nginx/error.log).
+References: ngx_http_core_module
+Controls: CIS 8.2; NIST AU-2, AU-12; ISO 8.15
+
+Error logging runs at debug level in the file and line named. Debug
+logs record request bodies, headers and secrets, and grow fast; info
+or above is enough in production. It also only runs on a nginx
+built with --with-debug.

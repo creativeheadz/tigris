@@ -21,8 +21,9 @@
 #                 broken or deprecated protocols (ngx005f, ngx006w), weak
 #                 ciphers (ngx007w), workers as root (ngx008f), directory
 #                 listings (ngx009w), HTTPS without HSTS (ngx010i), a
-#                 certificate or key that is not there (ngx011w), and
-#                 errors thrown away (ngx012w).
+#                 certificate or key that is not there (ngx011w),
+#                 errors thrown away (ngx012w), and error logging left
+#                 at debug level (ngx013w).
 #
 # 10/07/2026 atrimbitas - Initial version. One awk pass over the
 #                 configuration with its includes expanded, tracking
@@ -40,6 +41,8 @@
 #                 running the server. What is not set is not judged: a
 #                 modern nginx's defaults (TLS 1.2 and up, strong
 #                 ciphers) are taken as sane.
+# 11/10/2026 - error_log at debug level judged (ngx013w): debug logs
+#                 record request bodies and secrets.
 #
 # References:
 #   ngx_http_core_module, ngx_http_ssl_module, nginx(8)
@@ -250,6 +253,10 @@ expand_ngx $main 0 | $AWK -v sq="'" '
           print "AUTOINDEX\t" file "\t" lineno "\t" (srvd ? sname[srv()] : "")
         if (w[1] == "error_log" && (w[2] == "/dev/null" || w[2] == "off"))
           print "NOLOGERR\t" file "\t" lineno "\t" w[2]
+        if (w[1] == "error_log") {
+          for (ei = 3; ei <= nw; ei++)
+            if (tolower(w[ei]) == "debug") { print "DEBUGERR\t" file "\t" lineno "\t" w[2]; break }
+        }
         if (w[1] == "listen" && srvd) { for (i = 2; i <= nw; i++) if (w[i] == "ssl") srvssl[srv()] = 1 }
         if (w[1] == "ssl" && w[2] == "on" && srvd) srvssl[srv()] = 1
         if (w[1] == "server_name" && srvd && d == srvd && sname[srv()] == "") { sname[srv()] = w[2]; gsub(/"/, "", sname[srv()]) }
@@ -285,6 +292,8 @@ expand_ngx $main 0 | $AWK -v sq="'" '
         fi ;;
       NOLOGERR)
         message WARN ngx012w "" "Errors are thrown away (error_log $c in $a line $b): failures leave no trace." ;;
+      DEBUGERR)
+        message WARN ngx013w "" "Error logging runs at debug level (error_log $c in $a line $b): debug logs record request bodies and secrets; info or above is enough." ;;
       PROTOSSL)
         message FAIL ngx005f "" "ssl_protocols in $a line $b allows $c: broken protocols, disabled in every client years ago." ;;
       PROTOTLS)
