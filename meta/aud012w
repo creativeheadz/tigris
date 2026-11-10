@@ -1,0 +1,26 @@
+Id: aud012w
+Severity: WARN
+Category: logging
+Check: check_audit
+Fix: chown root:log_group and chmod 0640 (0600 without a log_group) the audit log; start auditd if the file is missing.
+References: auditd.conf(5); auditd(8); CIS Distribution Independent Linux Benchmark 4.1.4 (Configure auditd file access)
+Controls: CIS 8.2, 8.5; NIST AU-2, AU-12; ISO 8.15
+
+auditd is configured on this Linux host (running; or, on an offline
+root, installed and enabled at boot) and its log file, log_file in
+/etc/audit/auditd.conf (/var/log/audit/audit.log by default), is
+missing, or is not root's, or can be read or written by someone other
+than root and the group log_group names. auditd creates the file 0600,
+or 0640 owned by root and log_group when log_group is set
+(auditd.conf(5)), and the CIS Benchmarks ask for 0640 or tighter. The
+audit trail records who logged in, who used privileges and who touched
+the watched files: readable by anyone, it tells every local account
+what the others did; writable, it can be edited by whoever it
+incriminates; missing, nothing auditd records is kept.
+
+Fedora and RHEL, which install auditd by default, ship it with the file
+root:root 0600, so a stock host says nothing. Fix the mode and owner
+('chown root:adm /var/log/audit/audit.log; chmod 0640 ...' where
+log_group is adm, 0600 otherwise); a missing file comes back when
+auditd is restarted, and if /var/log/audit itself is gone, recreate it
+root's and mode 0700 first.

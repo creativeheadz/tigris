@@ -19,3 +19,8 @@ by name, so a second uid-0 account whose home is root's is not reported
 for that; it is pass017w's. Root and the accounts from UID_MIN
 (login.defs; else 1000, or 500 on macOS) up are judged, when they have
 a login shell and a home that exists.
+
+Not judged: the homes of an offline root that a user, not root, is
+auditing, when they belong to that user. An image a user unpacked is
+all that user's, so the owner says who unpacked it and nothing about
+the account.

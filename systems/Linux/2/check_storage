@@ -80,6 +80,19 @@
 #                 /home or /var being part of the root file system is
 #                 INFO (stor019i): CIS level 2, and most stock installs
 #                 have one root.
+# 10/23/2026 - A core_pattern piped to systemd-coredump was taken as
+#                 safe whatever it did with the dumps. Now its
+#                 coredump.conf and coredump.conf.d (coredump.conf(5):
+#                 /etc over /run over /usr/lib, drop-ins by name, the
+#                 later winning) are read: Storage=none or
+#                 ProcessSizeMax=0 keeps nothing, and is what CIS 1.5
+#                 asks for; otherwise the dumps are kept, root's and the
+#                 crashing user's own, and stor020i says so at INFO (it
+#                 is what every stock systemd host does, and core(5) and
+#                 systemd-coredump(8) call it safe: the dump of a setuid
+#                 program is withheld from the user when fs.suid_dumpable
+#                 is 2, check_sysctl's lin044i). A pipe to anything else
+#                 (apport, abrt) is left alone as before. Live and offline.
 #
 # Tigris: offline
 #   what the root sets up at boot: fstab, crypttab, sysctl.d,
@@ -397,6 +410,66 @@ storage_mounts()
   fi
 }
 
+# coredump_conf: what systemd-coredump is configured to do with a dump,
+# "Storage<TAB>where set<TAB>ProcessSizeMax<TAB>where set", the defaults
+# (external, 32G) where nothing sets them. coredump.conf(5): the main
+# file (/etc/systemd/coredump.conf, or /usr/lib's when there is none)
+# is read first and the drop-ins of /etc, /run, /usr/local/lib and
+# /usr/lib's coredump.conf.d after it, one of a name (the first of those
+# directories to have it, so /etc masks a vendor's, a link to /dev/null
+# included), in the order of their names, the last of a key winning.
+coredump_conf()
+{
+  {
+    for __m in /etc/systemd/coredump.conf /run/systemd/coredump.conf /usr/lib/systemd/coredump.conf
+    do
+      [ -f "`rootfile $__m`" ] && { echo "$__m"; break; }
+    done
+    for __d in /etc/systemd/coredump.conf.d /run/systemd/coredump.conf.d /usr/local/lib/systemd/coredump.conf.d /usr/lib/systemd/coredump.conf.d
+    do
+      rootls $__d
+    done | $AWK '/\.conf$/ { n = $0; sub(/.*\//, "", n); if (!(n in seen)) { seen[n]; print n "\t" $0 } }' |
+      $SORT | $AWK -F'\t' '{ print $2 }'
+  } | while IFS= read -r __f
+  do
+    __h=`rootfile "$__f"`
+    [ -n "$__h" ] && [ -f "$__h" ] || continue
+    src="$__f" $AWK '
+      { sub(/^[ \t]+/, ""); sub(/[ \t]+$/, "") }
+      /^[#;]/ || $0 == "" { next }
+      /^\[/ { insect = ($0 == "[Coredump]"); next }
+      insect && /^(Storage|ProcessSizeMax)[ \t]*=/ {
+        k = $0; sub(/[ \t]*=.*/, "", k)
+        v = $0; sub(/^[^=]*=[ \t]*/, "", v)
+        printf "%s\t%s\t%s\n", k, v, ENVIRON["src"]
+      }' "$__h"
+  done | $AWK -F'\t' '
+    $1 == "Storage" { s = $2; sf = $3 }
+    $1 == "ProcessSizeMax" { z = $2; zf = $3 }
+    END {
+      if (s == "") { s = "external"; sf = "the default" }
+      if (z == "") { z = "32G"; zf = "the default" }
+      printf "%s\t%s\t%s\t%s\n", s, sf, z, zf
+    }'
+}
+
+# coredump_judge: the dumps systemd-coredump keeps, if any (stor020i)
+coredump_judge()
+{
+  IFS='	' read -r cstore cstorefile csize csizefile <<EOF
+`coredump_conf`
+EOF
+  [ "$cstore" = none ] && return 0
+  case "$csize" in 0|0[KMGTPEB]|0[KMGTPE]B) return 0 ;; esac
+  case "$cstorefile" in "the default") swhere="$cstorefile" ;; *) swhere="set in $cstorefile" ;; esac
+  case "$csizefile" in "the default") zwhere="$csizefile" ;; *) zwhere="set in $csizefile" ;; esac
+  case "$cstore" in
+    journal) kept="in the journal, with the rest of the system log" ;;
+    *) kept="in /var/lib/systemd/coredump, readable by root and by the user whose program crashed" ;;
+  esac
+  message INFO stor020i "Storage=$cstore ($swhere), ProcessSizeMax=$csize ($zwhere). CIS 1.5 asks for Storage=none and ProcessSizeMax=0, in a file of /etc/systemd/coredump.conf.d; keep the dumps where crashes are debugged on this host." "systemd-coredump keeps core dumps ($kept): a crashed program's memory, passwords and keys included, outlives it."
+}
+
 if [ -n "$TIGRIS_ROOT" ]; then
   echo
   echo "# Checking the mount options, encryption and core dumps $TIGRIS_ROOT sets up at boot..."
@@ -476,6 +549,7 @@ if [ -n "$TIGRIS_ROOT" ]; then
   delete $SYSCTL_CONF
   if [ -n "$pattern" ]; then where="set by its sysctl.d"; else pattern=core where="the kernel's default: nothing in its sysctl.d sets it"; fi
   case "$pattern" in
+    '|'*systemd-coredump*) coredump_judge ;;
     '|'*) ;;
     *) core_limited || message WARN stor007w "kernel.core_pattern is \"$pattern\" ($where). Add '* hard core 0' to /etc/security/limits.conf, or install systemd-coredump, which keeps them where only root reads them." "A program that crashes writes its memory to a core file beside it, passwords and keys included, and nothing limits that." ;;
   esac
@@ -595,6 +669,7 @@ fi
 #
 pattern=`$CAT "$root/proc/sys/kernel/core_pattern" 2>/dev/null`
 case "$pattern" in
+  '|'*systemd-coredump*) coredump_judge ;;
   ''|'|'*) ;;
   *)
     core_limited || message WARN stor007w "kernel.core_pattern is \"$pattern\". Add '* hard core 0' to /etc/security/limits.conf, or install systemd-coredump, which keeps them where only root reads them." "A program that crashes writes its memory to a core file beside it, passwords and keys included, and nothing limits that."

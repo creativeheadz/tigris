@@ -320,6 +320,9 @@ check_users()
          }
          # the owner by uid: names collide (a second uid-0 account), uids do not
          hown=`$LS -ldn -- "$h/" 2>/dev/null | $AWK '{ print $3 }'`
+         # an image unpacked by a user is all that user's: the owner
+         # then says who unpacked it, not whose the home was
+         [ -n "$TIGRIS_ROOT" ] && [ "$myuid" != 0 ] && [ "$hown" = "$myuid" ] && hown=
          case "$hown" in
            ''|*[!0-9]*|"$uid") ;;
            *) message WARN acc027w "" "Login ID $user's home directory ($home) is owned by $owner (uid $hown), not by $user (uid $uid)." ;;
@@ -450,6 +453,9 @@ shells="/bin/sh$__nl/bin/csh$__nl/bin/bash$__nl/bin/tcsh$__nl/bin/ksh"
 [ -n "$ETCSHELLS" ] && [ -s "`__here $ETCSHELLS`" ] && {
   shells=`$AWK '/^[ \t]*#/ { next } NF { print $1 }' "\`__here $ETCSHELLS\`"`
 }
+
+# Who runs this, for the homes of an image a user unpacked
+myuid=`id -u 2>/dev/null`
 
 # The first ordinary uid: login.defs' UID_MIN, from which shadow's tools
 # make accounts (the last UID_MIN line counts, as login.defs(5) reads

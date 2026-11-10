@@ -34,12 +34,23 @@
 #             behind is not an installation. ld.so.preload is read
 #             as ld.so reads it, comments dropped, so a commented
 #             snoopy line is not a preload.
+# 10/23/2026 - Process accounting (acct on Debian, Ubuntu and Arch,
+#             psacct on Fedora and RHEL): accton under the root. Absent
+#             is INFO (aud009i): a hardening opportunity no distribution
+#             installs, not a weakness. Present with no accounting file
+#             (/var/log/account/pacct, /var/account/pacct, /var/log/pacct),
+#             or, live, a file not written to in a day (every process
+#             exit adds a record), or no service enabling it at boot
+#             (acct.service or psacct.service wants link, an rc link,
+#             an OpenRC runlevel) is WARN (aud010w); on and enabled is
+#             inventoried (aud011i).
 #
 # References:
-#   sar(1), snoopy.ini
+#   sar(1), snoopy.ini, accton(8), acct(5)
 #
 # Tigris: offline
-#   the root's binaries, configs and data files.
+#   the root's binaries, configs, data files and service links; the
+#   accounting file's age is read live only.
 #
 #-----------------------------------------------------------------------------
 #
@@ -114,11 +125,8 @@ snooping=
 [ -f "$preload" ] && $AWK '{ sub(/#.*$/, ""); n = split($0, e, /[: \t]+/)
   for (i = 1; i <= n; i++) if (e[i] ~ /libsnoopy/) y = 1 } END { exit !y }' "$preload" 2>/dev/null && snooping=1
 
-# Neither installed: not a finding
-[ -z "$sysstat$snoopy$snooping" ] && exit 0
-
 echo
-echo "# Checking system accounting (sysstat, snoopy)..."
+echo "# Checking system accounting (sysstat, snoopy, process accounting)..."
 
 # sysstat: data written in the last two days means collecting. An
 # explicit ENABLED=false is the administrator's choice, not a
@@ -150,6 +158,50 @@ if [ -n "$snooping" ]; then
   message INFO aud008i "" "Snoopy logs commands to syslog (preloaded from /etc/ld.so.preload)."
 elif [ -n "$snoopy" ]; then
   message WARN aud007w "Preload it (its library in /etc/ld.so.preload) or remove the configuration." "Snoopy is configured but not preloaded, so it logs no commands."
+fi
+
+# Process accounting: the program, the file it writes, the service that
+# turns it on at boot (acct.service on Debian, Ubuntu and Arch,
+# psacct.service on Fedora and RHEL; an rc link or an OpenRC runlevel
+# elsewhere), and, live, whether the file is being written
+accton=`existing_sys /usr/sbin/accton /sbin/accton /usr/bin/accton | $SED -n 1p`
+if [ -z "$accton" ]; then
+  message INFO aud009i "Install acct (psacct on Fedora and RHEL) and enable its service, and 'lastcomm' and 'sa' answer who ran what." "No process accounting (acct, psacct) is installed: which account ran which command, and when, is not recorded. A hardening opportunity rather than a weakness: no distribution installs it."
+else
+  pacct=
+  for f in /var/log/account/pacct /var/account/pacct /var/log/pacct
+  do
+    [ -f "`rootfile $f`" ] && { pacct=$f; break; }
+  done
+  enabled=
+  for u in acct.service psacct.service
+  do
+    for d in /etc/systemd/system /run/systemd/system /usr/lib/systemd/system /lib/systemd/system
+    do
+      [ -n "`rootglob "$d/*.wants/$u"`" ] && { enabled=$u; break; }
+    done
+    [ -n "$enabled" ] && break
+  done
+  if [ -z "$enabled" ]; then
+    for g in '/etc/rc[2-5].d/S*acct' '/etc/runlevels/*/acct' '/etc/runlevels/*/psacct'
+    do
+      [ -n "`rootglob "$g"`" ] && { enabled="an init script"; break; }
+    done
+  fi
+  stale=
+  if [ -n "$pacct" ] && [ -z "$TIGRIS_ROOT" ]; then
+    ph=`rootfile $pacct`
+    [ -n "`$FIND "$ph" -mtime -1 2>/dev/null`" ] || stale=1
+  fi
+  if [ -z "$pacct" ]; then
+    message WARN aud010w "$accton is installed. Create the file ('touch /var/log/account/pacct') and enable the service ('systemctl enable --now acct'; psacct on Fedora and RHEL)." "Process accounting is installed but its file is missing (no /var/log/account/pacct, /var/account/pacct or /var/log/pacct): nothing is recorded."
+  elif [ -n "$stale" ]; then
+    message WARN aud010w "Turn it on ('systemctl enable --now acct'; psacct on Fedora and RHEL, or 'accton $pacct')." "Process accounting is installed but $pacct has not been written to in a day: accounting is off, though every process that exits should add a record."
+  elif [ -z "$enabled" ]; then
+    message WARN aud010w "Enable the service ('systemctl enable --now acct'; psacct on Fedora and RHEL)." "Process accounting is installed and $pacct exists, but no service turns it on at boot: after a reboot nothing is recorded."
+  else
+    message INFO aud011i "" "Process accounting records to $pacct ($enabled enabled)."
+  fi
 fi
 
 exit 0

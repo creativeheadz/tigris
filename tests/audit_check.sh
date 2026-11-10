@@ -82,5 +82,39 @@ printf '[Journal]\nStorage=volatile\n' > "$W/byproc/etc/systemd/journald.conf"
 go byproc ac-rules
 has '[logf008w]' && ok "journald found by its 15-character process name" || { bad "journald by process"; cat "$W/out"; }
 
+# Offline: installed and enabled by the root's files, and its log file.
+# The root's passwd calls whoever runs this root, so the files made
+# here are "root's" as a user too.
+uid=`id -u`; gid=`id -g`
+offline() {  # offline NAME: check_audit over $W/NAME as an offline root
+  cp "$W/tigris.conf.base" "$W/tigris.conf"
+  echo "Tigris_Show_INFO_Msgs=Y" >> "$W/tigris.conf"
+  ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$W/$1" sh ./systems/Linux/2/check_audit ) 2>&1 |
+    awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' |
+    tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
+}
+O=$W/off; mkdir -p "$O/etc"
+printf 'root:x:%s:%s:root:/root:/bin/sh\n' "$uid" "$gid" > "$O/etc/passwd"
+printf 'root:x:%s:\nadm:x:4:\n' "$gid" > "$O/etc/group"
+offline off
+has '--WARN-- [aud001w]' && has 'Install the audit package' && [ "`count .`" = 1 ] &&
+  ok "offline root: no auditd.conf: aud001w, not installed" || { bad "offline none"; cat "$W/out"; }
+mkdir -p "$O/etc/audit"; printf '# auditd\nlog_file = /var/log/audit/audit.log\nlog_group = adm\n' > "$O/etc/audit/auditd.conf"
+offline off
+has '--WARN-- [aud001w] auditd is installed but not enabled at boot' && [ "`count .`" = 1 ] &&
+  ok "offline root: auditd.conf and no wants link: aud001w, not enabled" || { bad "offline not enabled"; cat "$W/out"; }
+mkdir -p "$O/etc/systemd/system/multi-user.target.wants"
+ln -s /usr/lib/systemd/system/auditd.service "$O/etc/systemd/system/multi-user.target.wants/auditd.service"
+offline off
+has "--WARN-- [aud012w] auditd's log file /var/log/audit/audit.log does not exist" && [ "`count .`" = 1 ] &&
+  ok "offline root: enabled, no log file: aud012w" || { bad "offline no log"; cat "$W/out"; }
+mkdir -p "$O/var/log/audit"; : > "$O/var/log/audit/audit.log"; chmod 600 "$O/var/log/audit/audit.log"
+offline off
+[ "`count .`" = 0 ] && ok "offline root: the log 0600 and root's: nothing" || { bad "offline log fine"; cat "$W/out"; }
+chmod 644 "$O/var/log/audit/audit.log"
+offline off
+has "--WARN-- [aud012w] auditd's log file /var/log/audit/audit.log is" && has 'readable by anyone' && [ "`count .`" = 1 ] &&
+  ok "offline root: the log 0644: aud012w, readable by anyone" || { bad "offline log open"; cat "$W/out"; }
+
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

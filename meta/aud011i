@@ -1,0 +1,11 @@
+Id: aud011i
+Severity: INFO
+Category: logging
+Check: check_accounting
+References: accton(8); acct(5); lastcomm(1)
+
+Process accounting is on: accton is installed, its file exists (and,
+on the running system, has been written to within the day), and a
+service turns it on at boot. 'lastcomm' and 'sa' answer which account
+ran what, and when. This names the arrangement in place; it is not a
+gap.

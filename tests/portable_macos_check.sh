@@ -108,17 +108,8 @@ grep -qx 'daemon1:\*:1:1::/var/empty:/usr/bin/false' "$W/set" && grep -qx 'evil:
 # check_accounts
 #
 run check_accounts "$C"
-if [ "$uid" = 0 ]; then
-  noerr && grep -q 'Checking accounts from DirectoryService' "$W/raw" && [ "`count .`" = 0 ] &&
-    ok "check_accounts, clean: DirectoryService's accounts, silent" || { bad "accounts clean"; cat "$W/raw"; }
-else
-  # as a user, the files are the runner's, whom the root's passwd calls
-  # root while dslocal keeps root at uid 0: neither admin's home nor
-  # root's can be the account's, and those are the two findings
-  noerr && grep -q 'Checking accounts from DirectoryService' "$W/raw" && [ "`count .`" = 2 ] && [ "`count acc027w`" = 2 ] &&
-    has "[acc027w] Login ID admin's home directory (/Users/admin) is owned by root (uid $uid), not by admin (uid 501)." &&
-    ok "check_accounts, clean: DirectoryService's accounts, silent but for the homes a user cannot give their accounts (acc027w)" || { bad "accounts clean"; cat "$W/raw"; }
-fi
+noerr && grep -q 'Checking accounts from DirectoryService' "$W/raw" && [ "`count .`" = 0 ] &&
+  ok "check_accounts, clean: DirectoryService's accounts, silent" || { bad "accounts clean"; cat "$W/raw"; }
 run check_accounts "$L"
 noerr && has "[acc006w] Login ID admin's home directory (/Users/admin) has" && has "world write access." &&
   has "[acc026w] Login ID admin's home directory (/Users/admin) is readable and searchable by everyone" &&
@@ -173,15 +164,12 @@ noerr && grep -q "The accounts are DirectoryService's on MacOSX" "$W/raw" && [ "
 chmod 644 "$W/profiles/mac"
 ( cd "$W" && OS=MacOSX REV=15.0 ARCH=arm64 sh ./tigris -q --profile mac --root "$C" ) > "$W/raw" 2>&1
 report=`ls "$W"/log/security.report.* 2>/dev/null | grep -v '\.jsonl$' | head -1`
-# (as a user, admin's and root's homes are the runner's, not theirs: two
-# WARNs, both acc027w)
-if [ "$uid" = 0 ]; then warns='0 WARN'; else warns='2 WARN'; fi
+warns='0 WARN'
 [ -n "$report" ] && ! grep -q 'init00\|--ERROR--\|not found' "$W/raw" "$report" &&
   grep -q 'Beginning security report for .* MacOSX 15.0' "$report" && grep -q 'Performing check of user accounts' "$report" &&
   grep -q 'Checking for correct umask settings' "$report" && grep -q 'Performing check of system file permissions' "$report" &&
   grep -q '# Checking crontabs' "$report" && grep -q "# Summary: 0 ALERT, 0 FAIL, $warns" "$report" &&
-  { [ "$uid" = 0 ] || [ "`grep -c '^--WARN-- \[acc027w\]' "$report"`" = 2 ]; } &&
-  ok "tigris --root with the macOS config: runs its checks, nothing to report (as a user, the homes' ownership), no init001e" || { bad "tigris"; cat "$W/raw" $report; }
+  ok "tigris --root with the macOS config: runs its checks, nothing to report, no init001e" || { bad "tigris"; cat "$W/raw" $report; }
 
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

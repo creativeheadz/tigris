@@ -58,7 +58,31 @@ has '--INFO-- [stor003i] /tmp is part of the root file system' && has '--INFO-- 
   [ "`count stor001w`" = 0 ] && ok "the desktop: /tmp not separate, /dev/shm without noexec (INFO), nosuid and nodev there" || { bad "desk mounts"; cat "$W/out"; }
 has '--INFO-- [stor005i] Some local file systems are not encrypted' && has 'Not encrypted: / (/dev/nvme0n1p2), /srv/data (/dev/nvme1n1p1).' &&
   [ "`count stor004w`" = 0 ] && ok "the desktop: unencrypted disks INFO, /boot and snaps left out, a mouse's battery is not a laptop's" || { bad "desk crypt"; cat "$W/out"; }
-[ "`count stor007w`" = 0 ] && ok "core dumps to systemd-coredump: nothing" || { bad "coredump pipe"; cat "$W/out"; }
+[ "`count stor007w`" = 0 ] && ok "core dumps to systemd-coredump: no stor007w" || { bad "coredump pipe"; cat "$W/out"; }
+# What systemd-coredump keeps: nothing configured means its defaults
+has '--INFO-- [stor020i] systemd-coredump keeps core dumps (in /var/lib/systemd/coredump, readable by root and by the user whose program crashed)' &&
+  has 'Storage=external (the default), ProcessSizeMax=32G (the default).' &&
+  ok "systemd-coredump with no coredump.conf: stor020i, the defaults named" || { bad "coredump defaults"; cat "$W/out"; }
+mkdir -p "$W/desk/etc/systemd" "$W/desk/usr/lib/systemd/coredump.conf.d" "$W/desk/etc/systemd/coredump.conf.d"
+printf '[Coredump]\n# nothing kept\nStorage=none\n' > "$W/desk/etc/systemd/coredump.conf"
+go desk
+[ "`count stor020i`" = 0 ] && ok "Storage=none in coredump.conf: nothing kept, nothing said" || { bad "storage none"; cat "$W/out"; }
+printf '[Coredump]\nStorage=journal\nProcessSizeMax=1G\n' > "$W/desk/usr/lib/systemd/coredump.conf.d/10-vendor.conf"
+go desk
+has '[stor020i] systemd-coredump keeps core dumps (in the journal' && has 'Storage=journal (set in /usr/lib/systemd/coredump.conf.d/10-vendor.conf), ProcessSizeMax=1G (set in /usr/lib/systemd/coredump.conf.d/10-vendor.conf).' &&
+  ok "a vendor drop-in overrides the main file: stor020i names it" || { bad "vendor drop-in"; cat "$W/out"; }
+ln -s /dev/null "$W/desk/etc/systemd/coredump.conf.d/10-vendor.conf"
+go desk
+[ "`count stor020i`" = 0 ] && ok "the vendor drop-in masked by a /dev/null link of its name in /etc: nothing kept again" || { bad "masked drop-in"; cat "$W/out"; }
+rm "$W/desk/etc/systemd/coredump.conf.d/10-vendor.conf"
+printf '[Coredump]\nProcessSizeMax=0\n' > "$W/desk/etc/systemd/coredump.conf.d/90-local.conf"
+go desk
+[ "`count stor020i`" = 0 ] && ok "ProcessSizeMax=0 in a later drop-in: nothing kept" || { bad "size 0"; cat "$W/out"; }
+printf '[Other]\nStorage=none\nProcessSizeMax=0\n[Coredump]\nProcessSizeMax=2G\n' > "$W/desk/etc/systemd/coredump.conf.d/90-local.conf"
+go desk
+has 'Storage=journal (set in /usr/lib/systemd/coredump.conf.d/10-vendor.conf), ProcessSizeMax=2G (set in /etc/systemd/coredump.conf.d/90-local.conf).' &&
+  ok "keys outside [Coredump] do not count; the later drop-in's ProcessSizeMax wins" || { bad "sections"; cat "$W/out"; }
+rm -rf "$W/desk/etc/systemd" "$W/desk/usr/lib/systemd"
 
 # A laptop: the same disks, its own battery
 cp -r "$W/desk" "$W/laptop"; battery laptop BAT0
@@ -289,6 +313,12 @@ offline "$B"
 has '[stor006w]' && has 'Swap: /dev/sda3' && [ "`count 'cswap'`" = 0 ] &&
   ok "offline root: a swap partition outside crypttab: stor006w; the crypttab one is fine" || { bad "offline stor006w"; cat "$W/out"; }
 [ "`count stor007w`" = 0 ] && [ "`count stor008w`" = 0 ] && [ "`count stor009i`" = 0 ] && [ "`count stor010w`" = 0 ] && ok "offline root: a core handler, USB and FireWire blacklisted, a crypttab: nothing" || { bad "offline B"; cat "$W/out"; }
+has '[stor020i]' && has 'Storage=external (the default), ProcessSizeMax=32G (the default).' &&
+  ok "offline root: systemd-coredump from its sysctl.d, no coredump.conf: stor020i with the defaults" || { bad "offline stor020i"; cat "$W/out"; }
+mkdir -p "$B/etc/systemd/coredump.conf.d"
+printf '[Coredump]\nStorage=none\nProcessSizeMax=0\n' > "$B/etc/systemd/coredump.conf.d/90-none.conf"
+offline "$B"
+[ "`count stor020i`" = 0 ] && ok "offline root: Storage=none and ProcessSizeMax=0 in its coredump.conf.d: nothing" || { bad "offline coredump none"; cat "$W/out"; }
 # D: fstab with a separate /home and /boot on defaults, /var/log/audit
 # without noexec, a noauto /srv (mounted by nobody at boot, so not
 # judged), /var on the root

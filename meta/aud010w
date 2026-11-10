@@ -1,0 +1,23 @@
+Id: aud010w
+Severity: WARN
+Category: logging
+Check: check_accounting
+Fix: Create the accounting file and enable the service (systemctl enable --now acct, or psacct), so accton runs at boot.
+References: accton(8); acct(5)
+Controls: CIS 8.2, 8.5; NIST AU-2, AU-12; ISO 8.15
+
+Process accounting is installed (accton is there) but is not doing its
+job: its file is missing (no /var/log/account/pacct, /var/account/pacct
+or /var/log/pacct), or, on the running system, the file has not been
+written to in a day although every process that exits should add a
+record, or no service turns accounting on at boot (no acct.service or
+psacct.service enabled, no rc link, no OpenRC runlevel), so a reboot
+silences it. Whoever installed it wanted the record of who ran what;
+nothing is keeping it.
+
+Debian and Ubuntu enable acct.service and create
+/var/log/account/pacct when the package is installed; Fedora and RHEL
+leave psacct.service for the administrator to enable, so a psacct
+installed and forgotten is the usual case. Create the file ('touch
+/var/log/account/pacct'), enable the service ('systemctl enable --now
+acct', or psacct), and 'lastcomm' shows records within a minute.

@@ -63,8 +63,8 @@ O=$W/off; mkdir -p "$O/etc" "$O/etc/default" "$O/usr/bin"
 printf '#!/bin/sh\n' > "$O/usr/bin/sar"; chmod 755 "$O/usr/bin/sar"
 printf 'ENABLED="false"\n' > "$O/etc/default/sysstat"
 run "$O" "$W/out"
-[ -s "$W/out" ] && { bad "off"; cat "$W/out"; } ||
-  ok "explicitly disabled: nothing said"
+grep -v '^--INFO-- \[aud009i\]' "$W/out" | grep -q . && { bad "off"; cat "$W/out"; } ||
+  ok "explicitly disabled: nothing said about sysstat or snoopy"
 
 P=$W/preloaded; mkdir -p "$P/etc" "$P/usr/lib/x86_64-linux-gnu"
 printf '[snoopy]\noutput = syslog\n' > "$P/etc/snoopy.ini"
@@ -99,13 +99,36 @@ printf '0 * * * * root command -v debian-sa1 > /dev/null && debian-sa1 1 1\n' > 
 printf 'ENABLED="true"\n' > "$R/etc/default/sysstat"
 printf '[snoopy]\noutput = syslog\n' > "$R/etc/snoopy.ini"
 run "$R" "$W/out"
-[ -s "$W/out" ] && { bad "removed"; cat "$W/out"; } ||
-  ok "configuration left by removed packages: nothing said"
+grep -v '^--INFO-- \[aud009i\]' "$W/out" | grep -q . && { bad "removed"; cat "$W/out"; } ||
+  ok "configuration left by removed packages: nothing said about sysstat or snoopy"
 
 E=$W/empty; mkdir -p "$E/etc"
 run "$E" "$W/out"
-[ -s "$W/out" ] && { bad "empty"; cat "$W/out"; } ||
-  ok "neither installed: nothing said"
+has '--INFO-- [aud009i] No process accounting (acct, psacct) is installed' "$W/out" && [ "`grep -c . "$W/out"`" = 1 ] &&
+  ok "nothing installed: the one INFO that process accounting is not (aud009i)" || { bad "empty"; cat "$W/out"; }
+
+# Process accounting: accton there, then its file, then the service
+A=$W/acct; mkdir -p "$A/etc" "$A/usr/sbin"
+printf '#!/bin/sh\n' > "$A/usr/sbin/accton"; chmod 755 "$A/usr/sbin/accton"
+run "$A" "$W/out"
+has '--WARN-- [aud010w] Process accounting is installed but its file is missing' "$W/out" && ! grep -q 'aud009i\|aud011i' "$W/out" &&
+  ok "accton with no accounting file: aud010w" || { bad "acct no file"; cat "$W/out"; }
+mkdir -p "$A/var/log/account"; : > "$A/var/log/account/pacct"
+run "$A" "$W/out"
+has '--WARN-- [aud010w] Process accounting is installed and /var/log/account/pacct exists, but no service turns it on at boot' "$W/out" &&
+  ok "the file there, nothing enabling it at boot: aud010w" || { bad "acct not enabled"; cat "$W/out"; }
+mkdir -p "$A/etc/systemd/system/multi-user.target.wants"
+ln -s /usr/lib/systemd/system/acct.service "$A/etc/systemd/system/multi-user.target.wants/acct.service"
+run "$A" "$W/out"
+has '--INFO-- [aud011i] Process accounting records to /var/log/account/pacct (acct.service enabled).' "$W/out" && ! grep -q 'aud010w\|aud009i' "$W/out" &&
+  ok "file and wants link: inventory only (aud011i)" || { bad "acct on"; cat "$W/out"; }
+# Fedora's names: psacct.service and /var/account/pacct
+Q=$W/psacct; mkdir -p "$Q/etc/systemd/system/multi-user.target.wants" "$Q/usr/sbin" "$Q/var/account"
+printf '#!/bin/sh\n' > "$Q/usr/sbin/accton"; chmod 755 "$Q/usr/sbin/accton"; : > "$Q/var/account/pacct"
+ln -s /usr/lib/systemd/system/psacct.service "$Q/etc/systemd/system/multi-user.target.wants/psacct.service"
+run "$Q" "$W/out"
+has '--INFO-- [aud011i] Process accounting records to /var/account/pacct (psacct.service enabled).' "$W/out" &&
+  ok "psacct.service and /var/account/pacct, as Fedora has them: aud011i" || { bad "psacct"; cat "$W/out"; }
 
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

@@ -155,14 +155,9 @@ noerr && has "[grp001w] Groupname \`wheel' exists multiple times in /etc/group."
 # check_accounts
 #
 run check_accounts "$C"
-if [ "$uid" = 0 ]; then
-  noerr && [ "`count .`" = 0 ] && ok "check_accounts, clean: runs, silent" || { bad "accounts clean"; cat "$W/raw"; }
-else
-  # as a user, the files are the runner's, whom the root's passwd calls
-  # root: alice's home cannot be hers, and that is the one finding
-  noerr && [ "`count .`" = 1 ] && has "[acc027w] Login ID alice's home directory (/home/alice) is owned by root (uid $uid), not by alice (uid 51001)." &&
-    ok "check_accounts, clean: silent but for alice's home, which a user cannot give her (acc027w)" || { bad "accounts clean"; cat "$W/raw"; }
-fi
+# (as a user the files are the runner's, not the accounts': an image a
+# user unpacked says nothing about who owned a home, so no acc027w)
+noerr && [ "`count .`" = 0 ] && ok "check_accounts, clean: runs, silent" || { bad "accounts clean"; cat "$W/raw"; }
 run check_accounts "$L"
 noerr && has "[acc006w] Login ID alice's home directory (/home/alice) has" && has "world write access." &&
   has "[acc026w] Login ID alice's home directory (/home/alice) is readable and searchable by everyone" &&
@@ -273,16 +268,14 @@ cmp -s "$W/mounts" "$W/mounts.want" &&
 chmod 644 "$W/profiles/bsd"
 ( cd "$W" && OS=FreeBSD REV=14.1-RELEASE ARCH=amd64 sh ./tigris -q --profile bsd --root "$C" ) > "$W/raw" 2>&1
 report=`ls "$W"/log/security.report.* 2>/dev/null | grep -v '\.jsonl$' | head -1`
-# (as a user, the two checks that need root say they were skipped, and
-# alice's home is the runner's, not hers: the one WARN, acc027w)
-if [ "$uid" = 0 ]; then passwd='Performing check of passwd files'; warns='0 WARN'; else passwd='Skipped check_passwd: it needs root'; warns='1 WARN'; fi
+# (as a user, the two checks that need root say they were skipped)
+if [ "$uid" = 0 ]; then passwd='Performing check of passwd files'; else passwd='Skipped check_passwd: it needs root'; fi; warns='0 WARN'
 [ -n "$report" ] && ! grep -q 'init00\|--ERROR--\|not found' "$W/raw" "$report" &&
   grep -q 'Beginning security report for .* FreeBSD 14.1-RELEASE' "$report" && grep -q "$passwd" "$report" &&
   grep -q 'Checking the format of passwd and group files' "$report" && grep -q 'Performing check of user accounts' "$report" &&
   grep -q "Performing check of \`cron' entries" "$report" && grep -q 'Performing check of system file permissions' "$report" &&
   grep -q 'Checking for correct umask settings' "$report" && grep -q "# Summary: 0 ALERT, 0 FAIL, $warns" "$report" &&
-  { [ "$uid" = 0 ] || grep -q "acc027w" "$report"; } &&
-  ok "tigris --root with the FreeBSD config: runs its checks, nothing to report (as a user, alice's home ownership), no init001e" || { bad "tigris"; cat "$W/raw" $report; }
+  ok "tigris --root with the FreeBSD config: runs its checks, nothing to report, no init001e" || { bad "tigris"; cat "$W/raw" $report; }
 
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

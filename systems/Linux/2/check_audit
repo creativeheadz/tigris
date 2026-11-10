@@ -29,15 +29,28 @@
 #                 Tigris_Sysctl_Root prefixes /proc, /etc, /run, /usr and
 #                 /var, and Tigris_Auditctl_Cmd replaces auditctl -l, for
 #                 the tests.
+# 10/23/2026 - The audit log itself: where auditd is configured (running
+#                 live; installed and enabled at boot offline, by its
+#                 wants link, rc link or OpenRC runlevel) and
+#                 /etc/audit/auditd.conf exists, log_file (default
+#                 /var/log/audit/audit.log) must exist, be root's and be
+#                 readable by nobody but root and log_group: auditd
+#                 creates it 0600, or 0640 for log_group (auditd.conf(5)),
+#                 and CIS asks for 0640 or tighter. Missing or exposed is
+#                 aud012w. Offline, auditd not installed or not enabled
+#                 is aud001w, as not running is live; auditctl and
+#                 journald are live only.
 #
 # References:
-#   man 8 auditd, man 8 auditctl, man 5 journald.conf
+#   man 8 auditd, man 8 auditctl, man 5 auditd.conf, man 5 journald.conf,
+#   CIS Distribution Independent Linux Benchmark 4.1.4 (auditd log files)
 #
 # Tigris: needs root
 #   auditctl lists the rules for root only.
 #
-# Tigris: live system
-#   Under --root it is skipped: it reads the running auditd and journald.
+# Tigris: offline
+#   the root's auditd.conf, its service links and its audit log; the
+#   running auditd, its rules and journald are read live only.
 #
 #-----------------------------------------------------------------------------
 #
@@ -102,12 +115,36 @@ running()
     $AWK -v names=" $__names " 'index(names, " " $0 " ") { found = 1; exit } END { exit !found }'
 }
 
+# auditd_enabled: offline, a wants link, rc link or OpenRC runlevel
+# starts auditd at boot
+auditd_enabled()
+{
+  for __d in /etc/systemd/system /run/systemd/system /usr/lib/systemd/system /lib/systemd/system
+  do
+    [ -n "`rootglob "$__d/*.wants/auditd.service"`" ] && return 0
+  done
+  [ -n "`rootglob '/etc/rc[2-5].d/S*auditd'`" ] || [ -n "`rootglob '/etc/runlevels/*/auditd'`" ]
+}
+
+auditd_conf=`rootfile /etc/audit/auditd.conf`
+configured=N
+
 #
 # auditd
 #
-if ! running auditd; then
+if [ -n "$TIGRIS_ROOT" ]; then
+  # Offline: installed (its configuration is there) and enabled at boot
+  if [ ! -f "$auditd_conf" ]; then
+    message WARN aud001w "Install the audit package (auditd on Debian and Ubuntu, audit on Fedora and RHEL), enable it with 'systemctl enable --now auditd', and load rules: the distribution's examples are in /usr/share/doc/audit*/rules." "auditd is not installed (no /etc/audit/auditd.conf): logins, changes to accounts and watched files, and the use of privileges are not recorded in an audit trail."
+  elif ! auditd_enabled; then
+    message WARN aud001w "Enable it ('systemctl enable --now auditd') and load rules: the distribution's examples are in /usr/share/doc/audit*/rules." "auditd is installed but not enabled at boot: logins, changes to accounts and watched files, and the use of privileges are not recorded in an audit trail."
+  else
+    configured=Y
+  fi
+elif ! running auditd; then
   message WARN aud001w "Install the audit package (auditd on Debian and Ubuntu, audit on Fedora and RHEL), enable it with 'systemctl enable --now auditd', and load rules: the distribution's examples are in /usr/share/doc/audit*/rules." "auditd is not running: logins, changes to accounts and watched files, and the use of privileges are not recorded in an audit trail."
 else
+  configured=Y
   ac_cmd=${Tigris_Auditctl_Cmd:-}
   if [ -z "$ac_cmd" ]; then
     for d in /usr/sbin /sbin /usr/bin /bin
@@ -131,8 +168,44 @@ else
 fi
 
 #
-# Logs across reboots: journald's Storage=, or a syslog daemon
+# The audit log: log_file in auditd.conf (default /var/log/audit/audit.log)
+# exists, is root's, and is readable by nobody but root and log_group
+# (auditd creates it 0600, 0640 when log_group is set). getpermit names
+# the owner and group from the root's passwd and group files offline.
 #
+if [ "$configured" = Y ] && [ -f "$auditd_conf" ]; then
+  log_file=`$SED 's/#.*//' "$auditd_conf" | $SED -n 's/^[ \t]*log_file[ \t]*=[ \t]*//p' | $SED 's/[ \t]*$//' | $SED -n '$p'`
+  log_group=`$SED 's/#.*//' "$auditd_conf" | $SED -n 's/^[ \t]*log_group[ \t]*=[ \t]*//p' | $SED 's/[ \t]*$//' | $SED -n '$p'`
+  log_file=${log_file:-/var/log/audit/audit.log}
+  log_group=${log_group:-root}
+  case "$log_file" in
+    /*)
+      here=`rootfile "$log_file"`
+      if [ ! -f "$here" ]; then
+        message WARN aud012w "log_file in /etc/audit/auditd.conf. Start auditd ('systemctl restart auditd'), which creates it; if the directory is gone, recreate it root's, mode 0700." "auditd's log file $log_file does not exist: nothing it records is kept, and whatever an intruder deleted leaves no trace of itself."
+      else
+        if [ -n "$TIGRIS_ROOT" ]; then __gp=$log_file; else __gp=$here; fi
+        # shellcheck disable=SC2046
+        set -- `getpermit "$__gp" 2>/dev/null`
+        if [ $# -ge 12 ]; then
+          why=
+          case "$2" in root|0) ;; *) why="owned by $2, not root" ;; esac
+          [ "${11}" = 1 ] && why="${why:+$why, }writable by anyone"
+          [ "${10}" = 1 ] && why="${why:+$why, }readable by anyone"
+          [ "$8" = 1 ] && why="${why:+$why, }writable by group $3"
+          if [ "$7" = 1 ]; then
+            case "$3" in root|0|"$log_group") ;; *) why="${why:+$why, }readable by group $3 (log_group is $log_group)" ;; esac
+          fi
+          [ -n "$why" ] && message WARN aud012w "chown root:$log_group \`$log_file'; chmod 0640 \`$log_file' (0600 without a log_group); auditd creates the next one from log_group in /etc/audit/auditd.conf." "auditd's log file $log_file is $why: the audit trail is for root (and log_group) alone, since it records who did what, and whoever can write it can edit what happened."
+        fi
+      fi ;;
+  esac
+fi
+
+#
+# Logs across reboots: journald's Storage=, or a syslog daemon (live)
+#
+[ -n "$TIGRIS_ROOT" ] && exit 0
 if [ -d "$root/run/systemd/journal" ] || running systemd-journal; then
   # The drop-ins by file name; one name in /etc hides it in /run and
   # /usr/lib, one in /run hides it in /usr/lib

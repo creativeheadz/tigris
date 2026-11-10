@@ -1,0 +1,23 @@
+Id: aud009i
+Severity: INFO
+Category: logging
+Check: check_accounting
+Fix: Install acct (psacct on Fedora and RHEL) and enable its service.
+References: accton(8); acct(5); lastcomm(1); sa(8)
+Controls: CIS 8.2, 8.5; NIST AU-2, AU-12; ISO 8.15
+
+No process accounting is installed on this Linux host: no accton
+(the acct package on Debian, Ubuntu and Arch, psacct on Fedora and
+RHEL). With it on, the kernel appends a record for every process that
+exits (command, account, start time, CPU and memory used) to
+/var/log/account/pacct or /var/account/pacct, and 'lastcomm' and 'sa'
+answer which account ran what, and when: the question an investigation
+asks first, and one auditd answers only for the system calls it was
+told to watch.
+
+This is a hardening opportunity rather than a weakness, so it stays
+informational: no distribution installs it, and the record it keeps
+costs disk space and a little CPU on a busy host. Where who-ran-what
+matters (a shared machine, a jump host, a server under compliance),
+install it and enable its service; it rotates its file through
+logrotate on every distribution that packages it.

@@ -37,6 +37,14 @@
 #                  accounts' passwords never expiring is INFO (pass023i);
 #                  with expiry on, a minimum age of 0, one above the
 #                  maximum, or no warning undoes it (pass024w).
+# 10/23/2026 atrimbitas - Accounts whose password or account has expired
+#                  while the password is not locked and the shell is a
+#                  login shell are pass025w (WARN): stale accounts nobody
+#                  disabled, which CIS asks be locked or removed (Ubuntu
+#                  24.04 v2.0.0, 5.4.1.5 and 5.4.1.6). One past its
+#                  inactivity period is locked by the system itself and
+#                  not reported. Dates from the root's shadow, today's
+#                  from date(1).
 #
 # References:
 #   man 5 login.defs, man 5 shadow, man 1 chage
@@ -243,5 +251,48 @@ if [ -n "$defs" ]; then
     fi
   fi
 fi
+
+# ---- expired yet usable accounts
+#
+# An account whose password has expired (shadow(5): the last change plus
+# the maximum age is in the past) or whose account expiry date is past,
+# while its password is not locked and it keeps a login shell, is a stale
+# account nobody has disabled: the password still works wherever expiry
+# is not enforced (a service that checks the hash itself, sshd with UsePAM
+# no and a key), and a chage -E -1 or a changed date brings the account
+# back. CIS (Ubuntu 24.04 v2.0.0, 5.4.1.5 and 5.4.1.6; CIS Controls 5.3)
+# asks that such accounts be locked or removed: WARN (pass025w). An
+# account past its password's inactivity period (last change + maximum +
+# inactive days) is locked by the system itself, which is what CIS asks,
+# so it is not reported; nor is a last change of 0, which forces a new
+# password at the next login on purpose. Dates are days since the epoch,
+# today's from date(1); nothing is judged when date cannot say.
+today=
+[ -n "$DATE" ] && today=`$DATE +%s 2>/dev/null`
+case "$today" in ''|*[!0-9]*) today= ;; *) today=`expr "$today" / 86400` ;; esac
+[ -n "$today" ] && [ -r "$passwd" ] && [ -r "$shadow" ] && {
+  today="$today" $AWK -F: '
+    NR == FNR { if (NF >= 7) shell[$1] = $7; next }
+    {
+      u = $1; h = $2; last = $3; max = $5; inact = $7; expire = $8
+      if (!(u in shell)) next
+      if (shell[u] ~ /\/(nologin|false)$/) next
+      if (h == "" || h ~ /^[!*]/) next
+      t = ENVIRON["today"] + 0
+      if (expire ~ /^[0-9]+$/ && expire + 0 > 0 && expire + 0 < t)
+        printf "%s\taccount\t%d\n", u, t - expire
+      else if (last ~ /^[0-9]+$/ && last + 0 > 0 && max ~ /^[0-9]+$/ && max + 0 > 0 && max + 0 < 10000 && last + max < t) {
+        if (inact ~ /^[0-9]+$/ && last + max + inact < t) next
+        printf "%s\tpassword\t%d\n", u, t - (last + max)
+      }
+    }' "$passwd" "$shadow" |
+  while IFS='	' read -r u kind days
+  do
+    case "$kind" in
+      account)  message WARN pass025w "" "Login ID $u's account expired $days days ago (the expiry date in /etc/shadow) but its password is not locked and it keeps a login shell: lock it (usermod -L) or remove it." ;;
+      password) message WARN pass025w "" "Login ID $u's password expired $days days ago (last change plus maximum age in /etc/shadow) and the account is not locked and keeps a login shell: lock it, or have the password changed." ;;
+    esac
+  done
+}
 
 exit 0

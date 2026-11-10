@@ -50,6 +50,7 @@ id:pass017w               | 5.4                | AC-6(5)                  | 8.2 
 id:pass018f               | 5.4                | AC-6(5), IA-5(1)         | 8.2, 5.17           | User access control
 id:pass021f               | 5.4                | AC-6                     | 8.2                 | User access control
 id:acc021w                | 5.3                | AC-2(3)                  | 5.18                | User access control
+id:pass025w               | 5.3                | AC-2(3), IA-5(1)         | 5.17, 5.18          | User access control
 id:pam003w                | 4.1                | AC-7                     | 8.5                 | User access control
 
 # ---- boot
@@ -291,6 +292,8 @@ id:shl002i                | -                  | -                        | -   
 id:aud006i                | -                  | -                        | -                   | -
 # aud008i: names the snoopy command logging in place; not a gap.
 id:aud008i                | -                  | -                        | -                   | -
+# aud011i: names the process accounting in place; not a gap.
+id:aud011i                | -                  | -                        | -                   | -
 # rlog001i: forwarding is the arrangement to have; the finding only records where the copies go.
 id:rlog001i               | -                  | -                        | -                   | -
 # inet008i: names the super-server and what it serves; the services themselves are judged by inet005f and inet007w.

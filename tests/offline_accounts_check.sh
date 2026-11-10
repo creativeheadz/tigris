@@ -110,8 +110,14 @@ has '"id":"acc005w".*Login ID milo is disabled, but has a .cron. file' &&
 has "\"id\":\"acc006w\".*Login ID wren's home directory (/home/wren) has .*world write access" && ok "a world-writable home: acc006w" || bad "acc006w"
 has "\"id\":\"acc026w\".*Login ID wren's home directory (/home/wren) is readable and searchable by everyone" &&
   ok "a 777 home is open to read and search too: acc026w" || bad "acc026w"
-has "\"id\":\"acc027w\".*Login ID wren's home directory (/home/wren) is owned by milo (uid $U), not by wren (uid $((U + 2)))" &&
-  ok "a home owned by another account, the owner named from the root's passwd: acc027w" || bad "acc027w"
+if [ "$uid" = 0 ]; then
+  has "\"id\":\"acc027w\".*Login ID wren's home directory (/home/wren) is owned by milo (uid $U), not by wren (uid $((U + 2)))" &&
+    ok "a home owned by another account, the owner named from the root's passwd: acc027w" || bad "acc027w"
+else
+  # an image a user unpacked is all that user's: owners say nothing
+  grep '"type":"finding"' "$json" | grep -q 'acc027w' &&
+    bad "acc027w as a user, where every file is the runner's" || ok "as a user, the runner's own files are not judged for ownership: no acc027w"
+fi
 grep '"type":"finding"' "$json" | grep -q "acc02[67]w.*Login ID milo" &&
   bad "milo's 750 home, his own, was reported" || ok "a 750 home the account owns: no acc026w, no acc027w"
 grep '"type":"finding"' "$json" | grep -q "acc02[678]w.*Login ID sync" &&
@@ -203,6 +209,44 @@ printf 'PASS_MAX_DAYS 60\n' > "$O/etc/login.defs.d/50-policy.defs"
 ( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$O" sh ./systems/Linux/2/check_passwdspec ) > "$W/suse.out" 2>&1
 tr -s ' \n' '  ' < "$W/suse.out" | grep -q 'pass024w\] PASS_MIN_DAYS is 0 in /usr/etc/login.defs while passwords expire after 60 days' &&
   ok "/usr/etc/login.defs with a login.defs.d drop-in on top: pass024w" || bad "vendor login.defs and drop-in: `cat "$W/suse.out"`"
+
+# Expired yet usable accounts (pass025w), check_passwdspec on a root of
+# its own. Day 19000 is January 2022; today is this host's.
+X=$W/expired; mkdir -p "$X/etc"
+now=$(( $(date +%s) / 86400 ))
+cat > "$X/etc/passwd" <<EOF
+root:x:0:0:root:/root:/bin/bash
+old:x:2001:2001:password expired, no inactivity:/home/old:/bin/sh
+gone:x:2002:2002:account expired:/home/gone:/bin/bash
+idle:x:2003:2003:expired and past its inactivity period:/home/idle:/bin/sh
+svc:x:2004:2004:expired, cannot log in:/home/svc:/usr/sbin/nologin
+lock:x:2005:2005:expired, locked:/home/lock:/bin/sh
+fresh:x:2006:2006:changed ten days ago:/home/fresh:/bin/sh
+reset:x:2007:2007:must change at next login:/home/reset:/bin/sh
+soon:x:2008:2008:expires tomorrow:/home/soon:/bin/sh
+EOF
+H='$6$saltsalt$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzABCDEF'
+cat > "$X/etc/shadow" <<EOF
+root:$H:$((now - 10)):0:99999:7:::
+old:$H:19000:0:90:7:::
+gone:$H:$((now - 10)):0:99999:7::19100:
+idle:$H:19000:0:90:7:30::
+svc:$H:19000:0:90:7:::
+lock:!$H:19000:0:90:7:::
+fresh:$H:$((now - 10)):0:90:7:::
+reset:$H:0:0:90:7:::
+soon:$H:$((now - 89)):0:90:7:::
+EOF
+( cd "$W" && TIGERHOMEDIR=$W TIGRIS_ROOT="$X" sh ./systems/Linux/2/check_passwdspec ) 2>&1 |
+  awk '/^--[A-Z]+-- \[/ { if (s != "") print s; s = $0; next } /^ / && s != "" { sub(/^ +/, " "); s = s $0; next } END { if (s != "") print s }' > "$W/expired.out"
+grep -q "pass025w\] Login ID old's password expired $((now - 19090)) days ago (last change plus maximum age in /etc/shadow) and the account is not locked and keeps a login shell" "$W/expired.out" &&
+  ok "a password past its maximum age, unlocked, with a shell: pass025w, saying how long ago" || bad "pass025w password: `cat "$W/expired.out"`"
+grep -q "pass025w\] Login ID gone's account expired $((now - 19100)) days ago (the expiry date in /etc/shadow) but its password is not locked and it keeps a login shell" "$W/expired.out" &&
+  ok "an account past its expiry date, unlocked, with a shell: pass025w" || bad "pass025w account: `cat "$W/expired.out"`"
+for u in idle svc lock fresh reset soon root
+do
+  grep -q "pass025w\] Login ID $u's" "$W/expired.out" && bad "pass025w for $u" || ok "no pass025w for $u (`awk -F: -v u="$u" '$1 == u { print $5 }' "$X/etc/passwd"`)"
+done
 
 [ $fail -eq 0 ] && echo "PASS" || { echo "--- findings"; grep '"type":"finding"' "$json" | cut -c1-220; cat "$W/hash.out"; }
 exit $fail

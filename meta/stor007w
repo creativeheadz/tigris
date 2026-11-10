@@ -16,5 +16,6 @@ read or copied long after.
 
 To fix it, add '* hard core 0' to /etc/security/limits.conf, or install
 systemd-coredump, which keeps dumps in /var/lib/systemd/coredump where
-only root reads them and removes them after a while. fs.suid_dumpable
+root and the crashing user alone read them and removes them after a
+while (stor020i then says, at INFO, what it keeps). fs.suid_dumpable
 (lin027w) covers setuid programs.

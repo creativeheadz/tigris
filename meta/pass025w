@@ -1,0 +1,30 @@
+Id: pass025w
+Severity: WARN
+Category: accounts
+Check: check_passwdspec
+Fix: Lock the account (usermod -L, and usermod -s /usr/sbin/nologin) or remove it (userdel); if it is still wanted, have its password changed (chage -d 0 forces that at the next login).
+References: shadow(5); chage(1); usermod(8); CIS Ubuntu Linux 24.04 LTS Benchmark v2.0.0, 5.4.1.5 (Ensure inactive password lock is configured) and 5.4.1.6 (Ensure all users last password change date is in the past); CIS Controls v8, 5.3 (Disable Dormant Accounts)
+Controls: CIS 5.3; NIST AC-2(3), IA-5(1); ISO 5.17, 5.18; CE User access control
+
+The listed login ID's password has expired, or its account expiry date
+has passed, yet the password is not locked and the account keeps a
+login shell. In /etc/shadow the password's age is the date of its last
+change plus the maximum age (what chage -l shows as "Password
+expires"); the account's own end is the expiry date (chage -E). Past
+either, login through PAM demands a new password or refuses the
+account, but nobody disabled it: the hash is still valid wherever
+expiry is not enforced (a service that checks the hash itself, sshd
+with UsePAM no and a key in authorized_keys), and a chage -E -1 or a
+changed date brings the account straight back. What it usually means
+is an account whose owner has left or stopped using it, which the
+benchmark asks be locked or removed. The finding says how long ago it
+expired.
+
+Not reported: an account past its inactivity period (last change plus
+maximum plus the inactive days of chage -I), which the system has
+locked itself, as CIS 5.4.1.5 asks; a last change of 0, which forces a
+new password at the next login on purpose; and accounts whose password
+is locked (! or * in front of the hash) or whose shell is nologin or
+false, which cannot log in whatever the dates say. Today's date comes
+from date(1), so an offline root is judged against the auditing host's
+clock.
