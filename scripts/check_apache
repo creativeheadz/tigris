@@ -27,8 +27,11 @@
 # binds (apa001w, httpd.conf mains only, as before), Options per
 # Directory (apa003i to apa006w), access to the filesystem root
 # (apa002w), the loaded modules (apa007i), an open forward proxy
-# (apa008w), WebDAV writes (apa009w) and exposed status pages
-# (apa010w). Each block is judged from its own lines only; what an
+# (apa008w), WebDAV writes (apa009w), exposed status pages
+# (apa010w), TRACE answered (apa012w) and the missing shields:
+# mod_evasive (apa013w), mod_reqtimeout or mod_qos (apa014w) and
+# mod_security (apa015w). Each block is judged from its own lines
+# only; what an enclosing block allows is not followed into it.
 # enclosing block allows is not followed into it. At most 400 files
 # are read (apa011i says when that stopped the reading).
 #
@@ -60,6 +63,12 @@
 #             directive names in any case, continuation lines joined,
 #             a marker configuration text cannot forge, a file on its
 #             own include stack refused, 400 files at most (apa011i).
+# 11/10/2026 - TraceEnable judged (apa012w): On, or nowhere set with
+#             its default On, leaves TRACE answered. The absent shields
+#             judged (apa013w mod_evasive, apa014w mod_reqtimeout or
+#             mod_qos, apa015w mod_security), withheld where no
+#             LoadModule line names anything: a statically built server
+#             may carry them inside.
 #
 # TODO (generic)
 # - analyse authenticating methods
@@ -378,6 +387,12 @@ do
       }
       next
     }
+    if (w1 == "traceenable") {
+      v = tolower(rest); sub(/[ \t].*$/, "", v)
+      traceseen = 1
+      if (v != "off" && traceon == "") { traceon = v; tracefile = file; traceline = lineno }
+      next
+    }
   }
   END {
     for (l = d; l >= 1; l--) {
@@ -385,6 +400,8 @@ do
       if (btype[l] == "proxy") { nproxy++; if (!isopen(l)) nconfined++ }
     }
     judge_status(0); flush_opts(0)
+    if (traceon != "") print "TRACEON\t" traceon "\t" tracefile "\t" traceline
+    else if (!traceseen) print "NOTRACE\t" main
     if (proxyval == "on" && !(nproxy > 0 && nconfined == nproxy)) print "PROXY\t" proxyfile "\t" proxyline
     if (ishttpd) {
       if (na + nb == 0) print "NOLISTEN\t" main
@@ -415,6 +432,8 @@ done | {
       DAV) message WARN apa009w "Confine Dav On to the collections that need it, behind authentication only the writers have." "WebDAV writes are on for $a ($b line $c): PUT and DELETE reach the filesystem." ;;
       LIMIT) message INFO apa011i "Read the rest by hand, or audit with fewer sites enabled." "Apache's configuration was read in part: Includes stop being followed after $MaxFiles files (at $a), and nothing past that point is judged." ;;
       STATUS) message WARN apa010w "Restrict it to localhost ('Require local' in that block)." "$a is world-readable ($b in $c line $d): it names clients, requests and server slots." ;;
+      TRACEON) message WARN apa012w "Set TraceEnable Off ($b line $c)." "TraceEnable is $a ($b line $c): TRACE requests are answered, which aids cross-site tracing attacks." ;;
+      NOTRACE) message WARN apa012w "Set TraceEnable Off in $a." "TraceEnable is nowhere set in $a: TRACE stays enabled (it defaults On), which aids cross-site tracing attacks." ;;
     esac
   done
 }
@@ -426,6 +445,21 @@ else
   modlist=`$SORT -u $mods 2>/dev/null | $AWK '{ printf "%s%s", (NR > 1 ? ", " : ""), $0 }'`
   [ "$n" = 1 ] && what=module || what=modules
   message INFO apa007i "$modlist" "Apache is configured to load $n $what."
+fi
+
+# havemod PATTERN: whether any loaded module's name matches (ERE, against
+# the lowercased LoadModule names without their _module suffix)
+havemod()
+{
+  $SORT -u $mods 2>/dev/null | $AWK -v pat="$1" '$0 ~ pat { f = 1 } END { exit (f ? 0 : 1) }'
+}
+
+# the absent shields: nothing to judge against where no LoadModule line
+# names anything, since a statically built server may carry them inside
+if [ "$n" != 0 ]; then
+  havemod '^evasive' || message WARN apa013w "Load mod_evasive and tune DOSPageCount and DOSSiteCount for this host." "The evasive module is not loaded: flooding requests are answered at full speed, and a slow client holds a worker."
+  { havemod '^reqtimeout$' || havemod '^qos$'; } || message WARN apa014w "Load mod_reqtimeout, which ships with Apache, and set RequestReadTimeout." "Neither mod_reqtimeout nor mod_qos is loaded: a client that sends headers one byte at a time holds a worker forever (Slowloris)."
+  havemod '^security' || message WARN apa015w "Load mod_security with the OWASP Core Rule Set." "mod_security is not loaded: no web application firewall stands before the applications."
 fi
 
 # every bare Listen in one finding: "Listen 80 in F line 2 serves", or

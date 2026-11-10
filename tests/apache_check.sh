@@ -8,9 +8,12 @@
 # properly closed and server-info allowed to all; an open / block; a
 # RHEL host listening bare (Includes from ServerRoot) and one bound;
 # FreeBSD's default ServerRoot; what the reader must take as the
-# server does (case, quotes, continuations, forged markers); an
-# Include ring and a configuration past the file limit; and an empty
-# root, where nothing is said. Last, the check is on by default: a
+# server does (case, quotes, continuations, forged markers); a
+# shielded host (TraceEnable Off, the evasive, reqtimeout and
+# security modules loaded) silent on apa012w-015w, and an explicit
+# TraceEnable On; an Include ring and a configuration past the file
+# limit; and an empty root, where nothing is said. Last, the check
+# is on by default: a
 # whole run with the stock tigris.conf reports the Debian root's
 # Apache and says nothing of one on the empty root. INFO findings
 # only show with Tigris_Show_INFO_Msgs=Y. Runs as a user and as root;
@@ -74,9 +77,13 @@ has '--WARN-- [apa008w] ProxyRequests is On' "$W/out" &&
 has '--WARN-- [apa010w] server-status is world-readable (<Location /server-status>' "$W/out" &&
 has '--INFO-- [apa007i] Apache is configured to load 2 modules.' "$W/out" &&
 has 'proxy, status' "$W/out" &&
+has '--WARN-- [apa012w] TraceEnable is nowhere set in /etc/apache2/apache2.conf' "$W/out" &&
+has '--WARN-- [apa013w] The evasive module is not loaded' "$W/out" &&
+has '--WARN-- [apa014w] Neither mod_reqtimeout nor mod_qos is loaded' "$W/out" &&
+has '--WARN-- [apa015w] mod_security is not loaded' "$W/out" &&
 ! grep -q 'apa001w' "$W/out" &&
 ! grep -q 'apa002w' "$W/out" &&
-  ok "Debian full: options, proxy, status, inventory; no Listen, no / verdict" || { bad "debian"; cat "$W/out"; }
+  ok "Debian full: options, proxy, status, inventory, TraceEnable, shields; no Listen, no / verdict" || { bad "debian"; cat "$W/out"; }
 
 V=$W/dav; mkdir -p "$V/etc/apache2/conf-enabled"
 printf 'IncludeOptional conf-enabled/*.conf\n' > "$V/etc/apache2/apache2.conf"
@@ -114,6 +121,32 @@ run "$H" "$W/out"
 ! grep -q 'apa010w' "$W/out" &&
 has 'no LoadModule lines' "$W/out" &&
   ok "hardened: denied /, localhost status, nothing said but inventory" || { bad "hardened"; cat "$W/out"; }
+
+# TraceEnable Off with the shields loaded: none of apa012w-015w.
+# And an explicit TraceEnable On, where apa012w names the value and
+# the line; mod_qos standing in for mod_reqtimeout satisfies apa014w
+S=$W/shield; mkdir -p "$S/etc/apache2"
+cat > "$S/etc/apache2/apache2.conf" <<'EOF'
+TraceEnable Off
+LoadModule evasive20_module /usr/lib/apache2/modules/mod_evasive20.so
+LoadModule reqtimeout_module /usr/lib/apache2/modules/mod_reqtimeout.so
+LoadModule security2_module /usr/lib/apache2/modules/mod_security2.so
+<Directory />
+Options None
+Require all denied
+</Directory>
+EOF
+run "$S" "$W/out"
+! grep -q 'apa012w\|apa013w\|apa014w\|apa015w' "$W/out" &&
+  ok "shielded: TraceEnable Off, shields loaded, none of apa012w-015w" || { bad "shielded"; cat "$W/out"; }
+T=$W/trace; mkdir -p "$T/etc/apache2"
+printf 'TraceEnable On\nLoadModule qos_module /usr/lib/apache2/modules/mod_qos.so\n' > "$T/etc/apache2/apache2.conf"
+run "$T" "$W/out"
+has '--WARN-- [apa012w] TraceEnable is on (/etc/apache2/apache2.conf line 1)' "$W/out" &&
+! grep -q 'apa014w' "$W/out" &&
+has '--WARN-- [apa013w]' "$W/out" &&
+has '--WARN-- [apa015w]' "$W/out" &&
+  ok "TraceEnable On warns with its line; mod_qos satisfies apa014w" || { bad "trace"; cat "$W/out"; }
 
 L=$W/legacy; mkdir -p "$L/etc/apache2"
 cat > "$L/etc/apache2/apache2.conf" <<'EOF'

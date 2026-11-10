@@ -1,0 +1,13 @@
+Id: apa014w
+Severity: WARN
+Category: services
+Check: check_apache
+Fix: Load mod_reqtimeout and set RequestReadTimeout.
+References: Apache Module mod_reqtimeout; Apache Module mod_qos
+Controls: CIS 4.1; NIST CM-6, CM-7; ISO 8.9; CE Secure configuration
+
+Neither mod_reqtimeout nor mod_qos is loaded: a client that sends
+its headers one byte at a time holds a worker forever (Slowloris).
+Load mod_reqtimeout, which ships with Apache, and set
+RequestReadTimeout. Withheld where the configuration loads no
+modules by name: a statically built server may carry one inside.

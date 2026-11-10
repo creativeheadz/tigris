@@ -1,0 +1,13 @@
+Id: apa013w
+Severity: WARN
+Category: services
+Check: check_apache
+Fix: Load mod_evasive and tune DOSPageCount/DOSSiteCount.
+References: Apache Module mod_evasive
+Controls: CIS 4.1; NIST CM-6, CM-7; ISO 8.9; CE Secure configuration
+
+The evasive module is not loaded: flooding requests are answered at
+full speed, and a slow client holds a worker. Load mod_evasive (a
+separate package on most distributions) and tune DOSPageCount and
+DOSSiteCount for this host. Withheld where the configuration loads
+no modules by name: a statically built server may carry it inside.

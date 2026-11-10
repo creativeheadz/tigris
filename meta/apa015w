@@ -1,0 +1,13 @@
+Id: apa015w
+Severity: WARN
+Category: services
+Check: check_apache
+Fix: Load mod_security with the OWASP Core Rule Set.
+References: Apache Module mod_security; OWASP ModSecurity Core Rule Set
+Controls: CIS 4.1; NIST CM-6, CM-7; ISO 8.9; CE Secure configuration
+
+mod_security is not loaded: no web application firewall stands
+before the applications. Load mod_security with the OWASP Core Rule
+Set where the applications face strangers. Withheld where the
+configuration loads no modules by name: a statically built server
+may carry it inside.
