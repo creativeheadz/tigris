@@ -22,7 +22,8 @@
 #             with plaintext allowed or TLS off) belong to whoever
 #             listens (mail001w). A relay open to the world sends
 #             spam in your name (mail002w). A banner carrying the
-#             version tells attackers what to try (mail003i).
+#             version tells attackers what to try (mail003i). VRFY
+#             answers tell anyone which addresses exist (mail004w).
 #             Sendmail stays in check_sendmail, its historic home. No
 #             mail config files means no mail here, and there is
 #             nothing to say.
@@ -44,6 +45,10 @@
 #             from smtpd, which refuses to start on it, and is not
 #             read. Listener auth without tls-require is not judged:
 #             smtpd takes AUTH only once the session is in TLS.
+# 11/10/2026 - Postfix disable_vrfy_command: VRFY enabled hands the
+#             valid addresses to whoever asks (mail004w), judged from
+#             main.cf alone, without asking a running Postfix who it
+#             listens for.
 #
 # References:
 #   postconf(5)
@@ -169,7 +174,7 @@ echo "# Checking the mail configuration..."
 # Postfix: SASL in clear, the world's relay, the versioned banner
 for c in $postfix
 do
-  sasl= tlslevel= secropts= tlsauthonly= networks= banner= bannerset=
+  sasl= tlslevel= secropts= tlsauthonly= networks= banner= bannerset= vrfy=
   stripped "`rootfile $c`" | $AWK '
     { line = $0; sub(/#.*/, "", line)
       if (line ~ /=/) { k = line; sub(/=.*/, "", k); v = line; sub(/^[^=]*=/, "", v)
@@ -183,6 +188,7 @@ do
         smtpd_sasl_security_options) secropts=`printf '%s' "$v" | tr 'A-Z' 'a-z'` ;;
         smtpd_tls_auth_only) case "`printf '%s' "$v" | tr 'A-Z' 'a-z'`" in yes|true|1) tlsauthonly=Y ;; esac ;;
         mynetworks) networks="$networks $v" ;;
+        disable_vrfy_command) case "`printf '%s' "$v" | tr 'A-Z' 'a-z'`" in yes|true|1) vrfy=Y ;; *) vrfy= ;; esac ;;
         smtpd_banner) banner=$v; bannerset=Y ;;
       esac
     done
@@ -193,6 +199,7 @@ do
       esac
     fi
     case "$networks" in *0.0.0.0/0*) message WARN mail002w "Take the world out of mynetworks in $c: name only the networks that relay through here." "Postfix relays for the whole world (mynetworks in $c holds 0.0.0.0/0): spam goes out in your name." ;; esac
+    [ -z "$vrfy" ] && message WARN mail004w "Set 'disable_vrfy_command = yes' in $c." "Postfix answers VRFY ($c sets no disable_vrfy_command=yes): anyone may ask which addresses exist here. Judged from main.cf alone: even a loopback-only Postfix is told to disable it."
     if [ -z "$bannerset" ]; then
       message INFO mail003i "" "Postfix advertises its version: the default smtpd_banner carries \$mail_version. Set a banner of your own naming nothing."
     else
