@@ -524,5 +524,16 @@ noerr && [ "`count .`" = 0 ] && ok "check_timesync, under --root: live state, si
 unset Tigris_Ps_Cmd Tigris_Sysctl_Cmd Tigris_Rcconf_File Tigris_Ntpq_Cmd Tigris_Ntpctl_Cmd
 unset Tigris_Chronyc_Cmd Tigris_Chronyc_Sources_Cmd Tigris_Sysctl_Root
 
+#
+# check_passwd: an empty FreeBSD password reports pass011f
+#
+P=$W/nopass; root "$P"
+printf 'nopass::51004:51004::0:0:No Password:/home/nopass:/bin/sh\n' >> "$P/etc/master.passwd"
+printf 'nopass:*:51004:51004::/home/nopass:/bin/sh\n' >> "$P/etc/passwd"
+mkdir -p "$P/home/nopass"; printf '# shrc\n' > "$P/home/nopass/.shrc"; chmod 750 "$P/home/nopass"
+run check_passwd "$P"
+noerr && has "[pass011f] Username \`nopass' has an empty password field." && [ "`count .`" = 1 ] &&
+  ok "check_passwd, an empty master.passwd field: pass011f" || { bad "passwd nopass"; cat "$W/raw"; }
+
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

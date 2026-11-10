@@ -9,11 +9,11 @@
 # root; the fixtures read the same for both.
 #
 TIGER=${TIGER:-`cd "\`dirname \"$0\"\`/.." && pwd`}
+umask 022   # the tree copies and directories made here must be nobody else's to write
 W=`mktemp -d`
 trap 'rm -rf "$W"' 0
 ( cd "$TIGER" && tar --exclude=.git --exclude=./log --exclude=./run -cf - . ) | ( cd "$W" && tar -xf - )
 mkdir -p "$W/run" "$W/log"
-umask 022
 fail=0
 ok()  { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
@@ -54,6 +54,40 @@ T=$W/tight; shells "$T"; users "$T" evil.plist admin2.plist locked.plist noshell
 run "$T" "$W/out"
 empty "$W/out" &&
   ok "root, admin, locked daemon: silent" || { bad "tight noisy"; cat "$W/out"; }
+
+# a user with a login shell and no authentication authority at all (no
+# ShadowHash, as disabled root ships) is not passwordless: it cannot
+# authenticate, so it stays silent
+cat > "$T/var/db/dslocal/nodes/Default/users/noauth.plist" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<array>
+		<string>noauth</string>
+	</array>
+	<key>uid</key>
+	<array>
+		<string>505</string>
+	</array>
+	<key>gid</key>
+	<array>
+		<string>20</string>
+	</array>
+	<key>shell</key>
+	<array>
+		<string>/bin/bash</string>
+	</array>
+	<key>home</key>
+	<array>
+		<string>/Users/noauth</string>
+	</array>
+</dict>
+</plist>
+EOF
+run "$T" "$W/out"
+empty "$W/out" &&
+  ok "a login shell with no ShadowHash: not passwordless, silent" || { bad "noauth noisy"; cat "$W/out"; }
 
 echo "Tigris_Dscl_Cmd='$W/tests/fixtures/macos/dscl-stub'" >> "$W/tigris.conf"
 # the users come live from the dscl stub, but the valid shells must

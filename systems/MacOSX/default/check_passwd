@@ -29,6 +29,11 @@
 #
 # 10/09/2026 - Initial version. Tigris_Dscl_Cmd points at another
 #             dscl, for the tests.
+# 11/10/2026 - Accounts without a ShadowHash are still not judged:
+#             such an account cannot authenticate at all, which is
+#             also disabled root's stock shape, so calling one
+#             passwordless (pass011f) would fail every stock Mac for
+#             an account nobody can use. AUTH-9283.
 #
 # References:
 #   dscl(1)
