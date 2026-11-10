@@ -140,4 +140,4 @@ jobs:
       - name: Attach them to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP"/out/src/* "$RUNNER_TEMP"/out/deb/* "$RUNNER_TEMP"/out/rpm/* "$RUNNER_TEMP"/out/apk/* "$RUNNER_TEMP"/out/packaging/* "$RUNNER_TEMP"/out/SHA256SUMS "$RUNNER_TEMP"/out/SHA256SUMS.asc "$RUNNER_TEMP"/out/*/*.asc packaging/keys/tigris-release.gpg --clobber
+        run: gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP"/out/src/* "$RUNNER_TEMP"/out/deb/* "$RUNNER_TEMP"/out/rpm/* "$RUNNER_TEMP"/out/apk/* "$RUNNER_TEMP"/out/packaging/* "$RUNNER_TEMP"/out/SHA256SUMS "$RUNNER_TEMP"/out/SHA256SUMS.asc packaging/keys/tigris-release.gpg --clobber
