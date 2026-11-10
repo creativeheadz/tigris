@@ -16,15 +16,18 @@
 #     Please see the file `COPYING' for the complete copyright notice.
 #
 # check_databases: MySQL/MariaDB, PostgreSQL, Redis, MongoDB and
-#                 Oracle, from their configuration files alone: no server
-#                 is queried, so no credentials are needed and an offline
-#                 root reads the same. Authentication disabled (dbs001f,
-#                 dbs011f, dbs012w), LOAD DATA LOCAL (dbs002w), secrets a
-#                 stranger can read (dbs003f, dbs007f, dbs010f, dbs014f),
-#                 the server running as root (dbs004f), trust
-#                 authentication (dbs005f), md5 passwords (dbs006w),
-#                 unencrypted network connections (dbs008w, dbs013w), Redis
-#                 open without a password (dbs009f), Oracle pre-12c logons
+#                 Oracle, from their configuration files alone, except the
+#                 empty root password: that one live probe (dbs017f) asks
+#                 the running server, and is skipped for an offline root.
+#                 Authentication disabled (dbs001f, dbs011f, dbs012w),
+#                 LOAD DATA LOCAL (dbs002w), secrets a stranger can read
+#                 (dbs003f, dbs007f, dbs010f, dbs014f, dbs021w), the server
+#                 running as root (dbs004f), trust authentication
+#                 (dbs005f), md5 passwords (dbs006w), unencrypted network
+#                 connections (dbs008w, dbs013w), Redis open without a
+#                 password (dbs009f), without any password (dbs018w),
+#                 passworded but past localhost (dbs019w) and CONFIG
+#                 under its own name (dbs020i), Oracle pre-12c logons
 #                 (dbs015w) and no valid-node checking (dbs016w).
 #
 # 10/07/2026 atrimbitas - Initial version. Includes expand in place, so
@@ -40,6 +43,12 @@
 #                 the oratab homes, then /u01 and /opt/oracle). DB2 is not
 #                 covered: its authentication settings live in the binary
 #                 database-manager configuration, not in flat files.
+# 11/10/2026 - The empty MySQL root password (dbs017f, the one live
+#                 probe: skipped for an offline root); Redis without any
+#                 password (dbs018w), passworded but past localhost
+#                 (dbs019w), CONFIG under its own name (dbs020i); the
+#                 PostgreSQL configuration readable past its keepers
+#                 (dbs021w).
 #
 # References:
 #   mysqld(8), postgresql.conf(5), pg_hba.conf(5), redis-server(1)
@@ -289,12 +298,24 @@ done
     why=`exposed "$debcnf" mysql`
     [ -n "$why" ] && message FAIL dbs003f "" "The maintenance password in \`$debcnf' is $why."
   }
+  # the one live probe: root with an empty password is let in. Only on
+  # the running system (an offline root has no server to ask), only when
+  # a client exists, and never reading credential files (--no-defaults).
+  # Tigris_Mysql_Cmd names the client, so the tests can feed the probe
+  # a stub; otherwise the mysql on PATH is used.
+  [ -z "$TIGRIS_ROOT" ] && {
+    mysql_cmd=${Tigris_Mysql_Cmd:-`command -v mysql 2>/dev/null`}
+    [ -n "$mysql_cmd" ] && $mysql_cmd --no-defaults -u root --password= -e 'SELECT 1' </dev/null >/dev/null 2>&1 &&
+      message FAIL dbs017f "" "MySQL lets root in with an empty password: anyone reaching the server connects as root without one. Give root a password."
+  }
 }
 
 # PostgreSQL: every cluster's configuration
 $GREP '^pg ' $dblist | $SED 's/^pg //' | while IFS= read -r conf
 do
   dir=${conf%/*}
+  why=`exposed "$conf" postgres`
+  [ -n "$why" ] && message WARN dbs021w "" "PostgreSQL's configuration \`$conf' is $why."
   case "$conf" in
     */pg_hba.conf)
       lineno=0
@@ -361,7 +382,7 @@ do
       key = line; sub(/[ \t].*/, "", key)
       val = line; sub(/^[^ \t]+[ \t]+/, "", val); gsub(/^[ \t]+|[ \t]+$/, "", val)
       if (key != "") print tolower(key) "\t" val "\t" file }' | {
-    pm= bind= portv= reqpass= defcred= defoff= baduser= badusers= anycred=
+    pm= bind= portv= reqpass= defcred= defoff= baduser= badusers= anycred= rename=
     passfiles=
     while IFS='	' read -r k v f
     do
@@ -370,6 +391,9 @@ do
         bind) bind="$bind $v" ;;
         port) portv=$v ;;
         requirepass) [ -n "$v" ] && { reqpass=Y; passfiles="$passfiles $f"; } ;;
+        rename-command)
+          set -- $v
+          case "$1" in [Cc][Oo][Nn][Ff][Ii][Gg]) rename=Y ;; esac ;;
         user)
           set -- $v
           __un=$1; shift
@@ -393,28 +417,36 @@ do
     # with one, or the default user off with every named user passworded
     closed=
     { [ -n "$reqpass" ] || [ -n "$defcred" ] || [ -n "$defoff" ]; } && [ -z "$baduser" ] && closed=Y
+    # bound past loopback, or no bind line at all (every interface):
+    # what the open server and the passworded-but-exposed one share
+    bound=
+    for a in $bind
+    do
+      case "$a" in -*|"") ;; *) bound="$bound $a" ;; esac
+    done
+    safe=Y
+    [ -z "$bound" ] && safe=
+    for a in $bound
+    do
+      case "$a" in 127.*|::1|localhost) ;; *) safe= ;; esac
+    done
     case "$pm" in no|NO|No)
-      [ -z "$closed" ] && [ "$portv" != 0 ] && {
-        bound=
-        for a in $bind
-        do
-          case "$a" in -*|"") ;; *) bound="$bound $a" ;; esac
-        done
-        safe=Y
-        [ -z "$bound" ] && safe=
-        for a in $bound
-        do
-          case "$a" in 127.*|::1|localhost) ;; *) safe= ;; esac
-        done
-        [ -z "$safe" ] && {
-          [ -n "$bound" ] || bound="every interface (no bind line)"
-          cause=
-          { [ -n "$reqpass" ] || [ -n "$defcred" ] || [ -n "$defoff" ]; } || cause="no requirepass"
-          [ -n "$baduser" ] && cause="${cause:+$cause, }users without a password ($badusers)"
-          message FAIL dbs009f "" "Redis is open to the network without a password (protected-mode no in $conf, $cause, bound to `echo $bound | $SED 's/ /, /g'`): anyone can read and write every key."
-        }
+      [ -z "$closed" ] && [ "$portv" != 0 ] && [ -z "$safe" ] && {
+        [ -n "$bound" ] || bound="every interface (no bind line)"
+        cause=
+        { [ -n "$reqpass" ] || [ -n "$defcred" ] || [ -n "$defoff" ]; } || cause="no requirepass"
+        [ -n "$baduser" ] && cause="${cause:+$cause, }users without a password ($badusers)"
+        message FAIL dbs009f "" "Redis is open to the network without a password (protected-mode no in $conf, $cause, bound to `echo $bound | $SED 's/ /, /g'`): anyone can read and write every key."
       } ;;
     esac
+    [ -z "$reqpass" ] && [ -z "$anycred" ] &&
+      message WARN dbs018w "" "Redis sets no password ($conf carries neither requirepass nor an ACL user with one): whoever reaches it reads and writes every key. Set a requirepass, and password every ACL user."
+    [ -n "$closed" ] && [ "$portv" != 0 ] && [ -z "$safe" ] && {
+      [ -n "$bound" ] || bound="every interface (no bind line)"
+      message WARN dbs019w "" "Redis listens past localhost (bound to `echo $bound | $SED 's/ /, /g'` in $conf): the password is what stands between the network and the keys. Bind it to localhost where the network need not reach it."
+    }
+    [ -z "$rename" ] &&
+      message INFO dbs020i "" "Redis answers CONFIG under its own name ($conf sets no rename-command for it): anyone reaching the server reconfigures it at runtime. Rename CONFIG to something unguessable, or to the empty string to disable it."
     [ -n "$reqpass" ] || [ -n "$anycred" ] && for pf in `printf '%s' "$passfiles" | tr ' ' '\n' | $SORT -u`
     do
       why=`exposed "$pf" redis`

@@ -196,6 +196,11 @@ id:dbs013w                | 3.10               | SC-8                     | 5.14
 id:dbs014f                | 3.3                | AC-3, SC-28              | 8.3                 | Secure configuration
 id:dbs015w                | 5.2                | IA-5(1)                  | 5.17, 8.5           | User access control
 id:dbs016w                | 4.4                | SC-7                     | 8.20                | Firewalls
+id:dbs017f                | 5.2                | IA-2, IA-5(1)            | 5.17, 8.5           | User access control
+id:dbs018w                | 5.2                | IA-2                     | 8.5                 | User access control
+id:dbs019w                | 4.4                | SC-7                     | 8.20                | Firewalls
+id:dbs020i                | 4.1                | CM-6                     | 8.9                 | Secure configuration
+id:dbs021w                | 3.3, 5.2           | AC-3, IA-5(7)            | 5.17, 8.3           | User access control
 
 # ---- name resolution
 id:dns001f                | 4.1                | CM-6                     | 8.9                 | -

@@ -1,0 +1,12 @@
+Id: dbs019w
+Severity: WARN
+Category: services
+Check: check_databases
+Fix: Bind Redis to localhost (bind 127.0.0.1 ::1) where the network need not reach it.
+References: redis-server(1)
+Controls: CIS 4.4; NIST SC-7; ISO 8.20; CE Firewalls
+
+Redis listens past localhost with only its password between
+the network and the keys. One guessed or leaked secret opens
+every key to the network; bind it to localhost where the
+network need not reach it.

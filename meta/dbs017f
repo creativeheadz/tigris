@@ -1,0 +1,13 @@
+Id: dbs017f
+Severity: FAIL
+Category: services
+Check: check_databases
+Fix: Give root a password (ALTER USER 'root'@'localhost' IDENTIFIED BY ...).
+References: mysqld(8)
+Controls: CIS 5.2; NIST IA-2, IA-5(1); ISO 5.17, 8.5; CE User access control
+
+MySQL lets root in with an empty password: a client connecting
+as root with no password is accepted, so anyone reaching the
+server has every privilege. This is the one live probe in an
+otherwise offline check: it runs only on the running system,
+never against an offline root, and reads no credential files.

@@ -1,0 +1,11 @@
+Id: dbs018w
+Severity: WARN
+Category: services
+Check: check_databases
+Fix: Set a requirepass, and password every ACL user.
+References: redis-server(1)
+Controls: CIS 5.2; NIST IA-2; ISO 8.5; CE User access control
+
+Redis sets no password: neither requirepass nor any ACL user
+carries one. Whoever reaches the server reads and writes every
+key; set a password even where only localhost reaches it.

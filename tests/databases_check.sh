@@ -11,7 +11,11 @@
 # a password, locked with ACLs, and socket-only; a MongoDB open to
 # the network without auth or TLS and an Oracle home allowing pre-12c
 # logons with no valid-node checking. Then a clean root (nothing), a
-# loopback-only MongoDB without auth, and an offline root.
+# loopback-only MongoDB without auth, an empty MySQL root password
+# answered and refused by stub clients, Redis with no password at
+# all, passworded but past localhost, and CONFIG unrenamed, a
+# world-readable PostgreSQL configuration, and an offline root where
+# the live probe is skipped even with an answering client named.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -29,9 +33,29 @@ join() {
 }
 run() {  # run ROOT OUTFILE: check_databases against ROOT
   cp "$W/tigris.conf.base" "$W/tigris.conf"
-  { echo "Tigris_Sysctl_Root='$1'"; echo "Tigris_Show_INFO_Msgs=Y"; } >> "$W/tigris.conf"
+  { echo "Tigris_Sysctl_Root='$1'"; echo "Tigris_Show_INFO_Msgs=Y"; echo "Tigris_Mysql_Cmd='${MYSQLSTUB:-$W/stubbin-no/mysql}'"; } >> "$W/tigris.conf"
   ( cd "$W" && TIGERHOMEDIR=$W sh ./systems/Linux/2/check_databases ) 2>&1 | join > "$2"
 }
+
+# stub mysql clients for the empty-root-password probe: one the logon
+# convinces, one nothing does. run() names the refusing one, so the
+# probe reads the same on hosts with and without a real client.
+mkdir -p "$W/stubbin-no" "$W/stubbin-ok"
+printf '#!/bin/sh\nexit 1\n' > "$W/stubbin-no/mysql"
+chmod 755 "$W/stubbin-no/mysql"
+cat > "$W/stubbin-ok/mysql" <<'EOF'
+#!/bin/sh
+# the empty root logon succeeds, but only for the credential-less
+# probe: without --no-defaults this stub refuses, and the suite fails.
+case " $* " in
+  *' --no-defaults '*)
+    case " $* " in
+      *' --password= '*) exit 0 ;;
+    esac ;;
+esac
+exit 1
+EOF
+chmod 755 "$W/stubbin-ok/mysql"
 
 r="$W/root"
 mkdir -p "$r/etc/mysql/conf.d" "$r/etc/postgresql/16/main" "$r/var/lib/mysql" \
@@ -138,7 +162,8 @@ chmod 700 "$C/var/lib/mysql"; chmod 600 "$C/etc/mysql/debian.cnf"
 printf "data_directory = '/var/lib/postgresql/16/main'\npassword_encryption = 'scram-sha-256'\nssl = on\nlisten_addresses = 'localhost'\n" > "$C/etc/postgresql/16/main/postgresql.conf"
 printf 'local all all peer\nhost all all 127.0.0.1/32 scram-sha-256\n' > "$C/etc/postgresql/16/main/pg_hba.conf"
 chmod 700 "$C/var/lib/postgresql/16/main"
-printf 'bind 127.0.0.1 ::1\nrequirepass s3cret\nprotected-mode yes\n' > "$C/etc/redis/redis.conf"
+chmod 600 "$C/etc/postgresql/16/main/postgresql.conf" "$C/etc/postgresql/16/main/pg_hba.conf"
+printf 'bind 127.0.0.1 ::1\nrequirepass s3cret\nprotected-mode yes\nrename-command CONFIG a91f4c7e2b5d8e0f3a6c\n' > "$C/etc/redis/redis.conf"
 chmod 600 "$C/etc/redis/redis.conf"
 cat > "$C/etc/mongod.conf" <<'EOF'
 security:
@@ -167,16 +192,70 @@ grep -F -q "[dbs012w] MongoDB takes unauthenticated connections on its loopback 
   ! grep -q 'dbs011f\|dbs013w\|dbs014f' "$W/mongo.out" &&
   ok "no auth on loopback only: dbs012w alone" || { bad "mongo local"; cat "$W/mongo.out"; }
 
+# the empty MySQL root password, answered and refused by the stubs
+Y=$W/mysqlroot
+mkdir -p "$Y/etc/mysql"
+printf '[mysqld]\nuser = mysql\n' > "$Y/etc/mysql/my.cnf"
+( MYSQLSTUB=$W/stubbin-ok/mysql; run "$Y" "$W/mysql.out" )
+grep -F -q "[dbs017f] MySQL lets root in with an empty password:" "$W/mysql.out" &&
+  ok "the empty root logon succeeds: dbs017f" || { bad "mysql root"; cat "$W/mysql.out"; }
+run "$Y" "$W/mysqlno.out"
+grep -q 'dbs017f' "$W/mysqlno.out" && { bad "mysql refused"; cat "$W/mysqlno.out"; } ||
+  ok "the server refuses the empty logon: nothing"
+
+# Redis with no password at all, otherwise locked down
+R1=$W/redisnopass
+mkdir -p "$R1/etc/redis"
+printf 'bind 127.0.0.1\nprotected-mode yes\nrename-command CONFIG a91f4c7e2b5d8e0f3a6c\n' > "$R1/etc/redis/redis.conf"
+run "$R1" "$W/r1.out"
+grep -F -q "[dbs018w] Redis sets no password" "$W/r1.out" &&
+  ! grep -q 'dbs009f\|dbs019w\|dbs020i' "$W/r1.out" &&
+  ok "no password on loopback: dbs018w alone" || { bad "redis nopass"; cat "$W/r1.out"; }
+
+# Redis passworded but listening past localhost
+R2=$W/redisexposed
+mkdir -p "$R2/etc/redis"
+printf 'bind 0.0.0.0\nrequirepass s3cret\nprotected-mode yes\nrename-command CONFIG a91f4c7e2b5d8e0f3a6c\n' > "$R2/etc/redis/redis.conf"
+chmod 600 "$R2/etc/redis/redis.conf"
+run "$R2" "$W/r2.out"
+grep -F -q "[dbs019w] Redis listens past localhost" "$W/r2.out" &&
+  ! grep -q 'dbs009f\|dbs018w\|dbs020i\|dbs010f' "$W/r2.out" &&
+  ok "passworded but exposed: dbs019w alone" || { bad "redis exposed"; cat "$W/r2.out"; }
+
+# Redis with CONFIG under its own name
+R3=$W/redisconfig
+mkdir -p "$R3/etc/redis"
+printf 'bind 127.0.0.1 ::1\nrequirepass s3cret\nprotected-mode yes\n' > "$R3/etc/redis/redis.conf"
+chmod 600 "$R3/etc/redis/redis.conf"
+run "$R3" "$W/r3.out"
+grep -F -q "[dbs020i] Redis answers CONFIG under its own name" "$W/r3.out" &&
+  ! grep -q 'dbs009f\|dbs018w\|dbs019w' "$W/r3.out" &&
+  ok "CONFIG unrenamed: dbs020i alone" || { bad "redis config"; cat "$W/r3.out"; }
+
+# PostgreSQL's configuration readable by anyone
+G=$W/pgworld
+mkdir -p "$G/etc/postgresql/16/main" "$G/var/lib/postgresql/16/main"
+printf "data_directory = '/var/lib/postgresql/16/main'\npassword_encryption = 'scram-sha-256'\nssl = on\nlisten_addresses = 'localhost'\n" > "$G/etc/postgresql/16/main/postgresql.conf"
+printf 'local all all peer\n' > "$G/etc/postgresql/16/main/pg_hba.conf"
+chmod 700 "$G/var/lib/postgresql/16/main"
+run "$G" "$W/pg.out"
+[ "`grep -F -c '[dbs021w]' "$W/pg.out"`" = 2 ] &&
+  grep -F -q "[dbs021w] PostgreSQL's configuration \`/etc/postgresql/16/main/postgresql.conf' is readable by anyone." "$W/pg.out" &&
+  grep -F -q "[dbs021w] PostgreSQL's configuration \`/etc/postgresql/16/main/pg_hba.conf' is readable by anyone." "$W/pg.out" &&
+  ! grep -q 'dbs005f\|dbs006w\|dbs007f\|dbs008w' "$W/pg.out" &&
+  ok "both pg files world-readable: dbs021w twice" || { bad "pg world"; cat "$W/pg.out"; }
+
 # an offline root (TIGRIS_ROOT, as tigris --root sets it)
 R=$W/img
 mkdir -p "$R/etc/mysql" "$R/var/lib/mysql"
 printf '[mysqld]\nskip-grant-tables\ndatadir = /var/lib/mysql\n' > "$R/etc/mysql/my.cnf"
 chmod 755 "$R/var/lib/mysql"
-cp "$W/tigris.conf.base" "$W/tigris.conf"; echo "Tigris_Show_INFO_Msgs=Y" >> "$W/tigris.conf"
+cp "$W/tigris.conf.base" "$W/tigris.conf"; { echo "Tigris_Show_INFO_Msgs=Y"; echo "Tigris_Mysql_Cmd='$W/stubbin-ok/mysql'"; } >> "$W/tigris.conf"
 ( cd "$W" && TIGRIS_ROOT=$R TIGERHOMEDIR=$W sh ./systems/Linux/2/check_databases ) 2>&1 | join > "$W/off"
 grep -F -q "[dbs001f] MySQL runs with skip-grant-tables (/etc/mysql/my.cnf):" "$W/off" &&
   grep -F -q "[dbs003f] MySQL's data directory \`/var/lib/mysql' is readable by anyone:" "$W/off" &&
-  ok "offline root: skip-grant-tables and the exposed datadir" || { bad "offline"; cat "$W/off"; }
+  ! grep -q 'dbs017f' "$W/off" &&
+  ok "offline root: skip-grant-tables and the exposed datadir, the live probe skipped" || { bad "offline"; cat "$W/off"; }
 grep -q "$R" "$W/off" && bad "offline root: a finding names where the root is on this host" || ok "offline root: findings name the root's own paths"
 
 [ $fail -eq 0 ] && echo "PASS"
