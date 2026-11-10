@@ -1,0 +1,14 @@
+Id: sctl003w
+Severity: WARN
+Category: kernel
+Check: check_sysctl
+Fix: Set vfs.usermount=0 in /etc/sysctl.conf.
+References: sysctl.conf(5); sysctl(8); mount(8)
+Controls: CIS 4.1, 10.5; NIST CM-6, SI-16; ISO 8.9; CE Secure configuration
+
+vfs.usermount is 1, so any user may mount file systems: a removable
+disk or image with a setuid-root binary on it, which then runs as
+root, or a filesystem crafted to confuse the kernel. FreeBSD lets
+only root mount unless told otherwise:
+  # sysctl -w vfs.usermount=0
+and keep it in /etc/sysctl.conf.

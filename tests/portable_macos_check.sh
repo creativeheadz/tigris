@@ -171,5 +171,40 @@ warns='0 WARN'
   grep -q '# Checking crontabs' "$report" && grep -q "# Summary: 0 ALERT, 0 FAIL, $warns" "$report" &&
   ok "tigris --root with the macOS config: runs its checks, nothing to report, no init001e" || { bad "tigris"; cat "$W/raw" $report; }
 
+#
+# check_sysctl (macOS): the forwarding switches, live and at boot
+#
+# msys CHECK ROOT: the macOS CHECK, ROOT the audited system (empty:
+# live, stub commands from the environment), its findings one a line
+# in $W/out
+msys() {
+  ( cd "$W" && OS=MacOSX REV=15.0 ARCH=arm64 TIGERHOMEDIR=$W TIGRIS_ROOT="$2" sh "./systems/MacOSX/default/$1" ) > "$W/raw" 2>&1
+  awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' "$W/raw" |
+    tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
+}
+S=$W/sysctl-bad; mkdir -p "$S/etc"
+printf '# a root that forwards\nnet.inet.ip.forwarding=1\nnet.inet6.ip6.forwarding=1\nkern.osrelease=24.0.0\n' > "$S/etc/sysctl.conf"
+msys check_sysctl "$S"
+noerr && has '[sctl006w] net.inet.ip.forwarding is 1 (set in /etc/sysctl.conf)' && has 'net.inet6.ip6.forwarding is 1' &&
+  [ "`count .`" = 2 ] &&
+  ok "check_sysctl, sysctl.conf: both families forward, attributed" || { bad "sysctl offline"; cat "$W/raw"; }
+msys check_sysctl "$C"
+noerr && [ "`count .`" = 0 ] && ok "check_sysctl, no sysctl.conf: the defaults are off, silent" || { bad "sysctl unset"; cat "$W/raw"; }
+cat > "$W/sysctl-stub" <<'EOF'
+#!/bin/sh
+cat <<'EOT'
+kern.ostype: Darwin
+net.inet.ip.forwarding: 0
+net.inet6.ip6.forwarding: 1
+kern.osrelease: 24.0.0
+EOT
+EOF
+chmod 755 "$W/sysctl-stub"
+Tigris_Sysctl_Cmd="sh $W/sysctl-stub"; export Tigris_Sysctl_Cmd
+msys check_sysctl ""
+noerr && has '[sctl006w] net.inet6.ip6.forwarding is 1' && [ "`count .`" = 1 ] &&
+  ok "check_sysctl, live: only the IPv6 switch, nothing else read" || { bad "sysctl live"; cat "$W/raw"; }
+unset Tigris_Sysctl_Cmd
+
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

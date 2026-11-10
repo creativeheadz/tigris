@@ -1,0 +1,16 @@
+Id: sctl006w
+Severity: WARN
+Category: network
+Check: check_sysctl
+Fix: Turn off Internet Sharing, or set both forwarding keys to 0 in /etc/sysctl.conf.
+References: sysctl(8)
+Controls: CIS 4.1; NIST CM-6, SC-7; ISO 8.20; CE Secure configuration
+
+The Mac forwards packets between its networks, as a router does: the
+forwarding switch named (IPv4, IPv6, or each reported in turn) is on.
+That is Internet Sharing left on (System Settings, General, Sharing),
+which also opens the Mac to whatever the other side sends, or a switch
+someone set by hand. A Mac that is not meant to route should not
+forward:
+  # sysctl -w net.inet.ip.forwarding=0 net.inet6.ip6.forwarding=0
+and keep both keys at 0 in /etc/sysctl.conf.

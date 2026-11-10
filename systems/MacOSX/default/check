@@ -92,3 +92,7 @@ SYSTEMDIR=$BASEDIR/systems/MacOSX/default
 [ "$Tigris_Check_AUDIT" != 'N' ] && {
   skip_check $SYSTEMDIR/check_audit || $SYSTEMDIR/check_audit
 }
+
+[ "$Tigris_Check_SYSCTL" != 'N' ] && {
+  skip_check $SYSTEMDIR/check_sysctl || $SYSTEMDIR/check_sysctl
+}

@@ -1,0 +1,167 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# check_sysctl: the FreeBSD kernel's hardening settings: whether process
+#             IDs are random, set-user-ID programs dump core, unprivileged
+#             users mount file systems, binaries run randomised, and ICMP
+#             redirects are logged. Live they are read from sysctl; under
+#             --root from what the root applies at boot, its
+#             /etc/sysctl.conf. A key the root does not set keeps the
+#             kernel's default, which for every key judged here is the
+#             safe value, so only a key set to a weaker value is reported.
+#             The settings FreeBSD ships weak (hiding other users'
+#             processes, unprivileged dmesg and debugging, the TCP and UDP
+#             blackholes, sending and dropping redirects) are hardening a
+#             site chooses, not misconfigurations, and are left out on
+#             purpose, as are loader.conf tunables, which only the running
+#             system shows.
+#
+# 11/10/2026 - Initial version, beside the Linux check_sysctl, which
+#             reads /proc/sys and sysctl.d. Tigris_Sysctl_Cmd points
+#             at another sysctl, for the tests.
+#
+# References:
+#   sysctl(8), sysctl.conf(5)
+#
+# Tigris: offline
+#   the settings the root applies at boot, from its /etc/sysctl.conf.
+#
+#-----------------------------------------------------------------------------
+#
+TigrisInstallDir='.'
+
+#
+# Set default base directory.
+# Order or preference:
+#      -B option
+#      TIGERHOMEDIR environment variable
+#      TigrisInstallDir installed location
+#
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
+
+for parm
+do
+   case $parm in
+   -B) basedir=$2; break;;
+   esac
+done
+
+#
+# Verify that a config file exists there, and if it does
+# source it.
+#
+[ ! -r $basedir/config ] && {
+  echo "--ERROR-- [init002e] No 'config' file in \`$basedir'."
+  exit 1
+}
+
+. $basedir/config
+
+. $BASEDIR/initdefs
+#
+# If run in test mode (-t) this will verify that all required
+# elements are set.
+#
+[ "$Tigris_TESTMODE" = 'Y' ] && {
+  haveallcmds AWK CAT SED || exit 1
+  haveallfiles BASEDIR WORKDIR || exit 1
+
+  echo "--CONFIG-- [init003c] $0: Configuration ok..."
+  exit 0
+}
+
+#------------------------------------------------------------------------
+
+haveallcmds AWK CAT SED || exit 1
+
+# One setting per line: key, test, value, level, code, what a bad value means.
+# The test is eq (must equal), ge (must be at least), ne (must not be) or
+# mask (a bitmask: 1 means every bit, and none of the given bits may be
+# set). A key this kernel does not have is skipped; so is one whose value
+# is not a plain number.
+settings()
+{
+  $CAT <<EOF
+kern.randompid                              eq 1 WARN sctl001w process IDs are handed out in order, so one process's ID tells the next
+kern.sugid_coredump                         eq 0 WARN sctl002w set-user-ID and set-group-ID programs may dump core their user can read
+vfs.usermount                               eq 0 WARN sctl003w unprivileged users may mount file systems, and a setuid binary on one runs as its owner
+kern.elf32.aslr.enable                      eq 1 WARN sctl004w 32-bit binaries run without address space layout randomisation
+kern.elf64.aslr.enable                      eq 1 WARN sctl004w 64-bit binaries run without address space layout randomisation
+net.inet.icmp.log_redirect                  eq 0 WARN sctl005w ICMP redirects are logged, which floods the log
+EOF
+}
+
+# good VALUE TEST WANT: whether VALUE passes
+good()
+{
+  case "$2" in
+    eq) [ "$1" -eq "$3" ] ;;
+    ge) [ "$1" -ge "$3" ] ;;
+    ne) [ "$1" -ne "$3" ] ;;
+    mask) [ "$1" -ne 1 ] && [ $(( $1 & $3 )) -eq 0 ] ;;
+  esac
+}
+
+# judge VALUE KEY TEST WANT LEVEL CODE TEXT [WHERE]: report VALUE when it
+# fails, once per key
+reported=
+judge()
+{
+  case " $reported " in *" $2 "*) return 0 ;; esac
+  good "$1" "$3" "$4" && return 0
+  reported="$reported $2"
+  message "$5" "$6" "" "$2 is $1${8:+ ($8)}: $7"
+}
+
+if [ -n "$TIGRIS_ROOT" ]; then
+  echo
+  echo "# Checking the kernel settings $TIGRIS_ROOT applies at boot (sysctl.conf)"
+  conffile=`rootfile /etc/sysctl.conf`
+  [ -f "$conffile" ] || exit 0
+  settings | while read key test want level code text
+  do
+    case "$key" in ''|\#*) continue ;; esac
+    value=`$AWK -v k="$key" '
+      { sub(/#.*$/, "") }
+      /=/ {
+        kk = $0; sub(/=.*$/, "", kk); sub(/^[ \t]+/, "", kk); sub(/[ \t]+$/, "", kk)
+        vv = $0; sub(/^[^=]*=/, "", vv); sub(/^[ \t]+/, "", vv); sub(/[ \t]+$/, "", vv)
+        if (kk == k) { v = vv; found = 1 }
+      }
+      END { if (found) print v }' "$conffile"`
+    [ -n "$value" ] || continue
+    case "$value" in ''|*[!0-9-]*) continue ;; esac
+    judge "$value" "$key" "$test" "$want" "$level" "$code" "$text" "set in /etc/sysctl.conf"
+  done
+  exit 0
+fi
+
+echo
+echo "# Checking kernel hardening settings (sysctl)"
+sysctl_out=`${Tigris_Sysctl_Cmd:-sysctl} -a 2>/dev/null`
+settings | while read key test want level code text
+do
+  case "$key" in ''|\#*) continue ;; esac
+  value=`printf '%s\n' "$sysctl_out" | $AWK -v k="$key" '
+    { i = index($0, ": "); if (i > 0 && substr($0, 1, i - 1) == k) {
+        v = substr($0, i + 2); sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v); print v; exit } }'`
+  [ -n "$value" ] || continue
+  case "$value" in ''|*[!0-9-]*) continue ;; esac
+  judge "$value" "$key" "$test" "$want" "$level" "$code" "$text"
+done
+
+exit 0

@@ -277,5 +277,60 @@ if [ "$uid" = 0 ]; then passwd='Performing check of passwd files'; else passwd='
   grep -q 'Checking for correct umask settings' "$report" && grep -q "# Summary: 0 ALERT, 0 FAIL, $warns" "$report" &&
   ok "tigris --root with the FreeBSD config: runs its checks, nothing to report, no init001e" || { bad "tigris"; cat "$W/raw" $report; }
 
+#
+# check_sysctl (FreeBSD): the hardening settings, live and at boot
+#
+# bsys CHECK ROOT: the FreeBSD CHECK, ROOT the audited system (empty:
+# live, stub commands from the environment), its findings one a line
+# in $W/out
+bsys() {
+  ( cd "$W" && OS=FreeBSD REV=14.1-RELEASE ARCH=amd64 TIGERHOMEDIR=$W TIGRIS_ROOT="$2" sh "./systems/FreeBSD/default/$1" ) > "$W/raw" 2>&1
+  awk '/^--/ { if (l != "") print l; l = $0; next } /^ / { sub(/^ +/, " "); l = l $0; next } { if (l != "") print l; l = "" } END { if (l != "") print l }' "$W/raw" |
+    tr -s ' ' | grep '^--' | grep -v '^--CONFIG--' > "$W/out"
+}
+S=$W/sysctl-bad; mkdir -p "$S/etc"
+cat > "$S/etc/sysctl.conf" <<'EOF'
+# a root that weakens everything judged (the last of a key wins)
+kern.randompid=0
+kern.sugid_coredump=1
+vfs.usermount=1
+kern.elf32.aslr.enable=0
+kern.elf64.aslr.enable=1
+net.inet.icmp.log_redirect=1
+hw.model=Some Machine
+
+kern.randompid = 0
+EOF
+bsys check_sysctl "$S"
+noerr && has '[sctl001w] kern.randompid is 0 (set in /etc/sysctl.conf)' && has '[sctl002w]' && has '[sctl003w]' &&
+  has '[sctl004w] kern.elf32.aslr.enable is 0' && [ "`count sctl004w`" = 1 ] && has '[sctl005w]' &&
+  [ "`count .`" = 5 ] &&
+  ok "check_sysctl, sysctl.conf: all five weakenings, attributed; the sound 64-bit value and unknown keys quiet" || { bad "sysctl offline"; cat "$W/raw"; }
+G=$W/sysctl-good; mkdir -p "$G/etc"
+printf 'kern.randompid=1\nkern.sugid_coredump=0\nvfs.usermount=0\nkern.elf32.aslr.enable=1\nkern.elf64.aslr.enable=1\nnet.inet.icmp.log_redirect=0\n' > "$G/etc/sysctl.conf"
+bsys check_sysctl "$G"
+noerr && [ "`count .`" = 0 ] && ok "check_sysctl, a sysctl.conf that hardens: silent" || { bad "sysctl good"; cat "$W/raw"; }
+bsys check_sysctl "$C"
+noerr && [ "`count .`" = 0 ] && ok "check_sysctl, no sysctl.conf: the defaults are safe, silent" || { bad "sysctl unset"; cat "$W/raw"; }
+cat > "$W/sysctl-stub" <<'EOF'
+#!/bin/sh
+cat <<'EOT'
+kern.ostype: FreeBSD
+kern.randompid: 0
+kern.sugid_coredump: 1
+vfs.usermount: 1
+kern.elf32.aslr.enable: 0
+kern.elf64.aslr.enable: 0
+net.inet.icmp.log_redirect: 1
+kern.hostuuid: 123e4567-e89b-12d3-a456-426614174000
+EOT
+EOF
+chmod 755 "$W/sysctl-stub"
+Tigris_Sysctl_Cmd="sh $W/sysctl-stub"; export Tigris_Sysctl_Cmd
+bsys check_sysctl ""
+noerr && [ "`count .`" = 6 ] && [ "`count sctl004w`" = 2 ] &&
+  ok "check_sysctl, live: six findings (both ASLR classes), nothing else read" || { bad "sysctl live"; cat "$W/raw"; }
+unset Tigris_Sysctl_Cmd
+
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

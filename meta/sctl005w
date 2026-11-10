@@ -1,0 +1,14 @@
+Id: sctl005w
+Severity: WARN
+Category: network
+Check: check_sysctl
+Fix: Set net.inet.icmp.log_redirect=0 in /etc/sysctl.conf.
+References: sysctl.conf(5); sysctl(8)
+Controls: CIS 4.1; NIST CM-6, SC-7; ISO 8.20; CE Secure configuration
+
+net.inet.icmp.log_redirect is 1, so every ICMP redirect is logged.
+On a network that sends them the log fills with noise, which hides
+what matters and can fill the disk the logs are on. FreeBSD does not
+log them unless told to:
+  # sysctl -w net.inet.icmp.log_redirect=0
+and keep it in /etc/sysctl.conf.
