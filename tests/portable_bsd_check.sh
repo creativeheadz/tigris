@@ -367,5 +367,162 @@ noerr && [ "`count .`" = 0 ] && ok "check_ttys, no console entry: nothing to jud
 bsys check_ttys "$C"
 noerr && [ "`count .`" = 0 ] && ok "check_ttys, no /etc/ttys: silent" || { bad "ttys missing"; cat "$W/raw"; }
 
+#
+# check_timesync (FreeBSD): its daemons, live
+#
+echo "Tigris_Show_INFO_Msgs=Y" >> "$W/tigris.conf"
+mkdir -p "$W/timesync-root" "$W/rc2/rc.conf.d"
+cat > "$W/ps-none" <<'EOF'
+#!/bin/sh
+cat <<'EOT'
+sshd /usr/sbin/sshd
+cron /usr/sbin/cron -s
+EOT
+EOF
+cat > "$W/ps-ntpd" <<'EOF'
+#!/bin/sh
+cat <<'EOT'
+sshd /usr/sbin/sshd
+ntpd /usr/sbin/ntpd -s
+EOT
+EOF
+cat > "$W/ps-ontpd" <<'EOF'
+#!/bin/sh
+cat <<'EOT'
+ntpd /usr/sbin/ntpd -s
+ntpd ntpd: ntp engine
+ntpd ntpd: dns engine
+EOT
+EOF
+cat > "$W/ps-chr" <<'EOF'
+#!/bin/sh
+cat <<'EOT'
+sshd /usr/sbin/sshd
+chronyd /usr/local/sbin/chronyd
+EOT
+EOF
+cat > "$W/ps-two" <<'EOF'
+#!/bin/sh
+cat <<'EOT'
+ntpd /usr/sbin/ntpd -s
+chronyd /usr/local/sbin/chronyd
+EOT
+EOF
+printf '#!/bin/sh\necho 0\n' > "$W/sysctl0"
+printf '#!/bin/sh\necho 1\n' > "$W/sysctl1"
+printf 'sshd_enable="YES"\n' > "$W/rc-nonet"
+printf 'sshd_enable="YES"\nntpdate_enable="YES"\nntpdate_hosts="0.freebsd.pool.ntp.org"\n' > "$W/rc-ntpdate"
+printf 'sshd_enable="YES"\n' > "$W/rc2/rc-nonet2"
+printf 'ntpdate_enable="YES"\n' > "$W/rc2/rc.conf.d/ntpdate"
+cat > "$W/ntpq-ok" <<'EOF'
+#!/bin/sh
+cat <<EOT
+     remote           refid      st t when poll reach   delay   offset  jitter
+==============================================================================
+*192.0.2.20     .GPS.            1 u   45   64  377    0.123   -0.045   0.012
++192.0.2.21     192.0.2.1        2 u   44   64  377    0.234    0.011   0.020
++192.0.2.22     192.0.2.1        2 u   43   64  377    0.198   -0.008   0.015
++192.0.2.23     192.0.2.1        2 u   42   64  377    0.210    0.005   0.018
+EOT
+EOF
+cat > "$W/ntpq-few" <<'EOF'
+#!/bin/sh
+cat <<EOT
+     remote           refid      st t when poll reach   delay   offset  jitter
+==============================================================================
+*192.0.2.20     .GPS.            1 u   45   64  377    0.123   -0.045   0.012
++192.0.2.21     192.0.2.1        2 u   44   64    0    0.234    0.011   0.020
+EOT
+EOF
+cat > "$W/ntpq-nosel" <<'EOF'
+#!/bin/sh
+cat <<EOT
+     remote           refid      st t when poll reach   delay   offset  jitter
+==============================================================================
++192.0.2.20     192.0.2.1        2 u   45   64  377    0.123   -0.045   0.012
++192.0.2.21     192.0.2.1        2 u   44   64  377    0.234    0.011   0.020
++192.0.2.22     192.0.2.1        2 u   43   64  377    0.198   -0.008   0.015
+EOT
+EOF
+printf '#!/bin/sh\nexit 1\n' > "$W/ntp-fail"
+printf '#!/bin/sh\necho "4/4 peers valid, clock synced, stratum 3"\n' > "$W/ctl-ok"
+printf '#!/bin/sh\necho "0/4 peers valid, clock unsynced"\n' > "$W/ctl-unsync"
+printf '#!/bin/sh\nexit 1\n' > "$W/ctl-none"
+cat > "$W/chrony-ok" <<'EOF'
+#!/bin/sh
+cat <<EOT
+Reference ID    : C0A80101 (ntp.example.org)
+Stratum         : 3
+Ref time (UTC)  : Wed Oct 07 13:02:11 2026
+System time     : 0.000012 seconds fast of NTP time
+Leap status     : Normal
+EOT
+EOF
+printf '#!/bin/sh\nexit 1\n' > "$W/chrony-fail"
+cat > "$W/sources-ok" <<'EOF'
+#!/bin/sh
+cat <<EOT
+MS Name/IP address         Stratum Poll Reach LastRx Last sample
+===============================================================================
+^- 192.0.2.10                    2   6   377    21    +15us[ +30us] +/-  123us
+^* 192.0.2.11                    2   6   377    20    -10us[ -25us] +/-  110us
+^+ 192.0.2.12                    3   6   377    19    +40us[ +55us] +/-  200us
+^+ 192.0.2.13                    2   6   377    18     +5us[ +12us] +/-   95us
+EOT
+EOF
+printf '#!/bin/sh\nexit 1\n' > "$W/sources-fail"
+chmod 755 "$W"/ps-none "$W"/ps-ntpd "$W"/ps-ontpd "$W"/ps-chr "$W"/ps-two "$W"/sysctl0 "$W"/sysctl1 \
+  "$W"/ntpq-ok "$W"/ntpq-few "$W"/ntpq-nosel "$W"/ntp-fail "$W"/ctl-ok "$W"/ctl-unsync "$W"/ctl-none \
+  "$W"/chrony-ok "$W"/chrony-fail "$W"/sources-ok "$W"/sources-fail
+# tgo PS SYSCTL RCCONF NTPQ NTPCTL CHRONYC SOURCES: check_timesync live,
+# every query stubbed (an unstubbed one would ask this host)
+tgo() {
+  Tigris_Ps_Cmd="sh $W/$1"; Tigris_Sysctl_Cmd="sh $W/$2"; Tigris_Rcconf_File="$W/$3"; Tigris_Ntpq_Cmd="sh $W/$4"
+  Tigris_Ntpctl_Cmd="sh $W/$5"; Tigris_Chronyc_Cmd="sh $W/$6"; Tigris_Chronyc_Sources_Cmd="sh $W/$7"
+  Tigris_Sysctl_Root="$W/timesync-root"
+  export Tigris_Ps_Cmd Tigris_Sysctl_Cmd Tigris_Rcconf_File Tigris_Ntpq_Cmd Tigris_Ntpctl_Cmd
+  export Tigris_Chronyc_Cmd Tigris_Chronyc_Sources_Cmd Tigris_Sysctl_Root
+  bsys check_timesync ""
+}
+tgo ps-none sysctl0 rc-nonet ntp-fail ctl-none chrony-fail sources-fail
+noerr && has '--WARN-- [time001w] No time synchronisation daemon is running (ntpd, OpenNTPD or chronyd were looked for)' &&
+  has 'openntpd_enable="YES"' && [ "`count .`" = 1 ] &&
+  ok "check_timesync, no daemon: time001w, naming rc.conf's three" || { bad "timesync none"; cat "$W/raw"; }
+tgo ps-none sysctl0 rc-ntpdate ntp-fail ctl-none chrony-fail sources-fail
+noerr && has '[time001w]' && has 'ntpdate only sets the clock once, at boot' && [ "`count .`" = 1 ] &&
+  ok "check_timesync, ntpdate alone: time001w saying it is one-shot" || { bad "timesync ntpdate"; cat "$W/raw"; }
+tgo ps-none sysctl0 rc2/rc-nonet2 ntp-fail ctl-none chrony-fail sources-fail
+noerr && has '[time001w]' && has 'ntpdate only sets the clock once, at boot' &&
+  ok "check_timesync, ntpdate from rc.conf.d: the same" || { bad "timesync rc.conf.d"; cat "$W/raw"; }
+tgo ps-ntpd sysctl0 rc-nonet ntpq-ok ctl-none chrony-fail sources-fail
+noerr && has 'The clock is synchronised by ntpd (stratum 2).' && [ "`count .`" = 1 ] &&
+  ok "check_timesync, ntpd with four peers: stratum 2 in time003i" || { bad "timesync ntpd"; cat "$W/raw"; }
+tgo ps-ntpd sysctl0 rc-nonet ntpq-few ctl-none chrony-fail sources-fail
+noerr && has '[time005w] ntpd has only 1 of its 2 time sources answering' && has '[time003i]' &&
+  ok "check_timesync, one of two peers answering: time005w, still synchronised" || { bad "timesync few"; cat "$W/raw"; }
+tgo ps-ntpd sysctl0 rc-nonet ntpq-nosel ctl-none chrony-fail sources-fail
+noerr && has '[time002w] ntpd is running, but the clock is not synchronised.' && has "See 'ntpq -p'" &&
+  [ "`count time005w`" = 0 ] && [ "`count .`" = 1 ] &&
+  ok "check_timesync, no peer selected: time002w from ntpq's tally, three answering" || { bad "timesync nosel"; cat "$W/raw"; }
+tgo ps-ontpd sysctl0 rc-nonet ntpq-few ctl-ok chrony-fail sources-fail
+noerr && has '[time003i] The clock is synchronised by openntpd (stratum 3).' && [ "`count .`" = 1 ] &&
+  ok "check_timesync, OpenNTPD by its titles: ntpctl decides, ntpq not asked" || { bad "timesync ontpd"; cat "$W/raw"; }
+tgo ps-ontpd sysctl0 rc-nonet ntpq-ok ctl-unsync chrony-fail sources-fail
+noerr && has '[time002w] openntpd is running, but the clock is not synchronised.' &&
+  has '[time005w] openntpd has only 0 of its 4 time sources answering' &&
+  ok "check_timesync, OpenNTPD unsynced, no valid peer: time002w and time005w" || { bad "timesync ounsync"; cat "$W/raw"; }
+tgo ps-chr sysctl0 rc-nonet ntp-fail ctl-none chrony-ok sources-ok
+noerr && has 'The clock is synchronised by chronyd (from ntp.example.org, stratum 3).' && [ "`count time002w`" = 0 ] &&
+  ok "check_timesync, chronyd: chronyc decides" || { bad "timesync chrony"; cat "$W/raw"; }
+tgo ps-two sysctl0 rc-nonet ntp-fail ctl-none chrony-fail sources-fail
+noerr && has '[time004w]' && has 'Running: chronyd ntpd.' && [ "`count .`" = 1 ] &&
+  ok "check_timesync, two daemons: time004w, naming both (dead queries stay silent)" || { bad "timesync two"; cat "$W/raw"; }
+tgo ps-none sysctl1 rc-ntpdate ntp-fail ctl-none chrony-fail sources-fail
+noerr && [ "`count .`" = 0 ] && ok "check_timesync, in a jail: the host's clock, silent" || { bad "timesync jail"; cat "$W/raw"; }
+bsys check_timesync "$C"
+noerr && [ "`count .`" = 0 ] && ok "check_timesync, under --root: live state, silent" || { bad "timesync root"; cat "$W/raw"; }
+unset Tigris_Ps_Cmd Tigris_Sysctl_Cmd Tigris_Rcconf_File Tigris_Ntpq_Cmd Tigris_Ntpctl_Cmd
+unset Tigris_Chronyc_Cmd Tigris_Chronyc_Sources_Cmd Tigris_Sysctl_Root
+
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

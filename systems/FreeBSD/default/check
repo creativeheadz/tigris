@@ -100,3 +100,7 @@ SYSTEMDIR=$BASEDIR/systems/FreeBSD/default
 [ "$Tigris_Check_SINGLE" != 'N' ] && {
   skip_check $SYSTEMDIR/check_ttys || $SYSTEMDIR/check_ttys
 }
+
+[ "$Tigris_Check_TIMESYNC" != 'N' ] && {
+  skip_check $SYSTEMDIR/check_timesync || $SYSTEMDIR/check_timesync
+}

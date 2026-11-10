@@ -2,19 +2,27 @@ Id: time001w
 Severity: WARN
 Category: services
 Check: check_timesync
-Fix: timedatectl set-ntp true, or install chrony.
-References: systemd-timesyncd(8), chronyd(8)
+Fix: Turn one time daemon on: timedatectl set-ntp true (Linux), ntpd_enable in rc.conf (FreeBSD), automatic date and time (macOS).
+References: systemd-timesyncd(8), chronyd(8); ntpd(8), rc.conf(5); systemsetup(8)
 Controls: CIS 8.4; NIST AU-8, SC-45; ISO 8.17
 
-No time synchronisation daemon is running (chronyd, systemd-timesyncd,
-ntpd, OpenNTPD or ptp4l were looked for). The clock then drifts, by
+No time synchronisation daemon is running: the check looked for the
+platform's daemons (chronyd, systemd-timesyncd, ntpd, OpenNTPD or
+ptp4l on Linux; ntpd, OpenNTPD or chronyd on FreeBSD; timed, ntpd or
+chronyd on macOS) and found none keeping the clock. On FreeBSD
+ntpdate alone counts as none: it sets the clock once, at boot, and
+does not keep it. On macOS timed with automatic date and time off
+counts as none too: it follows nothing. The clock then drifts, by
 seconds a day on ordinary hardware and more in virtual machines, and
 what depends on it goes wrong: logs from different machines no longer
-line up in an investigation, TLS certificates look expired or not yet valid, and
-Kerberos and TOTP codes are refused.
+line up in an investigation, TLS certificates look expired or not yet
+valid, and Kerberos and TOTP codes are refused.
 
-To fix it, turn on the daemon the distribution ships: 'timedatectl
-set-ntp true' starts systemd-timesyncd, or install chrony (the default
-on Fedora, RHEL and SUSE, and the better choice for a server). A virtual
-machine whose hypervisor sets its clock may not need one; if so, accept
-the finding with tigris-accept.
+To fix it, turn on the daemon the system ships: 'timedatectl set-ntp
+true' starts systemd-timesyncd on Linux, or install chrony (the
+default on Fedora, RHEL and SUSE, and the better choice for a
+server); ntpd_enable="YES" in rc.conf on FreeBSD; automatic date and
+time (System Settings, or 'sudo systemsetup -setusingnetworktime on')
+on macOS. A virtual machine whose hypervisor sets its clock, or a jail
+on its host's clock, may not need one; if so, accept the finding with
+tigris-accept.

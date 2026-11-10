@@ -206,5 +206,51 @@ noerr && has '[sctl006w] net.inet6.ip6.forwarding is 1' && [ "`count .`" = 1 ] &
   ok "check_sysctl, live: only the IPv6 switch, nothing else read" || { bad "sysctl live"; cat "$W/raw"; }
 unset Tigris_Sysctl_Cmd
 
+#
+# check_timesync (macOS): timed and the switch, live
+#
+cat > "$W/ps-none" <<'EOF'
+#!/bin/sh
+echo "launchd /sbin/launchd"
+EOF
+cat > "$W/ps-timed" <<'EOF'
+#!/bin/sh
+cat <<'EOT'
+launchd /sbin/launchd
+timed /usr/libexec/timed
+EOT
+EOF
+cat > "$W/ps-two" <<'EOF'
+#!/bin/sh
+cat <<'EOT'
+timed /usr/libexec/timed
+ntpd /usr/sbin/ntpd
+EOT
+EOF
+printf '#!/bin/sh\necho "Network Time: On"\n' > "$W/setup-on"
+printf '#!/bin/sh\necho "Network Time: Off"\n' > "$W/setup-off"
+chmod 755 "$W"/ps-none "$W"/ps-timed "$W"/ps-two "$W"/setup-on "$W"/setup-off
+# mgo PS SETUP: check_timesync live, ps and systemsetup stubbed
+mgo() {
+  Tigris_Ps_Cmd="sh $W/$1"; Tigris_Systemsetup_Cmd="sh $W/$2"
+  export Tigris_Ps_Cmd Tigris_Systemsetup_Cmd
+  msys check_timesync ""
+}
+mgo ps-none setup-off
+noerr && has '--WARN-- [time001w] No time synchronisation daemon is running (timed, ntpd or chronyd were looked for)' &&
+  has 'systemsetup -setusingnetworktime on' && [ "`count .`" = 1 ] &&
+  ok "check_timesync, no daemon: time001w, pointing at systemsetup" || { bad "timesync none"; cat "$W/raw"; }
+mgo ps-timed setup-on
+noerr && [ "`count .`" = 0 ] && ok "check_timesync, timed with the switch on: silent" || { bad "timesync timed"; cat "$W/raw"; }
+mgo ps-timed setup-off
+noerr && has '[time001w] timed is running, but automatic date and time is off' && [ "`count .`" = 1 ] &&
+  ok "check_timesync, timed with the switch off: time001w" || { bad "timesync off"; cat "$W/raw"; }
+mgo ps-two setup-on
+noerr && has '[time004w]' && has 'Running: ntpd timed.' && [ "`count .`" = 1 ] &&
+  ok "check_timesync, two daemons: time004w, naming both" || { bad "timesync two"; cat "$W/raw"; }
+msys check_timesync "$C"
+noerr && [ "`count .`" = 0 ] && ok "check_timesync, under --root: live state, silent" || { bad "timesync root"; cat "$W/raw"; }
+unset Tigris_Ps_Cmd Tigris_Systemsetup_Cmd
+
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

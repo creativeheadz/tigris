@@ -2,14 +2,17 @@ Id: time004w
 Severity: WARN
 Category: services
 Check: check_timesync
-Fix: Keep one daemon; systemctl disable --now the others.
-References: chronyd(8); systemd-timesyncd(8)
+Fix: Keep one daemon; turn the others off (systemctl disable --now on Linux, _enable="NO" in rc.conf on FreeBSD).
+References: chronyd(8); systemd-timesyncd(8); rc.conf(5)
 Controls: CIS 8.4; NIST AU-8, SC-45; ISO 8.17
 
 More than one time synchronisation daemon is running. Each corrects
 the clock towards its own servers, so they fight, and the clock can
 jump back and forth. It usually happens when chrony or ntpd was
-installed on a system where systemd-timesyncd was already on.
+installed on a system where another daemon was already on
+(systemd-timesyncd on Linux, timed on macOS).
 
-To fix it, keep one and disable the others, for example 'systemctl
-disable --now systemd-timesyncd' when chrony is the one to keep.
+To fix it, keep one and turn the others off: 'systemctl disable --now
+systemd-timesyncd' when chrony is the one to keep on Linux,
+_enable="NO" in rc.conf on FreeBSD, and on macOS stop what should not
+run beside timed.

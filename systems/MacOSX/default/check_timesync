@@ -1,0 +1,134 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# check_timesync: is the clock kept synchronised, by one daemon. The
+#             daemons are found in ps: timed, which speaks SNTP to
+#             time.apple.com when automatic date and time is on
+#             (systemsetup says), ntpd from before it, and chronyd for
+#             whoever installed one. timed with the switch off follows
+#             nothing, so that is no daemon too. timed answers no
+#             status query, so a running daemon past that is trusted:
+#             whether it reached its servers is not judged.
+#
+# 11/10/2026 - Initial version, beside the FreeBSD check_timesync,
+#             which asks ntpq and ntpctl. Tigris_Ps_Cmd replaces ps
+#             and Tigris_Systemsetup_Cmd systemsetup, for the tests.
+#
+# References:
+#   systemsetup(8)
+#
+# Tigris: live system
+#   Under --root it is skipped: it reads the running time daemon.
+#
+#-----------------------------------------------------------------------------
+#
+TigrisInstallDir='.'
+
+#
+# Set default base directory.
+# Order or preference:
+#      -B option
+#      TIGERHOMEDIR environment variable
+#      TigrisInstallDir installed location
+#
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
+
+for parm
+do
+   case $parm in
+   -B) basedir=$2; break;;
+   esac
+done
+
+#
+# Verify that a config file exists there, and if it does
+# source it.
+#
+[ ! -r $basedir/config ] && {
+  echo "--ERROR-- [init002e] No 'config' file in \`$basedir'."
+  exit 1
+}
+
+. $basedir/config
+
+. $BASEDIR/initdefs
+
+#
+# If run in test mode (-t) this will verify that all required
+# elements are set.
+#
+[ "$Tigris_TESTMODE" = 'Y' ] && {
+  haveallcmds AWK SED SORT || exit 1
+  haveallfiles BASEDIR WORKDIR || exit 1
+
+  echo "--CONFIG-- [init003c] $0: Configuration ok..."
+  exit 0
+}
+
+#------------------------------------------------------------------------
+
+haveallcmds AWK SED SORT || exit 1
+
+# Under --root there is nothing to read: the daemons are live state
+[ -n "$TIGRIS_ROOT" ] && exit 0
+
+echo
+echo "# Checking time synchronisation..."
+
+findtool()
+{
+  for d in /usr/bin /bin /usr/sbin /sbin
+  do
+    [ -x "$d/$1" ] && { echo "$d/$1"; return 0; }
+  done
+  return 1
+}
+
+pscmd=${Tigris_Ps_Cmd:-}
+[ -z "$pscmd" ] && { p=`findtool ps` && pscmd="$p -ax -o comm= -o command=" || pscmd=; }
+[ -z "$pscmd" ] && exit 0
+psout=`$pscmd 2>/dev/null`
+[ -z "$psout" ] && exit 0
+
+# The time daemons running, by the name people know them by
+daemons=`printf '%s\n' "$psout" | $AWK '
+  $1 == "timed" || $1 == "ntpd" || $1 == "chronyd" { d[$1] = 1 }
+  END { for (n in d) print n }' | $SORT | $AWK '{ printf "%s%s", (NR > 1 ? " " : ""), $0 }'`
+
+# Automatic date and time, on or off; unknown when systemsetup
+# answers nothing
+syscmd=${Tigris_Systemsetup_Cmd:-}
+[ -z "$syscmd" ] && c=`findtool systemsetup` && syscmd="$c -getusingnetworktime"
+nettime=
+[ -n "$syscmd" ] && nettime=`$syscmd 2>/dev/null | $SED -n 's/^Network Time: //p'`
+
+case "$daemons" in
+  '')
+    message WARN time001w "Turn on automatic date and time (System Settings, General, Date & Time, or 'sudo systemsetup -setusingnetworktime on')." "No time synchronisation daemon is running (timed, ntpd or chronyd were looked for): the clock drifts, and logs, certificates and Kerberos tickets go wrong with it."
+    exit 0
+    ;;
+  *' '*)
+    message WARN time004w "Running: $daemons. Keep one: stop the other, so they do not correct the clock against each other." "More than one time synchronisation daemon is running, and they correct the clock against each other."
+    exit 0
+    ;;
+esac
+
+# timed with the switch off follows nothing
+[ "$daemons" = timed ] && [ "$nettime" = Off ] &&
+  message WARN time001w "Turn on automatic date and time (System Settings, General, Date & Time, or 'sudo systemsetup -setusingnetworktime on')." "timed is running, but automatic date and time is off, so nothing disciplines the clock."
+
+exit 0
