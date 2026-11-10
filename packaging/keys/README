@@ -1,7 +1,8 @@
-The maintainer's abuild public keys live here: one .rsa.pub a key,
-committed, so mkapk.sh --release can prove the key that signed an .apk
-is the maintainer's and not a throwaway. Never a private half: a file
-ending in .rsa (without .pub) is refused by CI, and the private key
-itself lives only offline with the maintainer (or, at release time,
-in a CI secret). No key is committed yet. Setup, fingerprints and
-rotation are in doc/release-signing.md.
+The maintainer's public halves live here, committed: tigris-release.gpg
+(the GPG key that signs SHA256SUMS and the artefacts) and one .rsa.pub
+a key for abuild, so mkapk.sh --release can prove the key that signed
+an .apk is the maintainer's and not a throwaway. Never a private half:
+a file ending in .rsa (without .pub) or a key block is refused by CI,
+and the private keys live only offline with the maintainer (or, at
+release time, in CI secrets). Setup, fingerprints and rotation are in
+doc/release-signing.md.

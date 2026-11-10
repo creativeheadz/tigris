@@ -21,30 +21,38 @@ described at the end.
 
 ## Maintainer keys
 
-No maintainer key is committed yet. Provisioning is a maintainer
-task, done once, offline:
+Provisioning is a maintainer task, done once, ideally offline:
 
-1. GPG: on an offline machine, `gpg --full-generate-key` (RSA 4096,
-   no expiry comments needed), note the fingerprint, export the
-   public half to `packaging/keys/tigris-release.gpg`
-   (`gpg --export ADDRESS > packaging/keys/tigris-release.gpg`) and
-   commit that file. Record the fingerprint below.
-2. abuild: on an offline Alpine, `abuild-keygen -a -n -q`, commit only
-   the `.rsa.pub` it writes to `~/.abuild/` as
-   `packaging/keys/<address>.rsa.pub`. Record the fingerprint below
-   (`openssl dgst -sha256` over the `.rsa.pub`).
-3. Keep both private halves offline. At release time the GPG private
-   half reaches CI only as the `TIGRIS_SIGN_KEY` secret (armored
-   export) with its key id in `TIGRIS_SIGN_KEY_ID`, and the abuild
-   private half only as the `TIGRIS_ABUILD_KEY` secret; or sign
-   locally and upload by hand.
+1. GPG: `gpg --batch --pinentry-mode loopback --passphrase '' --quick-gen-key "Tigris Release <a.trimbitas@oldforge.tech>" rsa4096 sign 2y`.
+   No passphrase: CI signs non-interactively and has nowhere to
+   keep one, so a passphrase'd key breaks the release. Note the
+   fingerprint, export the public half to
+   `packaging/keys/tigris-release.gpg` and commit that file.
+   Record the fingerprint below. The key expires two years out;
+   extend or rotate before then.
+2. abuild: on Alpine, `abuild-keygen -a -n -q -b 4096` with
+   `PACKAGER` set to the maintainer address, commit only the
+   `.rsa.pub` it writes to `~/.abuild/` as
+   `packaging/keys/<address>-<hex>.rsa.pub`. Record the
+   fingerprint below (`openssl dgst -sha256` over the `.rsa.pub`).
+3. Keep both private halves offline (the GPG revocation
+   certificate with them). At release time the GPG private half
+   reaches CI only as the `TIGRIS_SIGN_KEY` secret (armored
+   export) with its fingerprint in `TIGRIS_SIGN_KEY_ID`, and the
+   abuild private half only as the `TIGRIS_ABUILD_KEY` secret;
+   or sign locally and upload by hand.
 
-Fingerprints (empty until provisioned):
+Fingerprints:
 
-| key                                | fingerprint |
-|------------------------------------|-------------|
-| GPG `tigris-release.gpg`           | _TBD_       |
-| abuild `<address>.rsa.pub`         | _TBD_       |
+| key                                                     | fingerprint                                                        |
+|---------------------------------------------------------|--------------------------------------------------------------------|
+| GPG `tigris-release.gpg` (expires 2028-11-09)           | `788D C87C 4BC5 2278 5287 22A3 47C5 962A 39B1 24A7`                 |
+| abuild `a.trimbitas@oldforge.tech-6af36586.rsa.pub`     | `fada9a2b19c3c893dc4ec4b0c4f177850622b36746036b862ae0fe355c44ca74` |
+
+Provenance: the first keys were generated 2026-11-10 on the
+maintainer's development machine, not an airgapped one; their
+security is the secrecy of the offline copies and the CI
+secrets. Rotate on any doubt (below).
 
 CI refuses private halves: `packaging/keys/*.rsa` (without `.pub`)
 and any key block fail the lint job.

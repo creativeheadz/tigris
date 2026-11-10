@@ -127,7 +127,7 @@ jobs:
       - name: Prove the release verifies as users will
         run: |
           rm -rf "$RUNNER_TEMP/flat" && mkdir -p "$RUNNER_TEMP/flat"
-          cp "$RUNNER_TEMP"/out/src/* "$RUNNER_TEMP"/out/deb/* "$RUNNER_TEMP"/out/rpm/* "$RUNNER_TEMP"/out/apk/* "$RUNNER_TEMP"/out/packaging/* "$RUNNER_TEMP"/out/SHA256SUMS* "$RUNNER_TEMP"/out/*/*.asc "$RUNNER_TEMP/flat/"
+          cp "$RUNNER_TEMP"/out/src/* "$RUNNER_TEMP"/out/deb/* "$RUNNER_TEMP"/out/rpm/* "$RUNNER_TEMP"/out/apk/* "$RUNNER_TEMP"/out/packaging/* "$RUNNER_TEMP"/out/SHA256SUMS* "$RUNNER_TEMP/flat/"
           sh packaging/verify-sigs.sh "$RUNNER_TEMP/flat" packaging/keys/tigris-release.gpg
       - name: Attest the packages and the tarball
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
