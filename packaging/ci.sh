@@ -41,7 +41,11 @@ deb)
 rpm)
   dnf install -y -q rpm-build gcc make tar gzip diffutils file findutils || exit 1
   sh "$TIGER/packaging/mkrpm.sh" "$OUT" || exit 1
-  rpm -i "$OUT"/tigris-[0-9]*.rpm || exit 1
+  # --nosignature: rpm 6 refuses unsigned installs, and this .rpm is
+  # deliberately unsigned (its trust is the detached .asc beside the
+  # release's SHA256SUMS, which the release proves). It was just built
+  # here from the mounted tree, so there is nothing to authenticate.
+  rpm -i --nosignature "$OUT"/tigris-[0-9]*.rpm || exit 1
   sh "$TIGER/packaging/smoke-installed.sh" || exit 1
   ;;
 apk)
