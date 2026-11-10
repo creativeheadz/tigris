@@ -55,6 +55,7 @@ expect "[ -x $STAGEHOME/tigris-explain ]" "tigris-explain is where BASEDIR expec
 expect "[ -z \"`find $STAGEHOME ! -type l -perm /go+w 2>/dev/null | head -1`\" ]" "nothing installed is writable by group or others"
 [ "`id -u`" = 0 ] && expect "[ -z \"`find $STAGEHOME ! -user root 2>/dev/null | head -1`\" ]" "installed as root: everything is root's"
 expect "[ -x $STAGEHOME/tigris-diff ]" "tigris-diff is where BASEDIR expects it"
+expect "[ -x $SBIN/tigris-export ]" "sbin/tigris-export is installed and executable"
 
 $SBIN/tigris explain lin002i >"$W/explain.out" 2>&1
 expect "grep -q 'Severity:' $W/explain.out" "sbin/tigris explain finds tigris-explain"
@@ -97,6 +98,10 @@ $SBIN/tigris --since last --root "$W/root" >"$W/run2.out" 2>&1; st=$?
 if [ "`id -u`" = 0 ]; then expect "[ $st -ge 0 ] && [ $st -le 5 ]" "the installed tree finishes a run with --since (as root: exit $st)"
 else expect "[ $st -eq 2 ]" "the installed tree finishes a run with --since"; fi
 expect "grep -q 'Tigris diff:' $W/run2.out" "the --since run compared with the earlier one"
+$SBIN/tigris-export -f csv -l "$LOG" >"$W/export.csv" 2>"$W/export.err"; st=$?
+expect "[ $st -eq 0 ] && head -1 $W/export.csv | grep -q '^host,run,time,level,id,'" "the installed tigris-export converts the run to CSV"
+$SBIN/tigris-export -f sarif -l "$LOG" >"$W/export.sarif" 2>>"$W/export.err"; st=$?
+expect "[ $st -eq 0 ] && grep -q '\"version\":\"2.1.0\"' $W/export.sarif && [ ! -s $W/export.err ]" "and to SARIF, with the metadata found"
 
 # A second install keeps the admin's configuration: the shipped files go
 # beside it as .new, and the install says so

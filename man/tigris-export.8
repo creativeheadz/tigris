@@ -1,0 +1,78 @@
+.TH TIGRIS\-EXPORT 8 "10 November 2026" "Tigris 4.0.0" "System Administration"
+.SH NAME
+tigris\-export \- a Tigris report in another format
+.SH SYNOPSIS
+.B tigris\-export
+.B \-f
+.IR format
+.RB [ \-o
+.IR file ]
+.RB [ \-l
+.IR logdir ]
+.RI [ report.jsonl ]
+.SH DESCRIPTION
+.B tigris\-export
+reads the JSON Lines report of a run of
+.BR tigris (8)
+and writes it as SARIF 2.1.0, for code-scanning dashboards, or as CSV,
+for a spreadsheet. The checks know nothing of either format: both are
+made from the JSON, so they say what the JSON says.
+.LP
+With no file, the most recent run in the log directory is taken.
+.LP
+SARIF: ALERT and FAIL are errors, WARN warnings, INFO notes. An ERROR
+(a check that could not run) and a skipped check are not findings about
+the host: they are the invocation's notifications, and a CONFIG record
+its configuration's. An accepted finding
+.RB ( tigris\-accept (8))
+is a suppressed result, its reason the justification. A result's
+location is the check that reported it, on the audited host, and each
+carries a fingerprint of its level, id and message, so that a dashboard
+does not fold the findings of one check into one alert. The rules carry
+their descriptions from the finding metadata.
+.LP
+CSV: one row per finding record, ERROR and CONFIG records included,
+with the host, run, time, level, id, category, check, message, detail,
+the acceptance and the compliance controls. Fields are quoted after
+RFC 4180; a field that opens with =, +, \-, @, a tab or a carriage
+return gets a leading apostrophe, so that a spreadsheet does not run it
+as a formula.
+.SH OPTIONS
+.TP
+.BI \-f " format"
+The format:
+.B sarif
+or
+.BR csv .
+.TP
+.BI \-o " file"
+Write to
+.I file
+instead of standard output. It is written only when the whole report
+converted; a report that cannot be read leaves it as it was.
+.TP
+.BI \-l " logdir"
+The log directory: by default
+.I ./log
+if it exists, else
+.IR /var/log/tiger .
+.SH EXIT STATUS
+.TP
+.B 0
+The report was converted.
+.TP
+.B 2
+An error: no such report, a newer schema than this
+.B tigris\-export
+reads, an unknown format or option.
+.SH EXAMPLES
+.RS
+.nf
+tigris\-export \-f sarif > report.sarif   # the last run, for a dashboard
+tigris\-export \-f csv \-o findings.csv old.jsonl
+.fi
+.RE
+.SH SEE ALSO
+.BR tigris (8),
+.BR tigris\-diff (8),
+.BR tigris\-accept (8)

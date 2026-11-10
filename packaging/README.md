@@ -13,12 +13,12 @@ would be its own package.
 
 | install                    | package                                   |
 |----------------------------|-------------------------------------------|
-| sbin `tiger tigercron tigris-explain` (+`tigris*`) | sbin keeps `tigris tigris-diff tigris-accept`; the rest move to the library dir |
+| sbin `tiger tigercron tigris-explain` (+`tigris*`) | sbin keeps `tigris tigris-diff tigris-export tigris-accept`; the rest move to the library dir |
 | `$prefix/tiger`            | `/usr/lib/tigris` (`/usr/lib64` on 64-bit rpms) |
 | `/etc/tigris`, `/var/.../tiger` | `/etc/tigris`, `/var/lib/tigris`, `/var/log/tigris` |
 | `tigris explain` beside sbin | baked library path, as `make install` bakes the others |
-| `tigris-diff`, `tigris-accept` defaults | rewritten to the tigris directories |
-| six man pages              | the three `tigris` ones (`-doc` split on Alpine) |
+| `tigris-diff`, `tigris-export`, `tigris-accept` defaults | rewritten to the tigris directories |
+| seven man pages            | the four `tigris` ones (`-doc` split on Alpine) |
 | Perl `check_network`       | dropped: undispatched, and it would pull a perl dependency |
 
 `packaging/stage.sh` does the reshaping; every rewrite asserts its

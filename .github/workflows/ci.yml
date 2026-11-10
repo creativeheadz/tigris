@@ -22,7 +22,7 @@ jobs:
       - name: sh -n on every shell script
         run: |
           fail=0; n=0
-          for f in $(git ls-files tiger tigris-diff tigris-accept tigris-explain tigercron config initdefs scripts systems util tests packaging); do
+          for f in $(git ls-files tiger tigris-diff tigris-accept tigris-explain tigris-export tigercron config initdefs scripts systems util tests packaging); do
             case "$f" in tests/fixtures/*|*.c|*.pl|*.txt|*.lst|*.tmpl|*.xref|*README*|*/services|*/inetd|*_list|*signatures*|*advisories*|*baseline*|*embedlist*|*facl*|*.spec|*PKGBUILD*) continue;; esac
             [ -f "$f" ] || continue
             head -1 "$f" | grep -q 'perl' && continue
@@ -43,6 +43,8 @@ jobs:
         run: sh tests/diff_check.sh
       - name: accepted findings
         run: sh tests/accept_check.sh
+      - name: SARIF and CSV export
+        run: sh tests/export_check.sh
       - name: Transparent summary
         run: sh tests/summary_check.sh
       - name: How a finding reads in the text report
@@ -229,7 +231,7 @@ jobs:
       - name: make install into a staging directory, man pages included
         run: |
           make install DESTDIR="$RUNNER_TEMP/dest"
-          for m in tiger tigris-explain tigercron tigris tigris-diff tigris-accept; do
+          for m in tiger tigris-explain tigercron tigris tigris-diff tigris-accept tigris-export; do
             test -f "$RUNNER_TEMP/dest/usr/local/share/man/man8/$m.8" || { echo "no $m.8"; exit 1; }
           done
           head -3 "$RUNNER_TEMP/dest/usr/local/share/man/man8/tigris.8"

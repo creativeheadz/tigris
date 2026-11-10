@@ -28,7 +28,7 @@ deb)
   DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tiger || exit 1
   dpkg -l tiger tigris | grep -q '^ii  tiger' || { echo "ci.sh: tiger missing"; exit 1; }
   dpkg -l tiger tigris | grep -q '^ii  tigris' || { echo "ci.sh: tigris missing"; exit 1; }
-  for b in tiger tigris tigris-diff tigris-accept; do
+  for b in tiger tigris tigris-diff tigris-export tigris-accept; do
     command -v $b >/dev/null || { echo "ci.sh: $b not on PATH"; exit 1; }
   done
   ;;

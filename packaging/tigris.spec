@@ -62,12 +62,14 @@ fi
 %config(noreplace) %{_sysconfdir}/tigris/
 %{_sbindir}/tigris
 %{_sbindir}/tigris-diff
+%{_sbindir}/tigris-export
 %{_sbindir}/tigris-accept
 %{_libdir}/tigris/
 %dir %{_localstatedir}/lib/tigris
 %dir %{_localstatedir}/log/tigris
 %{_mandir}/man8/tigris.8*
 %{_mandir}/man8/tigris-diff.8*
+%{_mandir}/man8/tigris-export.8*
 %{_mandir}/man8/tigris-accept.8*
 
 %changelog

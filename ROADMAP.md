@@ -79,7 +79,7 @@ Settled, so they do not have to be argued again:
 | Change over time     | `tigris-diff` and `tigris-accept`; `tigercron`                  | Mostly point-in-time                     |
 | Package integrity    | dpkg, rpm, apk, pacman, one finding id per kind of problem      | Limited                                  |
 | Offline audit        | `tigris --root`: every check reads an image except the ten that need the running system, nothing in it is run; a container image with every distribution's package tools | None |
-| Tests                | 117 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
+| Tests                | 118 fixture suites, 19 CI jobs on every push                     | No per-check suite found in the repository |
 | Lynis parity         | Linux groups covered in Phase A (see below); macOS, BSD done; Solaris backlogged, AIX not planned | 43 test groups across Linux, macOS, BSD, Solaris |
 
 Lynis is broad, maintained and popular (16k GitHub stars). Tigris
@@ -817,19 +817,19 @@ probing, retired legacy, no copied code) stand over parity work.
 
 Not commitments. Written down so they are not lost.
 
-- **Scan identities**: a name for a kind of scan (`--identity nightly`,
-  `--identity pre-deploy`) carried in the run record, so a consumer can
-  keep the series apart and `tigris-diff` compares like with like.
 - **Notification**: a webhook that receives the summary, or the diff,
   when a run ends. Off unless configured, in keeping with offline by
   default.
-- **More output formats** generated from the JSON rather than written
-  into the checks: SARIF (for code-scanning dashboards), XML, CSV.
+- **XML output**, generated from the JSON like the SARIF and CSV
+  `tigris-export` already writes, rather than written into the checks.
 - **Wegweiser**: the Linux agent runs Tigris on each endpoint next to
   Lynis and ships the JSON; the schema and the `accepted` block are
   designed for that. First real consumer of the contract.
-- **A fast path for large data disks**: let the scan skip filesystems by
-  type or mount point from the profile, not just by directory.
+
+Shipped off this list: scan identities (`--identity`, `Tigris_Identity`,
+`tigris-diff` saying `identities_differ`), the SARIF and CSV export,
+and the fast path for large data disks (`Tigris_FSScan_SkipTypes`,
+`Tigris_FSScan_SkipMounts`).
 
 ## Windows (after 4.0)
 

@@ -47,6 +47,10 @@ expect "grep -q 'Tigris diff:' $W/run2.out" "the --since run compared with the e
 cd /tmp || exit 1
 tigris-diff >"$W/diff.out" 2>&1; st=$?
 expect "[ $st -eq 0 ]" "tigris-diff reads the package log directory by default"
+tigris-export -f csv >"$W/export.csv" 2>"$W/export.err"; st=$?
+expect "[ $st -eq 0 ] && head -1 $W/export.csv | grep -q '^host,run,time,level,id,'" "tigris-export converts the run to CSV"
+tigris-export -f sarif >"$W/export.sarif" 2>>"$W/export.err"; st=$?
+expect "[ $st -eq 0 ] && grep -q '\"version\":\"2.1.0\"' $W/export.sarif && [ ! -s $W/export.err ]" "and to SARIF, with the metadata found"
 
 cd / || exit 1
 tigris-accept -l >"$W/accept.out" 2>&1

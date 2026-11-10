@@ -14,7 +14,7 @@
   <br>
   <img src="https://img.shields.io/badge/finding%20ids-592-e8833a?style=flat-square&labelColor=0f1822" alt="592 finding ids">
   <img src="https://img.shields.io/badge/categories-15-e8833a?style=flat-square&labelColor=0f1822" alt="15 categories">
-  <img src="https://img.shields.io/badge/test%20suites-117-e8833a?style=flat-square&labelColor=0f1822" alt="117 test suites">
+  <img src="https://img.shields.io/badge/test%20suites-118-e8833a?style=flat-square&labelColor=0f1822" alt="118 test suites">
   <img src="https://img.shields.io/badge/CI-Debian%20%C2%B7%20Ubuntu%20%C2%B7%20Fedora%20%C2%B7%20Rocky%20%C2%B7%20openSUSE%20%C2%B7%20Alpine%20%C2%B7%20Arch-c6d6e2?style=flat-square&labelColor=0f1822" alt="Tested on Debian, Ubuntu, Fedora, Rocky, openSUSE, Alpine and Arch">
 </p>
 
@@ -287,6 +287,16 @@ its date passes:
 ./tigris-accept lin015w -r "Docker needs IP forwarding"
 ./tigris-accept sysd001w -m "docker.service*" -r "sandboxing tracked in #12" -u 2027-01-31
 ./tigris-accept -l
+```
+
+**Export.** `tigris-export` converts a run's JSON report to SARIF
+2.1.0 for a code-scanning dashboard, or to CSV for a spreadsheet
+(a field that opens with `=`, `+`, `-` or `@` is guarded, so it
+cannot become a formula):
+
+```sh
+./tigris-export -f sarif > report.sarif   # the last run in log/
+./tigris-export -f csv -o findings.csv old.jsonl
 ```
 
 **Exit status.** The worst finding of the run (with `--since`, the worst

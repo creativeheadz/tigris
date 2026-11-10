@@ -31,6 +31,7 @@ need() {
 need $S/tiger "sbin binary"
 need $S/tigris "sbin binary"
 need $S/tigris-diff "sbin binary"
+need $S/tigris-export "sbin binary"
 need $S/tigris-accept "sbin binary"
 need $S/tigris-explain "sbin binary"
 need $S/tigexp "sbin symlink to tigris-explain"
@@ -57,6 +58,9 @@ sed -i 's#`dirname "$0"`/tigris-explain#'"$LIB"'/tigris-explain#' "$T"
 # configuration directory make install wrote into tigris-accept
 F=$D/$S/tigris-diff
 grep -q '/var/log/tiger' "$F" || { echo "stage.sh: the log default moved in tigris-diff"; exit 1; }
+sed -i 's#/var/log/tiger#/var/log/tigris#' "$F"
+F=$D/$S/tigris-export
+grep -q '/var/log/tiger' "$F" || { echo "stage.sh: the log default moved in tigris-export"; exit 1; }
 sed -i 's#/var/log/tiger#/var/log/tigris#' "$F"
 A=$D/$S/tigris-accept
 grep -q '^TigrisConfigDir="/etc/tigris"$' "$A" || { echo "stage.sh: tigris-accept does not name /etc/tigris (configure --with-tigerconfig=/etc/tigris)"; exit 1; }

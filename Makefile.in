@@ -97,6 +97,7 @@ BINARIES=./tiger \
 	 ./tigris-diff \
 	 ./tigris-accept \
 	 ./tigris-explain  \
+	 ./tigris-export \
 	 ./tigercron 
 
 # tigris calls these two from BASEDIR (-E reports, --since), so they are
@@ -239,6 +240,7 @@ installmanpages: installdirs
 	$(INSTALL) -m 0444 man/tigris.8 $(DESTDIR)$(TIGERMANDIR)/man8
 	$(INSTALL) -m 0444 man/tigris-diff.8 $(DESTDIR)$(TIGERMANDIR)/man8
 	$(INSTALL) -m 0444 man/tigris-accept.8 $(DESTDIR)$(TIGERMANDIR)/man8
+	$(INSTALL) -m 0444 man/tigris-export.8 $(DESTDIR)$(TIGERMANDIR)/man8
 
 installbinaries: installdirs
 	@echo "Copying binaries..."
