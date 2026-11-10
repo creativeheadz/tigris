@@ -1,5 +1,5 @@
 # End of security support per release, read by check_release.
-# From https://endoflife.date on 2026-10-22 by util/mkeol; do not edit,
+# From https://endoflife.date on 2026-11-10 by util/mkeol; do not edit,
 # run sh util/mkeol before a release instead.
 #
 # os-release ID  cycle  end of security support  end of paid extended support
@@ -113,8 +113,9 @@ ol             9        2032-06-30 2035-06-30
 ol             8        2029-07-31 2032-07-31
 ol             7        2024-12-31 2029-07-31
 ol             6        2021-03-31 2024-12-31
+fedora         45       2027-12-08 -
 fedora         44       2027-06-02 -
-fedora         43       2026-12-09 -
+fedora         43       2026-12-01 -
 fedora         42       2026-05-27 -
 fedora         41       2025-12-15 -
 fedora         40       2025-05-13 -

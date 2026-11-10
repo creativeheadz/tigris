@@ -354,9 +354,11 @@ archive, not this fork.
 ## Where it is going
 
 [ROADMAP.md](ROADMAP.md) has the decisions, the status and what is next.
-4.0.0 gives Tigris its own names (`tigris.conf`, `Tigris_*`,
-`/etc/tigris`) and keeps reading the old ones, goes deeper in nine
-checks and spots package sources that stopped publishing; 3.9.0
+4.1.0 finishes the Lynis test-level parity rounds, exports SARIF and
+CSV, names scan identities, skips whole filesystems on request and
+signs its releases; 4.0.0 gives Tigris its own names (`tigris.conf`,
+`Tigris_*`, `/etc/tigris`) and keeps reading the old ones, goes deeper
+in nine checks and spots package sources that stopped publishing; 3.9.0
 completes the hostile-image fix, judges setuid files and shared
 directories one by one, and ends each run with a summary; 3.8.1 began
 making sure nothing an audited image holds can run as code, and gave

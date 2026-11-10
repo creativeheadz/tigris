@@ -19,7 +19,7 @@ body:
     attributes:
       label: Tigris version
       description: Commit hash if running from master
-      placeholder: "4.0.0, or master @ ..."
+      placeholder: "4.1.0, or master @ ..."
     validations:
       required: true
   - type: input

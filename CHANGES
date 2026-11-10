@@ -1,6 +1,62 @@
 NOTE: To read changes made to the Debian package (since
 August 23rd 2001) see the changelog.Debian file
 
+Changes (v 4.1.0)
+--------------------
+
+4.1 finishes the Lynis test-level parity rounds and recounts the
+matrix test by test: of the 179 Lynis tests that report a weakness,
+Tigris now covers 86 fully, 45 in part and 52 not at all (37/50/96
+in October), and 87 of 123 list items (43 before). 616 finding ids
+in 118 fixture suites, every id proven to report by the fired-id
+gate, which fails the build for an id no suite reports.
+
+Round 1 repaired the checks that did not fire: single-user mode on
+every architecture, the AIDE database AIDE reads, GRUB 2 in
+/boot/grub2 with a password counting only beside superusers,
+check_apache on by default, exports to everyone, the sticky bit on
+/tmp and /var/tmp, DES and md5crypt hashes refused, and the
+portable checks running on FreeBSD and macOS instead of stopping
+at init001e. Beside it: password ageing on every distribution,
+apt sources with no security suite, OpenNTPD told apart and asked
+with ntpctl, plocate's database against its own group, remotelog
+over multi-line drivers, and lin011f retired for lin033w, which
+reads the key the kernel has.
+
+Round 2 went deeper into the core: the rest of sshd -T (18 of 20
+options), homes as CIS has them, sysrq as a mask with the
+distributions' values at INFO, loose rp_filter, proxy ARP and
+multicast routing, the mount options of /home, /var, /var/log,
+/var/log/audit, /run, /dev and /boot, the telnet, rsh and TFTP
+servers still packaged with xinetd and inetd, log rotation with
+the syslog daemon's running state, process accounting, the audit
+log offline and its keeping, what systemd-coredump keeps, and
+accounts expired yet usable.
+
+Round 3 covered services: Apache's TraceEnable and its missing
+shields, nginx's error_log at debug, three more PHP settings with
+the conf.d drop-ins read, Squid's Safe_ports, version string and
+loose modes, Postfix's VRFY, an empty MySQL root password probed
+live without ever reading credentials, Redis without a password,
+bound past localhost or with CONFIG unrenamed, and PostgreSQL's
+configuration modes. Round 4 took FreeBSD and macOS: their
+hardening sysctls, the console in /etc/ttys, timekeeping on both,
+and an empty FreeBSD password proven to report.
+
+Three tools join tigris-diff and tigris-accept. tigris-export
+converts a run to SARIF 2.1.0 or CSV, generated from the JSON so
+it says what the JSON says. A scan carries an identity
+(--identity, Tigris_Identity), and tigris-diff says when it
+compares two kinds. The filesystem scan leaves out whole
+filesystems by type or mount point and names each one it skips.
+
+Releases are verifiable now: SHA256SUMS and every artefact carry
+a detached maintainer signature, packaging/verify-sigs.sh proves
+a download the way users run it, the .apk is built with the
+maintainer's abuild key instead of a throwaway CI key, and the
+release workflow signs, proves and uploads in the open. The keys
+themselves are the maintainer's to provision (doc/release-signing.md).
+
 Changes (v 4.0.0)
 --------------------
 

@@ -5,8 +5,8 @@
 | Version | Supported |
 | ------- | --------- |
 | `master` | Yes |
-| 4.0.0 | Yes |
-| 3.9.0 and older, including all TIGER releases | No |
+| 4.1.0 | Yes |
+| 4.0.0 and older, including all TIGER releases | No |
 
 3.9.0 completed the fix 3.8.1 started, code execution on the auditing
 machine when `tigris --root` audits a hostile image (3.5.0 to 3.8.1

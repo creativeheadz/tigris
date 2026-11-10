@@ -7,9 +7,9 @@ is the reference point because it is the tool people compare against:
 everything Lynis checks on a platform Tigris supports, Tigris checks
 too, tracked group by group in `doc/parity-matrix.md`.
 
-*Last updated 23 October 2026.* `[x]` done, `[ ]` to do, `[~]` started.
+*Last updated 10 November 2026.* `[x]` done, `[ ]` to do, `[~]` started.
 Everything marked done is on `master`; "released" means tagged (the last
-tag is `version_4_0_0`).
+tag is `version_4_1_0`).
 
 ## Contents
 
@@ -67,7 +67,7 @@ Settled, so they do not have to be argued again:
 
 ## Where things stand
 
-|                      | Tigris 4.0.0 (October 2026)                                     | Lynis 3.1.7 (June 2026)                  |
+|                      | Tigris 4.1.0 (November 2026)                                    | Lynis 3.1.7 (June 2026)                  |
 |----------------------|-----------------------------------------------------------------|------------------------------------------|
 | Language             | POSIX shell, no dependencies                                    | POSIX shell                              |
 | Licence              | GPL-2.0-or-later                                                | GPL-3.0                                  |
@@ -148,6 +148,15 @@ fast the disks can be walked (a bare `find` over the same disks takes
    with 16,000 lines of dangling symlinks hides the few that matter.
 
 ## What has shipped
+
+**Released: 4.1.0 (10 November 2026).** The Lynis test-level parity
+rounds 1 to 4 (86 of 179 reporting tests fully covered, 45 in part,
+52 not at all; 87 of 123 list items), `tigris-export` (SARIF 2.1.0
+and CSV), scan identities (`--identity`, `identities_differ` in
+`tigris-diff`), the filesystem fast path (`Tigris_FSScan_SkipTypes`,
+`Tigris_FSScan_SkipMounts`), and signed release artefacts with
+`packaging/verify-sigs.sh` to prove them. The full list is in
+`CHANGES`.
 
 **Released: 4.0.0 (22 October 2026).** Tigris's own names: `tigris.conf`,
 the `Tigris_*` settings, `/etc/tigris` and `tigris explain`, with every
