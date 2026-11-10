@@ -49,7 +49,7 @@ rpm)
   sh "$TIGER/packaging/smoke-installed.sh" || exit 1
   ;;
 apk)
-  apk add -q abuild tar gzip sudo || exit 1
+  apk add -q abuild tar gzip sudo openssl || exit 1
   adduser -D builder 2>/dev/null
   addgroup builder abuild
   echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
@@ -57,16 +57,30 @@ apk)
   KEYFLAG=--throwaway-key
   if [ -n "${TIGRIS_APK_RELEASE:-}" ]; then
     # A release .apk: the maintainer's private half arrives as a
-    # mounted file (never in the tree), the public half from the
-    # tree's own packaging/keys (doc/release-signing.md).
+    # mounted file (never in the tree). abuild names the signature
+    # in the package after the public half beside the private key,
+    # and apk matches that name against its trusted keys, so the
+    # private half is staged under the name of the committed public
+    # half it belongs to — proven with openssl, not assumed. A key
+    # whose public half is not committed fails closed here, and
+    # abuild signs only with PACKAGER_PRIVKEY (abuild-keygen -a
+    # writes it; there is no keygen on this path, so it is written
+    # here). (doc/release-signing.md).
     KEYFLAG=--release
     KEYFILE=${TIGRIS_ABUILD_KEY_FILE:?ci.sh: TIGRIS_APK_RELEASE needs TIGRIS_ABUILD_KEY_FILE}
     [ -f "$KEYFILE" ] || { echo "ci.sh: $KEYFILE is not a file"; exit 1; }
     mkdir -p /home/builder/.abuild
-    cp "$KEYFILE" /home/builder/.abuild/builder.rsa
     cp "$TIGER"/packaging/keys/*.rsa.pub /home/builder/.abuild/ || exit 1
+    PRIVPUB=`openssl rsa -in "$KEYFILE" -pubout 2>/dev/null` || { echo "ci.sh: $KEYFILE is no RSA private key"; exit 1; }
+    KEYNAME=
+    for p in /home/builder/.abuild/*.rsa.pub; do
+      [ "`openssl rsa -pubin -in "$p" -outform PEM 2>/dev/null`" = "$PRIVPUB" ] && KEYNAME=${p##*/}
+    done
+    [ -n "$KEYNAME" ] || { echo "ci.sh: the release key matches no committed packaging/keys pub"; exit 1; }
+    cp "$KEYFILE" "/home/builder/.abuild/${KEYNAME%.pub}"
+    printf 'PACKAGER_PRIVKEY="/home/builder/.abuild/%s"\n' "${KEYNAME%.pub}" > /home/builder/.abuild/abuild.conf
     chown -R builder /home/builder/.abuild
-    chmod 600 /home/builder/.abuild/builder.rsa
+    chmod 600 "/home/builder/.abuild/${KEYNAME%.pub}"
   fi
   su builder -c "sh $TIGER/packaging/mkapk.sh $KEYFLAG $OUT" || exit 1
   apk add -q --allow-untrusted "$OUT"/tigris-*.apk || exit 1

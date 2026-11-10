@@ -62,6 +62,7 @@ release)
     done
   done
   [ -n "$MATCH" ] || { echo "mkapk.sh: no ~/.abuild key matches packaging/keys"; exit 1; }
+  grep -q '^PACKAGER_PRIVKEY=' ~/.abuild/abuild.conf 2>/dev/null || { echo "mkapk.sh: no PACKAGER_PRIVKEY in ~/.abuild/abuild.conf: abuild signs only with the key it names (abuild-keygen -a writes it)"; exit 1; }
   sudo cp "$MATCH" /etc/apk/keys/ || exit 1
   ;;
 throwaway)
