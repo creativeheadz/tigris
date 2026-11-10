@@ -10,7 +10,13 @@
 # runs packaging/smoke-installed.sh. The .deb job also installs
 # Debian's tiger beside it. The aur job builds from a tarball of the
 # tree (never the tag: on a release commit CI may run before the tag
-# exists) and checks the committed .SRCINFO still matches.
+# exists) and checks the committed .SRCINFO still matches. Every job
+# also runs the release signature self-test (verify-sigs.sh), so the
+# verify path users get is exercised on all four formats.
+#
+# 11/10/2026 - The apk build passes --throwaway-key (mkapk.sh makes no
+#             key silently any more), and every format run ends proving
+#             the release checksums and signatures verify.
 #
 FMT=${1:?usage: ci.sh deb|rpm|apk|aur OUTDIR}
 OUT=${2:?usage: ci.sh deb|rpm|apk|aur OUTDIR}
@@ -44,7 +50,21 @@ apk)
   addgroup builder abuild
   echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
   chmod 777 "$OUT"
-  su builder -c "sh $TIGER/packaging/mkapk.sh $OUT" || exit 1
+  KEYFLAG=--throwaway-key
+  if [ -n "${TIGRIS_APK_RELEASE:-}" ]; then
+    # A release .apk: the maintainer's private half arrives as a
+    # mounted file (never in the tree), the public half from the
+    # tree's own packaging/keys (doc/release-signing.md).
+    KEYFLAG=--release
+    KEYFILE=${TIGRIS_ABUILD_KEY_FILE:?ci.sh: TIGRIS_APK_RELEASE needs TIGRIS_ABUILD_KEY_FILE}
+    [ -f "$KEYFILE" ] || { echo "ci.sh: $KEYFILE is not a file"; exit 1; }
+    mkdir -p /home/builder/.abuild
+    cp "$KEYFILE" /home/builder/.abuild/builder.rsa
+    cp "$TIGER"/packaging/keys/*.rsa.pub /home/builder/.abuild/ || exit 1
+    chown -R builder /home/builder/.abuild
+    chmod 600 /home/builder/.abuild/builder.rsa
+  fi
+  su builder -c "sh $TIGER/packaging/mkapk.sh $KEYFLAG $OUT" || exit 1
   apk add -q --allow-untrusted "$OUT"/tigris-*.apk || exit 1
   sh "$TIGER/packaging/smoke-installed.sh" || exit 1
   ;;
@@ -68,5 +88,10 @@ aur)
 *)
   echo "ci.sh: unknown format $FMT"; exit 1;;
 esac
+
+# The verify path ships in the source tree, not the installed package,
+# so smoke-installed.sh cannot run it: ci.sh does, on every format,
+# with throwaway fixtures and keys (no secrets).
+sh "$TIGER/packaging/verify-sigs.sh" --self-test || exit 1
 
 echo "ci.sh: $FMT passed"

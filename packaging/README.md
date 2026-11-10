@@ -76,6 +76,30 @@ pacman -Sy --noconfirm base-devel sudo
 useradd -m builder; echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 ```
 
+## Signing
+
+Releases carry a `SHA256SUMS` over every artefact, a detached GPG
+signature (`.asc`) beside the sums and each artefact, and `.apk`
+files signed by the maintainer's abuild key. The full flow, key
+setup and rotation are in `doc/release-signing.md`; the outline:
+
+- `sh packaging/release-sign.sh --key KEYID OUTDIR` proves the sums
+  in `OUTDIR` hold and signs them and every artefact. The key is the
+  maintainer's, provided at signing time: no key material is in the
+  tree, and CI refuses private halves under `packaging/keys/`.
+- `sh packaging/verify-sigs.sh DIR PUBKEY` is what users run on a
+  download: sums hold, every `.asc` verifies against the
+  maintainer's public key. `verify-sigs.sh --self-test` runs the
+  positive and negative cases (tampered bytes fail, the wrong key
+  fails) on throwaway fixtures; `ci.sh` runs it on every format.
+- `sh packaging/mkapk.sh` makes no key silently: plain it needs a
+  key already in `~/.abuild`, `--throwaway-key` makes a throwaway
+  one (development and CI), and `--release` proves the key matches
+  the public half committed under `packaging/keys/` and never
+  keygens. `ci.sh apk` switches to `--release` on
+  `TIGRIS_APK_RELEASE=1` (with the secret-provided key file in
+  `TIGRIS_ABUILD_KEY_FILE`).
+
 ## Releases
 
 Before a release, `sh util/mkeol` refreshes `systems/Linux/2/eol_list`,

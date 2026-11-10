@@ -31,6 +31,12 @@ jobs:
           done
           echo "$n scripts checked"
           exit $fail
+      - name: Release checksums prove, and tampered and wrong-key fail
+        run: sh packaging/verify-sigs.sh --self-test
+      - name: No private key material in the signing files
+        run: |
+          if ls packaging/keys/*.rsa >/dev/null 2>&1; then echo "::error::a private abuild half is committed under packaging/keys"; exit 1; fi
+          ! grep -r 'PRIVATE KEY' packaging/keys packaging/release-sign.sh packaging/verify-sigs.sh packaging/mkapk.sh packaging/ci.sh doc/release-signing.md || { echo "::error::a private key block sits in the signing files"; exit 1; }
       - name: check_sysctl against known trees
         run: sh tests/sysctl_check.sh
       - name: check_ssh against sshd -T fixtures

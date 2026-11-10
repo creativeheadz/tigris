@@ -347,11 +347,31 @@ install: installdirs installbinaries installhelpers installconfig installmanpage
 distribution:
 # TODO: it should  create the proper tiger-$VERSION.tgz file
 
+# 11/10/2026 - Release checksums from the tree: dist-sums rolls the
+# source tarball and its SHA256SUMS into dist/ (git archive where git
+# is there, tar otherwise); verify-sums proves the sums hold the way
+# doc/release-signing.md tells users to. Signatures stay in
+# packaging/release-sign.sh, which needs the maintainer key.
+dist-sums:
+	VERSION=`cat version`; \
+	mkdir -p dist; \
+	if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+	  git archive --format=tar.gz --prefix="tigris-$$VERSION/" -o "dist/tigris-$$VERSION.tar.gz" HEAD; \
+	else \
+	  tar --exclude=.git --exclude=./log --exclude=./run --exclude=./dist --transform "s,^,tigris-$$VERSION/,S" -cf - . | gzip > "dist/tigris-$$VERSION.tar.gz"; \
+	fi; \
+	(cd dist && sha256sum tigris-*.tar.gz > SHA256SUMS)
+
+verify-sums:
+	test -f dist/SHA256SUMS || { echo "verify-sums: run make dist-sums first"; exit 1; }
+	cd dist && sha256sum -c SHA256SUMS
+
 clean: 
 	cd c && $(MAKE) clean
 	cd doc && $(MAKE) -f Makefile.in clean
 	-find bin/ -type f -exec rm -f {} \;
 	-rm -f man/index.bt 
+	-rm -rf dist
 
 distclean: clean
 	cd c && $(MAKE) distclean 
