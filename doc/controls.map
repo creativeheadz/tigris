@@ -249,6 +249,9 @@ id:ngx010i                | 3.10               | SC-8                     | 5.14
 id:php001w                | 4.1                | CM-6, SI-10              | 8.9, 8.28           | Secure configuration
 id:php002i                | 4.1                | CM-6                     | 8.9                 | Secure configuration
 id:php003i                | 4.1                | SI-11                    | 8.9                 | Secure configuration
+id:php004w                | 4.1                | CM-6, SI-10              | 8.9, 8.28           | Secure configuration
+id:php005w                | 4.1                | CM-6, SI-10              | 8.9, 8.28           | Secure configuration
+id:php006i                | 4.1                | CM-6                     | 8.9                 | Secure configuration
 
 # ---- printing
 id:print001w              | 4.8                | CM-7, SC-7               | 8.21                | Secure configuration

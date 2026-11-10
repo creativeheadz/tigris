@@ -1,0 +1,13 @@
+Id: php004w
+Severity: WARN
+Category: services
+Check: check_php
+Fix: Set allow_url_fopen = Off in php.ini.
+References: php.ini directives
+Controls: CIS 4.1; NIST CM-6, SI-10; ISO 8.9, 8.28; CE Secure configuration
+
+PHP treats URLs as files: any file function an attacker reaches
+fetches their server's answer. Remote code inclusion is php001w's
+business; this is reads. Turn allow_url_fopen off unless the
+applications fetch URLs themselves. Judged at the effective value
+across php.ini and its conf.d drop-ins; the file named set it.

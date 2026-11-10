@@ -2,10 +2,13 @@
 #
 # tests/php_check.sh - check_php on offline roots
 #
-# Four roots: a loose php.ini (remote includes, version exposed,
-# errors shown); a hardened one (off everywhere, errors to stderr);
-# two SAPIs with only one gone loose; and an empty root, where PHP
-# is not in use and nothing is said. INFO findings only show with
+# Six roots: a loose php.ini (remote includes and reads, dl on,
+# version exposed, errors shown, no functions disabled); a hardened
+# one (off everywhere, errors to stderr, functions disabled); a
+# hardened php.ini re-loosened by a conf.d drop-in, and a loose one
+# re-hardened the same way (the drop-in wins both times); two SAPIs
+# with only one gone loose; and an empty root, where PHP is not in
+# use and nothing is said. INFO findings only show with
 # Tigris_Show_INFO_Msgs=Y. Runs as a user and as root; the fixtures
 # read the same for both.
 #
@@ -32,36 +35,93 @@ L=$W/loose; mkdir -p "$L/etc/php/8.2/cli"
 cat > "$L/etc/php/8.2/cli/php.ini" <<'EOF'
 ; a development php.ini
 allow_url_include = On
+allow_url_fopen = On
+enable_dl = On
 expose_php = On
 display_errors = On
 EOF
 run "$L" "$W/out"
 has '--WARN-- [php001w]' "$W/out" &&
+has '--WARN-- [php004w]' "$W/out" &&
+has '--WARN-- [php005w]' "$W/out" &&
 has '--INFO-- [php002i]' "$W/out" &&
 has '--INFO-- [php003i]' "$W/out" &&
-  ok "a loose php.ini: all three" || { bad "loose"; cat "$W/out"; }
+has '--INFO-- [php006i]' "$W/out" &&
+  ok "a loose php.ini: all six" || { bad "loose"; cat "$W/out"; }
 
 H=$W/hard; mkdir -p "$H/etc"
 cat > "$H/etc/php.ini" <<'EOF'
 allow_url_include = Off
+allow_url_fopen = Off
+enable_dl = Off
 expose_php = 0
 display_errors = stderr
+disable_functions = exec,passthru,shell_exec,system
 log_errors = On
 EOF
 run "$H" "$W/out"
-grep -q 'php001w\|php002i\|php003i' "$W/out" && { bad "hard"; cat "$W/out"; } ||
-  ok "hardened (off, 0, stderr): nothing"
+grep -q 'php001w\|php002i\|php003i\|php004w\|php005w\|php006i' "$W/out" && { bad "hard"; cat "$W/out"; } ||
+  ok "hardened (off, 0, stderr, functions disabled): nothing"
+
+# a drop-in re-enabling two settings: the findings name the drop-in,
+# not the hardened php.ini; and the other way round, where a drop-in
+# hardening a loose php.ini silences everything
+D=$W/dropins; mkdir -p "$D/etc/php/8.2/fpm/conf.d"
+cat > "$D/etc/php/8.2/fpm/php.ini" <<'EOF'
+allow_url_include = Off
+allow_url_fopen = Off
+enable_dl = Off
+expose_php = Off
+display_errors = Off
+disable_functions = exec,passthru,shell_exec,system
+EOF
+cat > "$D/etc/php/8.2/fpm/conf.d/10-local.ini" <<'EOF'
+; a developer's convenience
+allow_url_include = On
+allow_url_fopen = On
+EOF
+run "$D" "$W/out"
+has '--WARN-- [php001w]' "$W/out" &&
+has '--WARN-- [php004w]' "$W/out" &&
+grep -q 'conf.d/10-local.ini' "$W/out" && ! grep -q 'fpm/php.ini' "$W/out" &&
+  ok "a drop-in re-enabling: names the drop-in" || { bad "dropins"; cat "$W/out"; }
+O=$W/override; mkdir -p "$O/etc/php/8.2/cli/conf.d"
+cat > "$O/etc/php/8.2/cli/php.ini" <<'EOF'
+allow_url_include = On
+allow_url_fopen = On
+enable_dl = On
+expose_php = On
+display_errors = On
+disable_functions =
+EOF
+cat > "$O/etc/php/8.2/cli/conf.d/99-hard.ini" <<'EOF'
+allow_url_include = Off
+allow_url_fopen = Off
+enable_dl = Off
+expose_php = Off
+display_errors = Off
+disable_functions = exec,passthru,shell_exec,system
+EOF
+run "$O" "$W/out"
+grep -q 'php001w\|php002i\|php003i\|php004w\|php005w\|php006i' "$W/out" && { bad "override"; cat "$W/out"; } ||
+  ok "a drop-in hardening a loose php.ini: nothing"
 
 S=$W/sapis; mkdir -p "$S/etc/php/8.2/cli" "$S/etc/php/8.2/fpm"
 cat > "$S/etc/php/8.2/cli/php.ini" <<'EOF'
 allow_url_include = Off
+allow_url_fopen = Off
+enable_dl = Off
 expose_php = Off
 display_errors = Off
+disable_functions = exec,passthru,shell_exec,system
 EOF
 cat > "$S/etc/php/8.2/fpm/php.ini" <<'EOF'
 allow_url_include = On
+allow_url_fopen = Off
+enable_dl = Off
 expose_php = Off
 display_errors = Off
+disable_functions = exec,passthru,shell_exec,system
 EOF
 run "$S" "$W/out"
 has '--WARN-- [php001w]' "$W/out" &&

@@ -15,20 +15,32 @@
 #
 #     Please see the file `COPYING' for the complete copyright notice.
 #
-# check_php: PHP believes its php.ini. allow_url_include turns every
-#             file function into remote code inclusion; expose_php and
-#             display_errors tell visitors the exact version and the
-#             paths behind the errors. open_basedir and disable_functions
-#             are left alone: what an application needs is its own
-#             business, and guessing it cries wolf. No php.ini anywhere
-#             means PHP is not in use here, and there is nothing to say.
+# check_php: PHP believes its php.ini and the conf.d drop-ins beside
+#             it, a later file overriding an earlier one, and every
+#             setting is judged at its effective value, naming the file
+#             that set it. allow_url_include turns every file function
+#             into remote code inclusion, and allow_url_fopen lets them
+#             all read remote answers; enable_dl loads extensions at a
+#             script's asking; expose_php and display_errors tell
+#             visitors the exact version and the paths behind the
+#             errors; an empty disable_functions leaves every function
+#             callable, which is noted, not warned (php006i): what an
+#             application needs is its own business, and guessing it
+#             cries wolf. open_basedir is left alone for the same
+#             reason. No php.ini anywhere means PHP is not in use here,
+#             and there is nothing to say.
 #
 # 10/09/2026 - Initial version. Every php.ini under /etc (all SAPIs,
 #             whatever the versioned layout) is read for the three
 #             settings above.
+# 11/10/2026 - allow_url_fopen (php004w) and enable_dl (php005w)
+#             judged; an empty disable_functions noted (php006i); the
+#             conf.d drop-ins beside each php.ini read, the effective
+#             value judged, the file that set it named.
 #
 # References:
-#   php.ini directives (allow_url_include, expose_php, display_errors)
+#   php.ini directives (allow_url_include, allow_url_fopen, enable_dl,
+#   expose_php, display_errors, disable_functions)
 #
 # Tigris: offline
 #   the root's php.ini files, wherever the layout puts them.
@@ -81,26 +93,47 @@ done
 
 haveallcmds AWK FIND || exit 1
 
-# php_facts FILE: the settings worth reporting, one per line: inc
-# for allow_url_include, expose for expose_php, derr for
-# display_errors. A setting left at its default counts as set:
-# allow_url_include defaults off, the other two default on.
+# php_facts MAIN DROPIN...: the effective value of each judged setting
+# across MAIN and its conf.d drop-ins in reading order (a drop-in
+# overrides the main file, a later drop-in an earlier one, as PHP
+# reads them): one "TAG PATH" line per setting left in a reportable
+# state, PATH the file that set it. inc for allow_url_include, fopen
+# for allow_url_fopen, dl for enable_dl, expose for expose_php, derr
+# for display_errors; nodis when disable_functions ends empty or
+# unset. stderr goes to the container log, not to visitors; stdout
+# does. Only what is set is judged: a bare php.ini keeps its
+# defaults, whatever they are.
 php_facts()
 {
   $AWK '
+  BEGIN { src["nodis"] = ARGV[1] }
   /^[ \t]*;/ { next }
   {
     line = tolower($0)
     sub(/[ \t]*;.*$/, "", line)
     if (line ~ /^[ \t]*allow_url_include[ \t]*=/) {
-      if (line ~ /=[ \t]*(1|on|yes|true)/ && !seen["inc"]++) print "inc"
+      val["inc"] = (line ~ /=[ \t]*(1|on|yes|true)/); src["inc"] = FILENAME
+    } else if (line ~ /^[ \t]*allow_url_fopen[ \t]*=/) {
+      val["fopen"] = (line ~ /=[ \t]*(1|on|yes|true)/); src["fopen"] = FILENAME
+    } else if (line ~ /^[ \t]*enable_dl[ \t]*=/) {
+      val["dl"] = (line ~ /=[ \t]*(1|on|yes|true)/); src["dl"] = FILENAME
     } else if (line ~ /^[ \t]*expose_php[ \t]*=/) {
-      if (line ~ /=[ \t]*(1|on|yes|true)/ && !seen["expose"]++) print "expose"
+      val["expose"] = (line ~ /=[ \t]*(1|on|yes|true)/); src["expose"] = FILENAME
     } else if (line ~ /^[ \t]*display_errors[ \t]*=/) {
-      # stderr goes to the container log, not to visitors; stdout does
-      if (line ~ /=[ \t]*(1|on|yes|true|stdout)/ && !seen["derr"]++) print "derr"
+      val["derr"] = (line ~ /=[ \t]*(1|on|yes|true|stdout)/); src["derr"] = FILENAME
+    } else if (line ~ /^[ \t]*disable_functions[ \t]*=/) {
+      v = line; sub(/^[^=]*=[ \t]*/, "", v); sub(/[ \t]+$/, "", v); gsub(/["'"'"']/, "", v)
+      havenodis = 1; val["nodis"] = (v == ""); src["nodis"] = FILENAME
     }
-  }' "$1" 2>/dev/null
+  }
+  END {
+    if (val["inc"] != "" && val["inc"]) print "inc " src["inc"]
+    if (val["fopen"] != "" && val["fopen"]) print "fopen " src["fopen"]
+    if (val["dl"] != "" && val["dl"]) print "dl " src["dl"]
+    if (val["expose"] != "" && val["expose"]) print "expose " src["expose"]
+    if (val["derr"] != "" && val["derr"]) print "derr " src["derr"]
+    if (!havenodis || val["nodis"]) print "nodis " src["nodis"]
+  }' "$@" 2>/dev/null
 }
 
 # every php.ini under the audited /etc: the host path, and the
@@ -123,17 +156,35 @@ echo "# Checking the PHP configuration..."
 
 for ih in $ihs
 do
-  case "$ih" in
-    "$TIGRIS_ROOT"*) i=${ih#$TIGRIS_ROOT};;
-    *) i=$ih;;
-  esac
   [ -r "$ih" ] || continue
-  for fact in `php_facts "$ih"`
+  # the drop-ins PHP reads after this php.ini: its conf.d, and php.d
+  # where php.ini sits directly under /etc (Red Hat's layout)
+  idir=${ih%/*}
+  dropdirs="$idir/conf.d"
+  [ "$idir" = "$eth" ] && dropdirs="$dropdirs $eth/php.d"
+  dropins=
+  for dd in $dropdirs
   do
+    for df in "$dd"/*.ini
+    do
+      [ -f "$df" ] && [ -r "$df" ] && dropins="$dropins $df"
+    done
+  done
+  # shellcheck disable=SC2086
+  php_facts "$ih" $dropins | while read -r fact fsrc rest
+  do
+    [ -n "$fact" ] || continue
+    case "$fsrc" in
+      "$TIGRIS_ROOT"*) fs=${fsrc#$TIGRIS_ROOT};;
+      *) fs=$fsrc;;
+    esac
     case "$fact" in
-      inc) message WARN php001w "Turn allow_url_include off in \`$i'." "\`$i' lets PHP include remote files as code: any file function an attacker reaches runs their server's answer.";;
-      expose) message INFO php002i "" "\`$i' leaves expose_php on: every answer carries the exact PHP version, the first thing an attacker asks.";;
-      derr) message INFO php003i "" "\`$i' leaves display_errors on: visitors see the errors with the paths behind them. Log them instead (log_errors) and show users a page of your own.";;
+      inc) message WARN php001w "Turn allow_url_include off in \`$fs'." "\`$fs' lets PHP include remote files as code: any file function an attacker reaches runs their server's answer.";;
+      fopen) message WARN php004w "Turn allow_url_fopen off in \`$fs' unless the applications fetch URLs themselves." "\`$fs' lets PHP treat URLs as files: any file function an attacker reaches fetches their server's answer.";;
+      dl) message WARN php005w "Turn enable_dl off in \`$fs'." "\`$fs' lets scripts load extension modules at runtime: a script an attacker reaches loads whatever it finds.";;
+      expose) message INFO php002i "" "\`$fs' leaves expose_php on: every answer carries the exact PHP version, the first thing an attacker asks.";;
+      derr) message INFO php003i "" "\`$fs' leaves display_errors on: visitors see the errors with the paths behind them. Log them instead (log_errors) and show users a page of your own.";;
+      nodis) message INFO php006i "" "\`$fs' sets no disable_functions: every function stays callable, exec and system among them. List the ones the applications never need.";;
     esac
   done
 done
