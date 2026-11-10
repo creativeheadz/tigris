@@ -1,0 +1,16 @@
+Id: shl003w
+Severity: WARN
+Category: filesystem
+Check: check_ttys
+Fix: Mark the console insecure in /etc/ttys.
+References: ttys(5); init(8)
+Controls: CIS 4.1; NIST AC-3, IA-2; ISO 8.5, 8.9; CE Secure configuration
+
+The console line in /etc/ttys carries no insecure flag: it is marked
+secure, or carries no flag at all. Such a console drops to single-user
+mode without asking for the root password, so anyone at the machine
+who can reach the boot prompt is root. FreeBSD ships the console
+secure, as Linux ships single-user mode without a password until the
+boot loader is locked; both are reported the same way. Mark the
+console insecure and init asks for the root password first:
+  console none  unknown off insecure

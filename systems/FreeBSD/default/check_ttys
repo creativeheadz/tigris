@@ -1,0 +1,108 @@
+#!/bin/sh
+#
+#     tiger - A UN*X security checking system
+#     Copyright (C) 2026 Andrei Trimbitas
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2, or (at your option)
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#     Please see the file `COPYING' for the complete copyright notice.
+#
+# check_ttys: whether FreeBSD's console is marked insecure in /etc/ttys.
+#             A console without the flag drops to single-user mode with
+#             no password, so anyone at the machine is root; with it,
+#             init asks for the root password first. The flag counts
+#             whether getty on the console is on or off. Quoted getty
+#             commands and comments are not flags. No console entry, or
+#             no file at all, is nothing to judge and stays silent.
+#
+# 11/10/2026 - Initial version. Lynis SHLL-6202 asks the same of the
+#             console line.
+#
+# References:
+#   ttys(5), init(8)
+#
+# Tigris: offline
+#   the root's /etc/ttys.
+#
+#-----------------------------------------------------------------------------
+#
+TigrisInstallDir='.'
+
+#
+# Set default base directory.
+# Order or preference:
+#      -B option
+#      TIGERHOMEDIR environment variable
+#      TigrisInstallDir installed location
+#
+basedir=${TIGERHOMEDIR:=$TigrisInstallDir}
+
+for parm
+do
+   case $parm in
+   -B) basedir=$2; break;;
+   esac
+done
+
+#
+# Verify that a config file exists there, and if it does
+# source it.
+#
+[ ! -r $basedir/config ] && {
+  echo "--ERROR-- [init002e] No 'config' file in \`$basedir'."
+  exit 1
+}
+
+. $basedir/config
+
+. $BASEDIR/initdefs
+#
+# If run in test mode (-t) this will verify that all required
+# elements are set.
+#
+[ "$Tigris_TESTMODE" = 'Y' ] && {
+  haveallcmds AWK || exit 1
+  haveallfiles BASEDIR WORKDIR || exit 1
+
+  echo "--CONFIG-- [init003c] $0: Configuration ok..."
+  exit 0
+}
+
+#------------------------------------------------------------------------
+
+haveallcmds AWK || exit 1
+
+file=`rootfile /etc/ttys`
+[ -f "$file" ] || exit 0
+
+echo
+echo "# Checking the console in /etc/ttys..."
+
+# secure or not, the console line by line: the whole words of each
+# uncommented console entry, outside any quoted getty command
+verdict=`$AWK '
+  { line = $0
+    gsub(/"[^"]*"/, "", line)
+    sub(/#.*$/, "", line)
+    sub(/^[ \t]+/, "", line)
+    n = split(line, f, /[ \t][ \t]*/)
+    if (f[1] == "console") {
+      seen = 1
+      for (i = 2; i <= n; i++)
+        if (f[i] == "insecure") ok = 1
+    }
+  }
+  END { if (!seen) print "none"; else if (ok) print "ok"; else print "bad" }' "$file"`
+
+[ "$verdict" = bad ] &&
+  message WARN shl003w "Mark the console insecure in /etc/ttys: init then asks for the root password before single-user mode." "The console is not marked insecure in /etc/ttys: single-user mode there needs no password, so anyone at the machine is root."
+
+exit 0

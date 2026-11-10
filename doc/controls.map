@@ -56,6 +56,7 @@ id:pam003w                | 4.1                | AC-7                     | 8.5 
 # ---- boot
 check:check_lilo          | 4.1                | AC-3, CM-6               | 8.9                 | Secure configuration
 check:check_single        | 4.1                | AC-3, IA-2               | 8.5, 8.9            | Secure configuration
+check:check_ttys          | 4.1                | AC-3, IA-2               | 8.5, 8.9            | Secure configuration
 check:check_secureboot    | 4.1                | CM-14, SI-7(9)           | 8.9                 | Secure configuration
 
 # ---- containers

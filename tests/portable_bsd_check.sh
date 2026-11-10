@@ -332,5 +332,40 @@ noerr && [ "`count .`" = 6 ] && [ "`count sctl004w`" = 2 ] &&
   ok "check_sysctl, live: six findings (both ASLR classes), nothing else read" || { bad "sysctl live"; cat "$W/raw"; }
 unset Tigris_Sysctl_Cmd
 
+#
+# check_ttys: the console insecure, secure, bare, missing
+#
+T=$W/ttys-good; mkdir -p "$T/etc"
+cat > "$T/etc/ttys" <<'EOF'
+# $FreeBSD$
+# name  getty                           type    status          comments
+# If the console is marked insecure, init asks for the root password
+# before single-user mode.
+console none                            unknown off insecure
+ttyv0   "/usr/libexec/getty Pc"         xterm   on  secure
+#console none                           unknown off secure
+EOF
+bsys check_ttys "$T"
+noerr && [ "`count .`" = 0 ] && ok "check_ttys, insecure console: silent (a commented console is no entry)" || { bad "ttys good"; cat "$W/raw"; }
+T=$W/ttys-bad; mkdir -p "$T/etc"
+cat > "$T/etc/ttys" <<'EOF'
+console "/usr/libexec/getty std.9600"   vt100   on  secure # never marked insecure
+ttyv0   "/usr/libexec/getty Pc"         xterm   on  secure
+EOF
+bsys check_ttys "$T"
+noerr && has '[shl003w] The console is not marked insecure in /etc/ttys' && [ "`count .`" = 1 ] &&
+  ok "check_ttys, secure console: shl003w (a quoted getty parses, a trailing comment is no flag)" || { bad "ttys bad"; cat "$W/raw"; }
+T=$W/ttys-plain; mkdir -p "$T/etc"
+printf 'console none\tunknown\toff\nttyv0   "/usr/libexec/getty Pc"\txterm\ton  secure\n' > "$T/etc/ttys"
+bsys check_ttys "$T"
+noerr && has '[shl003w]' && [ "`count .`" = 1 ] &&
+  ok "check_ttys, a console with no flag: shl003w" || { bad "ttys plain"; cat "$W/raw"; }
+T=$W/ttys-none; mkdir -p "$T/etc"
+printf 'ttyv0   "/usr/libexec/getty Pc"\txterm\ton  secure\n' > "$T/etc/ttys"
+bsys check_ttys "$T"
+noerr && [ "`count .`" = 0 ] && ok "check_ttys, no console entry: nothing to judge, silent" || { bad "ttys none"; cat "$W/raw"; }
+bsys check_ttys "$C"
+noerr && [ "`count .`" = 0 ] && ok "check_ttys, no /etc/ttys: silent" || { bad "ttys missing"; cat "$W/raw"; }
+
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

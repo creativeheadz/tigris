@@ -96,3 +96,7 @@ SYSTEMDIR=$BASEDIR/systems/FreeBSD/default
 [ "$Tigris_Check_SYSCTL" != 'N' ] && {
   skip_check $SYSTEMDIR/check_sysctl || $SYSTEMDIR/check_sysctl
 }
+
+[ "$Tigris_Check_SINGLE" != 'N' ] && {
+  skip_check $SYSTEMDIR/check_ttys || $SYSTEMDIR/check_ttys
+}
