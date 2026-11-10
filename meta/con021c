@@ -1,0 +1,26 @@
+Id: con021c
+Severity: CONFIG
+Category: tigris
+Check: find_files
+References: tigris.conf; find(1)
+
+The file system scan left a file system out because the configuration
+says so. Tigris_FSScan_SkipTypes names file system types and
+Tigris_FSScan_SkipMounts names mount points; a file system of such a
+type, one mounted at such a path, and any file system mounted below
+such a path is not walked at all: no setuid or setgid programs, device
+files, world-writable files or directories, unowned files or dangling
+links are looked for on it. The message names the file system, its type
+and the setting that left it out.
+
+Auditing a system that is not running (tigris --root), the scan has no
+mount table of that system, and Tigris_FSScan_SkipMounts names its
+directories instead: the message then says which directory of the root
+was not walked.
+
+This is the arrangement for a large data disk or a backup volume, where
+a scan takes hours and finds nothing a system audit is about. It is
+reported on every run so that a report never passes for a scan of
+everything. If the file system should be scanned after all, take its
+type or its mount point out of the setting in the tigris.conf or the
+profile.

@@ -82,7 +82,8 @@
 #                                   should prevent future false positivies when new filesystems are added to the kernel
 # Linux/2/gen_mounts - 07/02/2018 - Added fuse.clamfs (Ubuntu bug 1204527) and fuse.javafs (Ubuntu bug 1305057) 
 # Linux/2/gen_mounts - 06/10/2026 - Leave out a filesystem that does not answer within Tigris_Mount_Timeout (con011c)
-# Linux/2/gen_mounts - 10/11/2026 - Leave out a line whose mount point is not an absolute path
+# Linux/2/gen_mounts - 10/11/2026 - Leave out a line whose mount point is not an absolute path;
+#                                    a * in a mount point is not expanded
 #                                 - Added nsfs as non-local (one con010c per container otherwise)
 #                                   filesystems
 #------------------------------------------------------------------------------------------------------------------
@@ -403,6 +404,10 @@ mount_alive()
   return 0
 }
 
+# The lines below are taken apart with unquoted echo: no file name
+# generation, or a mount point named "*" comes out as the names of
+# whatever is in the directory it is in
+set -f
 $GETFS  |
 while read line
 do

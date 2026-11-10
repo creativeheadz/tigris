@@ -17,6 +17,10 @@
 #
 # find_files - 06/14/93
 #
+# 11/10/2026 atrimbitas Whole file systems left out by their type or their
+#	     mount point (Tigris_FSScan_SkipTypes, Tigris_FSScan_SkipMounts),
+#	     each one said (con021c). The mount table is read here, a line at
+#	     a time, so a mount point reaches find whole, spaces and all.
 # 10/12/2026 atrimbitas World-writable regular files (Tigris_FSScan_WFILE): one
 #	     more class in the one-pass find and in flogit, judged by
 #	     sub/check_wfile.
@@ -369,8 +373,96 @@ if [ -n "$Tigris_FSScan_PruneDirs" ]; then
   done
   set +f
   IFS=$saveIFS
-  [ -n "$pruneopt" ] && pruneopt="\( $pruneopt \) -prune -o"
 fi
+
+# Whole file systems the admin does not want scanned: a large data disk, a
+# backup volume. Tigris_FSScan_SkipTypes names file system types (separated
+# by spaces or pipes), Tigris_FSScan_SkipMounts mount points (separated by
+# pipes, as a path may hold a space). Both are compared as strings with
+# what one line of the mount table says: a mount point is named by
+# whoever mounted it (any user can, with FUSE), so it is never a pattern,
+# never text for eval, and never decides about another line's file system.
+# Every file system left out is said (con021c).
+#
+# skipreason MOUNTPOINT TYPE: true when the settings leave it out, why in
+# $skipwhy.
+skipreason()
+{
+  skipwhy=
+  __sifs=$IFS
+  set -f
+  IFS=' |'
+  for __t in $Tigris_FSScan_SkipTypes
+  do
+    [ "$__t" = "$2" ] && { skipwhy="Tigris_FSScan_SkipTypes names its type"; break; }
+  done
+  IFS='|'
+  for __m in $Tigris_FSScan_SkipMounts
+  do
+    [ -n "$skipwhy" ] && break
+    case "$__m" in /) ;; /*) __m=${__m%/} ;; *) continue ;; esac
+    [ "$1" = "$__m" ] && { skipwhy="Tigris_FSScan_SkipMounts names it"; break; }
+    case "$1" in
+      "${__m%/}"/*) skipwhy="it is mounted below $__m, which Tigris_FSScan_SkipMounts names" ;;
+    esac
+  done
+  set +f
+  IFS=$__sifs
+  [ -n "$skipwhy" ]
+}
+
+# The running system's mount table, one file system a line (gen_mounts:
+# mount point, type, device, a blank in the mount point escaped, which
+# read undoes): the starting points go to $mountlist, a line each.
+scanlist=
+if [ -z "$TIGRIS_ROOT" ] && [ -n "$FINDXDEV" ] && [ -n "$GET_MOUNTS" ]; then
+  scanlist=Y
+  $GET_MOUNTS local all |
+  while read mountpt fstype rest
+  do
+    case "$mountpt" in /*) ;; *) continue ;; esac
+    if skipreason "$mountpt" "$fstype"; then
+      message CONFIG con021c "" "File system $mountpt ($fstype) is left out of the file system scan: $skipwhy."
+    else
+      printf '%s\n' "$mountpt" >> "$mountlist"
+    fi
+  done
+else
+  # No mount table to go by: an offline root's file systems are this
+  # host's, mounted wherever the root was put, and a find without -xdev
+  # walks / as one tree. A type then says nothing about the audited
+  # system, and that is said (con022c); a mount point is the audited
+  # system's path, and the directory there is not walked. The path is
+  # matched as it is written: find's -path takes a pattern, so the
+  # characters of one are escaped, and it reaches eval as a variable.
+  [ -n "$Tigris_FSScan_SkipTypes" ] && {
+    if [ -n "$TIGRIS_ROOT" ]; then
+      message CONFIG con022c "" "Tigris_FSScan_SkipTypes is not applied to an offline root: the file systems under it are this host's, not the audited system's. Name the mount points in Tigris_FSScan_SkipMounts."
+    else
+      message CONFIG con022c "" "Tigris_FSScan_SkipTypes is not applied: the file system scan has no mount table to go by on this system. Name the mount points in Tigris_FSScan_SkipMounts."
+    fi
+  }
+  saveIFS=$IFS
+  IFS='|'
+  set -f
+  for skipdir in $Tigris_FSScan_SkipMounts
+  do
+    IFS=$saveIFS
+    case "$skipdir" in /) ;; /*) skipdir=${skipdir%/} ;; *) continue ;; esac
+    skiphere=`__here "$skipdir"`
+    [ -n "$skiphere" ] && [ -d "$skiphere" ] && [ ! -h "$skiphere" ] || continue
+    nprune=`$EXPR $nprune + 1`
+    # ($( ), not backquotes, which would take the backslashes for theirs)
+    skiphere=$(printf '%s\n' "$skiphere" | sed 's/[][\\*?]/\\&/g')
+    eval "prune$nprune=\$skiphere"
+    [ -n "$pruneopt" ] && pruneopt="$pruneopt -o"
+    pruneopt="$pruneopt -path \"\$prune$nprune\""
+    message CONFIG con021c "" "Directory $skipdir is left out of the file system scan: Tigris_FSScan_SkipMounts names it."
+  done
+  set +f
+  IFS=$saveIFS
+fi
+[ -n "$pruneopt" ] && pruneopt="\( $pruneopt \) -prune -o"
 
 {
   if [ -n "$TIGRIS_ROOT" ]; then
@@ -380,6 +472,10 @@ fi
     # another)
     printf '%s\n' '\\( -path "$TIGRIS_ROOT/proc" -o -path "$TIGRIS_ROOT/sys" -o -path "$TIGRIS_ROOT/run" \\) -prune -o'
     echo "$TIGRIS_ROOT"
+  elif [ -n "$scanlist" ]; then
+    # the starting points are in $mountlist; one find walks them all
+    echo "$FINDXDEV"
+    echo mountlist
   elif [ ! -n "$FINDXDEV" ]; then
     echo "$FINDPRUNE"
     echo "/"
@@ -410,6 +506,12 @@ fi
     set -f
     if [ -n "$TIGRIS_ROOT" ]; then
       set -- "$TIGRIS_ROOT"
+    elif [ -n "$scanlist" ]; then
+      set --
+      while IFS= read -r mountpt
+      do
+        set -- "$@" "$mountpt"
+      done < "$mountlist"
     else
       set -- $disklist
     fi

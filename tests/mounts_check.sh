@@ -104,8 +104,8 @@ if find / -maxdepth 0 -printf '' >/dev/null 2>&1; then
 # A third is named "x on -zz-not-a-path": gen_mounts reads the text after
 # the last " on " as the mount point, and find would take a starting point
 # that begins with a dash for an expression (this one it does not know, so
-# it would stop and scan nothing). Neither gen_mounts nor find_files hands
-# it on, and the other mount points are scanned.
+# it would stop and scan nothing). gen_mounts does not hand it on, and the
+# other mount points are scanned.
 mkdir -p "$W/fx/it's/..." "$W/fx/cost\$HOME/..."
 {
   echo '#!/bin/sh'
@@ -132,14 +132,7 @@ grep -qF "$W/fx/cost\$HOME/..." "$W/scan.out" &&
 GETFS="$W/fx/mount2" sh "$W/systems/Linux/2/gen_mounts" local all 2>/dev/null | grep -q '^-' &&
   bad "gen_mounts printed a mount point that is no absolute path" ||
   ok "gen_mounts leaves out a line whose mount point is no absolute path"
-# (find_files on its own, whatever a gen_mounts says: this copy's getdisks
-# is replaced by one that passes the three on)
-printf '#!/bin/sh\nprintf "%%s\\n" "%s -zz-not-a-path %s"\n' "$W/fx/it's" "$W/fx/cost\\\$HOME" > "$W/fx/getdisks"
-for g in "$W"/systems/Linux/*/getdisks; do cat "$W/fx/getdisks" > "$g"; done
-( cd "$W" && _TIGER_RUN=Y TIGERHOMEDIR=$W sh scripts/find_files ) > "$W/scan2.out" 2>&1
-grep -qF "$W/fx/it's/..." "$W/scan2.out" && grep -qF "$W/fx/cost\$HOME/..." "$W/scan2.out" &&
-  ok "find_files drops a starting point that is no absolute path, and scans the rest" ||
-  { bad "a starting point beginning with a dash stopped the scan"; sed 's/^/     /' "$W/scan2.out"; }
+# (find_files' own refusal of such a starting point: fsskip_check.sh)
 cp "$W/tigris.conf.scan" "$W/tigris.conf"
 else
   echo "ok   (no GNU find here: the scan of odd mount point names is not tested)"

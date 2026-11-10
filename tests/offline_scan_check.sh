@@ -19,7 +19,12 @@
 # outside /dev is added. Tigris_FSScan_PruneDirs holds an empty entry and
 # two directories whose names hold a quote, one with a command substitution
 # after it: their world-writable directories must go unreported, the rest
-# of the scan must still run, and the command must not. Needs GNU find.
+# of the scan must still run, and the command must not.
+# Tigris_FSScan_SkipMounts names two of the root's directories, one with a
+# * in its name and one that is not there: neither of the two that exist
+# is walked, a directory the * would match as a pattern is, and con021c
+# names each directory left out by the root's path; Tigris_FSScan_SkipTypes
+# cannot apply to an offline root, which con022c says. Needs GNU find.
 #
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022   # the tree copies and directories made here must be nobody else's to write
@@ -46,6 +51,10 @@ chmod 777 "$R/srv/drop"; chmod 1777 "$R/srv/shared" "$R/etc/zz-drop"
 # pruned: a quote in a name, and a command substitution after one
 mkdir -p "$R/srv/it's/zz-ww" "$R/srv/zz'\$(touch zz-pwned)'/zz-ww"
 chmod 777 "$R/srv/it's/zz-ww" "$R/srv/zz'\$(touch zz-pwned)'/zz-ww"
+# left out as file systems: a data disk's mount point and one with a * in
+# its name; zz-glxxb is what that * would match, and is walked
+mkdir -p "$R/srv/data/zz-skip-ww" "$R/srv/zz-gl*b/zz-skip-ww" "$R/srv/zz-glxxb/zz-keep-ww"
+chmod 777 "$R/srv/data/zz-skip-ww" "$R/srv/zz-gl*b/zz-skip-ww" "$R/srv/zz-glxxb/zz-keep-ww"
 # /tmp world writable and not sticky; what is under it is its users'
 # business; /var/tmp as it should be
 chmod 777 "$R/tmp" "$R/tmp/zz-sub"; chmod 1777 "$R/var/tmp"
@@ -69,6 +78,8 @@ fi
   for s in Setuid Setgid Devs SymLinks ofNote WDIR WFILE Unowned; do echo "Tigris_FSScan_$s=Y"; done
   # (an empty entry between them, which once pruned the whole scan)
   echo 'Tigris_FSScan_PruneDirs="/srv/it'"'"'s||/srv/zz'"'"'\$(touch zz-pwned)'"'"'"'
+  echo 'Tigris_FSScan_SkipMounts="/srv/data/|/srv/zz-gl*b|/srv/zz-not-there"'
+  echo 'Tigris_FSScan_SkipTypes="ext4 tmpfs"'
 } > "$W/profiles/scan"
 chmod 644 "$W/profiles/scan"
 
@@ -103,6 +114,17 @@ grep -q "zz-ww" "$report" && bad "a directory in Tigris_FSScan_PruneDirs was sca
   ok "directories in Tigris_FSScan_PruneDirs, quotes in their names: not scanned"
 [ -z "`find "$W" -name zz-pwned`" ] && ok "a command substitution in a pruned name did not run" ||
   bad "a command substitution in Tigris_FSScan_PruneDirs ran"
+grep -q "zz-skip-ww" "$report" && bad "a directory in Tigris_FSScan_SkipMounts was walked" ||
+  ok "the directories Tigris_FSScan_SkipMounts names are not walked"
+has '/srv/zz-glxxb/zz-keep-ww is world writable' &&
+  ok "a * in Tigris_FSScan_SkipMounts is no pattern: zz-glxxb is walked" || bad "zz-gl*b left zz-glxxb out"
+has '[con021c] Directory /srv/data is left out of the file system scan:' &&
+  has '[con021c] Directory /srv/zz-gl*b is left out of the file system' &&
+  ok "each directory left out is named, by the root's path: con021c" || bad "con021c"
+has 'zz-not-there' && bad "a directory that is not there was said to be left out" ||
+  ok "a mount point the root does not have: nothing said"
+has '[con022c] Tigris_FSScan_SkipTypes is not applied to an offline root' &&
+  ok "Tigris_FSScan_SkipTypes cannot apply to an offline root, and that is said: con022c" || bad "con022c"
 has '[fsys013w] /etc/zz-hostlink is a dangling symlink' &&
   ok "an absolute link to a file this host has and the root does not: dangling inside the root" || bad "dangling"
 has '/etc/zz-ok is a dangling' && bad "a link to a file the root has was called dangling" || ok "a link to a file the root has is not dangling"

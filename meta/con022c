@@ -1,0 +1,21 @@
+Id: con022c
+Severity: CONFIG
+Category: tigris
+Check: find_files
+References: tigris.conf
+
+Tigris_FSScan_SkipTypes names file system types the file system scan
+should leave out, but this run could not apply it, and scanned those
+file systems with the rest.
+
+Auditing a system that is not running (tigris --root), the file systems
+under the root are the ones this host mounted there: an image unpacked
+on a ZFS dataset is not a system that keeps its files on ZFS, and the
+audited system's own mount table is not there to read. On a system
+whose find has no -xdev, or which has no gen_mounts, the scan walks /
+as one tree and never learns where one file system ends.
+
+Tigris_FSScan_SkipMounts works in both cases: it names the mount points
+by their paths on the audited system, and the scan does not walk those
+directories (con021c says which). Tigris_FSScan_PruneDirs leaves out
+any directory by a pattern.
