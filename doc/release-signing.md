@@ -15,8 +15,9 @@ the sums held before upload. The pieces:
 - `make dist-sums` / `make verify-sums` roll and prove a source
   tarball's sums from the tree.
 
-`release.yml` is untouched by this change (another packet owns it);
-the exact hunks that wire signing into it are filed at the end.
+`release.yml` wires it in (the sign step, the prove step, the
+`.asc` and public-key upload, the abuild key mount): the wiring is
+described at the end.
 
 ## Maintainer keys
 
@@ -110,54 +111,24 @@ move the secrets over, sign one release with both if the overlap
 matters, then remove the old public half in a later commit that says
 so. Never reuse a retired fingerprint row: strike it, do not delete.
 
-## Appendix: the release.yml hunks
+## Appendix: the release.yml wiring
 
-Filed, not applied: this packet may not edit `release.yml`. Against
-the workflow as of 11/10/2026:
+Applied. After the sums step, `release.yml` signs and proves:
 
-```diff
- --- a/.github/workflows/release.yml
- +++ b/.github/workflows/release.yml
- @@ -113,6 +113,17 @@
-            ( cd "$out" && sha256sum src/* deb/* rpm/* apk/* packaging/* | sed 's|  [a-z]*/|  |' > SHA256SUMS )
-            cat "$out/SHA256SUMS"
- +      - name: Sign the sums and the artefacts
- +        env:
- +          TIGRIS_SIGN_KEY_ID: ${{ secrets.TIGRIS_SIGN_KEY_ID }}
- +          TIGRIS_SIGN_KEY: ${{ secrets.TIGRIS_SIGN_KEY }}
- +        run: |
- +          printf '%s' "$TIGRIS_SIGN_KEY" | gpg --batch --import
- +          TIGRIS_SIGN_KEY="$TIGRIS_SIGN_KEY_ID" sh packaging/release-sign.sh "$RUNNER_TEMP/out"
- +      - name: Prove the release verifies as users will
- +        run: |
- +          rm -rf "$RUNNER_TEMP/flat" && mkdir -p "$RUNNER_TEMP/flat"
- +          cp "$RUNNER_TEMP"/out/src/* "$RUNNER_TEMP"/out/deb/* "$RUNNER_TEMP"/out/rpm/* "$RUNNER_TEMP"/out/apk/* "$RUNNER_TEMP"/out/packaging/* "$RUNNER_TEMP"/out/SHA256SUMS* "$RUNNER_TEMP/flat/"
- +          sh packaging/verify-sigs.sh "$RUNNER_TEMP/flat" packaging/keys/tigris-release.gpg
-        - name: Attest the packages and the tarball
-```
+- **Sign the sums and the artefacts**: imports `TIGRIS_SIGN_KEY`
+  and runs `sh packaging/release-sign.sh "$RUNNER_TEMP/out"`,
+  which first proves the sums hold.
+- **Prove the release verifies as users will**: flattens the tree
+  (artefacts, their `.asc` files, `SHA256SUMS*`) and runs
+  `sh packaging/verify-sigs.sh "$flat" packaging/keys/tigris-release.gpg`.
+- **Attach them to the release**: uploads the artefacts,
+  `SHA256SUMS`, `SHA256SUMS.asc`, every artefact `.asc`, and
+  `packaging/keys/tigris-release.gpg` (the key users verify with).
+- The `.apk` build mounts the abuild private half from the
+  `TIGRIS_ABUILD_KEY` secret at `/builder.rsa` (beside
+  `$RUNNER_TEMP/out`, never inside it, removed right after) with
+  `TIGRIS_APK_RELEASE=1`, so `ci.sh` builds with `mkapk.sh
+  --release`, which proves the key matches `packaging/keys/`.
 
-```diff
- @@ -125,4 +136,4 @@
-        - name: Attach them to the release
-          env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
- -        run: gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP"/out/src/* "$RUNNER_TEMP"/out/deb/* "$RUNNER_TEMP"/out/rpm/* "$RUNNER_TEMP"/out/apk/* "$RUNNER_TEMP"/out/packaging/* "$RUNNER_TEMP"/out/SHA256SUMS --clobber
- +        run: gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP"/out/src/* "$RUNNER_TEMP"/out/deb/* "$RUNNER_TEMP"/out/rpm/* "$RUNNER_TEMP"/out/apk/* "$RUNNER_TEMP"/out/packaging/* "$RUNNER_TEMP"/out/SHA256SUMS "$RUNNER_TEMP"/out/SHA256SUMS.asc "$RUNNER_TEMP"/out/*/*.asc --clobber
-```
-
-The release `.apk`, when the abuild key is provisioned: `ci.sh`
-already switches to `mkapk.sh --release` on `TIGRIS_APK_RELEASE=1`
-and stages the key itself, so the hunk only mounts the secret:
-
-```diff
- -          docker run --rm -v "$PWD:/tiger:ro" -v "$RUNNER_TEMP/out/apk:/out" alpine:latest sh /tiger/packaging/ci.sh apk /out
- +          printf '%s' "${{ secrets.TIGRIS_ABUILD_KEY }}" > "$RUNNER_TEMP/builder.rsa"
- +          docker run --rm -v "$PWD:/tiger:ro" -v "$RUNNER_TEMP/out/apk:/out" -v "$RUNNER_TEMP/builder.rsa:/builder.rsa:ro" \
- +            -e TIGRIS_APK_RELEASE=1 -e TIGRIS_ABUILD_KEY_FILE=/builder.rsa alpine:latest sh /tiger/packaging/ci.sh apk /out
- +          rm -f "$RUNNER_TEMP/builder.rsa"
-```
-
-(The key file sits beside `$RUNNER_TEMP/out`, never inside it, so it
-cannot be uploaded; it is removed right after. The release notes line
-that tells users to verify against `SHA256SUMS` should then name the
-signatures too.)
+All of it fails closed without the provisioned keys and secrets
+above: no silent throwaway keys on the release path.
