@@ -301,6 +301,11 @@ message()
   _mesg="$4"  
   __len=${Tigris_Output_Width:=79}
 
+  # Every id a check reports, ignored and accepted ones too, when
+  # Tigris_Fired_Log names a file: tests/fired_check.sh proves with it
+  # that each finding id can fire. Nothing sets it in a real run.
+  [ -n "$Tigris_Fired_Log" ] && echo "$_msgid" >> "$Tigris_Fired_Log"
+
   # If the message should be ignore it is removed
   ignore_message "$_level $_msgid $_mesg" && return 
 

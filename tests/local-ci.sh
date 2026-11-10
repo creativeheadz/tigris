@@ -137,6 +137,9 @@ if run_section docker; then
     echo "-- opensuse/tumbleweed:latest"
     docker run --rm -v "$PWD:/tiger:ro" opensuse/tumbleweed:latest sh -c 'zypper -q install -y gawk tar findutils; sh /tiger/tests/pkg_checks.sh' || fail=1
 
+    say "== docker: every finding id is reported by a suite"
+    sh tests/fired.sh || fail=1
+
     say "== docker: container image, auditing a root"
     docker build -t tigris:local . || fail=1
     W=`mktemp -d`
