@@ -82,6 +82,7 @@
 #                                   should prevent future false positivies when new filesystems are added to the kernel
 # Linux/2/gen_mounts - 07/02/2018 - Added fuse.clamfs (Ubuntu bug 1204527) and fuse.javafs (Ubuntu bug 1305057) 
 # Linux/2/gen_mounts - 06/10/2026 - Leave out a filesystem that does not answer within Tigris_Mount_Timeout (con011c)
+# Linux/2/gen_mounts - 10/11/2026 - Leave out a line whose mount point is not an absolute path
 #                                 - Added nsfs as non-local (one con010c per container otherwise)
 #                                   filesystems
 #------------------------------------------------------------------------------------------------------------------
@@ -422,7 +423,10 @@ do
   [ "$fs" = "$line" ] || [ "$mtpoint" = "$line" ] || \
   [ "$fstype" = "$line" ] || [ "$opts" = "$line" ] && \
   continue
-  # TODO: warn in continuing?
+  # A mount point is an absolute path. One named "x on -name" is read
+  # above as "-name" (the text after the last " on "), which the file
+  # system scan would hand to find as a starting point: leave the line out.
+  case "$rawmtpoint" in /*) ;; *) continue ;; esac
   [ "$CHKRO" = "rw" ] && { ronly "$opts" && PRINT=0; }
   [ "$LOCAL_ONLY" = "local" ] && { localfs "$fstype" "$fs" || PRINT=0; }
   # A local filesystem that does not answer (a hung FUSE mount, a disk

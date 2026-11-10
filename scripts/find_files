@@ -414,6 +414,15 @@ fi
       set -- $disklist
     fi
     set +f
+    # A starting point is an absolute path. Anything else is a mount table
+    # line that was misread (a mount point named "x on -name" came out of
+    # gen_mounts as "-name"), and find would take it for an expression of
+    # its own: it is dropped, not handed over.
+    for mountpt
+    do
+      case "$mountpt" in /*) set -- "$@" "$mountpt" ;; esac
+      shift
+    done
     [ $# -gt 0 ] || continue
     {
       output="$BASEDIR/util/flogit"
