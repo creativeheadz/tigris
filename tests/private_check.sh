@@ -13,7 +13,7 @@
 TIGER=${TIGER:-`cd "\`dirname "$0"\`/.." && pwd`}
 umask 022
 fail=0
-hits=`cd "$TIGER" && find . -type f ! -path './.git/*' ! -path './log/*' ! -path './run/*' ! -path './.claude/*' ! -path './debian/*' ! -name CHANGES ! -name private_check.sh ! -name explanations.html -print0 2>/dev/null |
+hits=`cd "$TIGER" && find . -type f ! -path './.git/*' ! -path './log/*' ! -path './run/*' ! -path './.claude/*' ! -path './.muse/*' ! -path './debian/*' ! -name CHANGES ! -name private_check.sh ! -name explanations.html -print0 2>/dev/null |
   xargs -0 grep -anE '192\.168\.1\.[0-9]|/home/andrei|/media/andrei|[^a-zA-Z]Hera[^a-zA-Z]|[^a-zA-Z.]andrei[^a-zA-Z@.]' 2>/dev/null | head -20`
 if [ -z "$hits" ]; then
   echo "ok   no file names the maintainer's machine, network, home or account"
