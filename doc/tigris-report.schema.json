@@ -88,6 +88,11 @@
           "minLength": 1,
           "description": "The directory audited instead of the running system (--root): a mounted disk, an image's root filesystem. Absent when the running system was audited."
         },
+        "identity": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "description": "A name for the kind of scan this run is (--identity, or Tigris_Identity in the tigris.conf or a profile): nightly, pre-deploy. Runs of one identity are one series. Absent when none was given, and in reports older than the field."
+        },
         "start": {
           "$ref": "#/$defs/timestamp"
         },
@@ -442,6 +447,10 @@
         "configs_differ": {
           "type": "boolean",
           "description": "true when the two runs used different tigris.conf files, so a check on in only one shows its findings as new or resolved."
+        },
+        "identities_differ": {
+          "type": "boolean",
+          "description": "true when the two runs carry different identities (--identity), or only one carries any: they are two kinds of scan, compared all the same."
         },
         "skipped_checks": {
           "type": "array",

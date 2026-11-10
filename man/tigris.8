@@ -10,6 +10,8 @@ tigris \- security auditor for Linux, in POSIX shell
 .IR dir ]
 .RB [ \-\-since
 .IR run ]
+.RB [ \-\-identity
+.IR name ]
 .RB [ \-c
 .IR tigris.conf ]
 .RB [ \-l
@@ -92,6 +94,23 @@ is the .jsonl file of an earlier report, or
 for the most recent one of this host in the log directory. The exit
 status then counts only the new findings.
 .TP
+.BI \-\-identity " name"
+Name the kind of scan this is, as
+.B nightly
+or
+.BR pre\-deploy .
+The run record of the JSON report carries it as
+.BR identity ,
+so whoever collects the reports can keep the series apart, and
+.BR tigris\-diff (8)
+says when it compares runs of two different kinds.
+.I name
+is letters, digits, dot, dash and underscore, a letter or a digit
+first, 64 characters at most; anything else stops the run.
+.B Tigris_Identity
+in the tigris.conf or a profile sets it too, so a profile can carry its
+own; the option replaces it.
+.TP
 .BI \-c " tigris.conf"
 Use another control file than
 .IR ./tigris.conf .
@@ -166,7 +185,8 @@ Beside it,
 .I security.report.HOST.DATE.jsonl
 holds the same findings as JSON Lines: a
 .B run
-record first (with the profile and the root, when there were any), one
+record first (with the profile, the root and the identity, when there
+were any), one
 .B finding
 per message with its level, id, check, message, detail, category and
 compliance controls,

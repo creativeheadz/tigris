@@ -1,0 +1,13 @@
+Id: con023e
+Severity: ERROR
+Category: tigris
+Check: config tiger tigris
+Fix: Name the kind of scan in letters, digits, dot, dash and underscore, a letter or a digit first, 64 characters at most: tigris --identity nightly.
+References: tigris(8)
+
+--identity was given a name that is not one, or Tigris_Identity in the
+tigris.conf or the profile is not: a scan identity is letters, digits,
+dot, dash and underscore, a letter or a digit first, 64 characters at
+most (nightly, pre-deploy). The run stops before it starts: the
+identity goes into the JSON run record, where whoever collects the
+reports may build a file name from it.

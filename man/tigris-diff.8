@@ -26,7 +26,13 @@ either run (it needed root, or could not read an offline root) is left
 out of both sides, so that a skip is not taken for a fix. When the runs
 used different configurations, profiles or roots, the output says so,
 since a check on in only one of them shows its findings as new or
-resolved.
+resolved. When the runs carry different identities
+.RB ( "tigris \-\-identity" ),
+or only one of them carries any, they are compared all the same and
+the output says so (in the JSON,
+.BR identities_differ ):
+they are two kinds of scan, and what differs may be the kind, not the
+system.
 .SH OPTIONS
 .TP
 .B \-a

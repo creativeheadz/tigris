@@ -25,7 +25,8 @@
 # same. With no files, the two most recent runs in the log directory are
 # compared; with one, that run and the one before it. A new finding that
 # is already accepted (tigris-accept) is listed, marked so, and does not
-# count as new for the exit status.
+# count as new for the exit status. Runs that carry different identities
+# (tigris --identity) are compared all the same, and the output says so.
 #
 #   -a   include INFO findings (left out by default)
 #   -j   write the result as one JSON object instead of text
@@ -50,7 +51,7 @@ do
     -a) all=Y ;;
     -j) json=Y ;;
     -l) logdir=$2; shift ;;
-    -h|--help) sed -n '18,35p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '18,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "tigris-diff: unknown option $1" >&2; exit 2 ;;
     *)  break ;;
   esac
@@ -162,6 +163,9 @@ END {
     cfg[r] = c "|" p "|" o; show[r] = (c == "" ? "?" : c) (p == "" ? "" : " with profile " p) (o == "" ? "" : " of " o)
   }
   config1 = cfg[1]; config2 = cfg[2]
+  # the kind of scan each run says it is (--identity); a run that says
+  # nothing is of no kind, which differs from any
+  ident1 = jtext(run[1], "identity"); ident2 = jtext(run[2], "identity")
   if (nskipped) {
     for (i = 1; i <= nold; i++) if (oldorder[i] != "" && (jraw(old[oldorder[i]], "check") in skipped)) { delete old[oldorder[i]]; oldorder[i] = "" }
     for (i = 1; i <= nnew; i++) if (neworder[i] != "" && (jraw(new[neworder[i]], "check") in skipped)) { delete new[neworder[i]]; neworder[i] = "" }
@@ -180,6 +184,7 @@ END {
     printf "],\"unchanged\":%d", same
     if (setaside) printf ",\"set_aside\":[\"fsys\"]"
     if (config1 != config2) printf ",\"configs_differ\":true"
+    if (ident1 != ident2) printf ",\"identities_differ\":true"
     if (nskipped) {
       printf ",\"skipped_checks\":["
       for (i = 1; i <= nskipped; i++) printf "%s\"%s\"", (i > 1 ? "," : ""), skipname[i]
@@ -192,6 +197,8 @@ END {
       printf "  note: %s, so its findings (fsys*) are left out of both sides\n", (noscan1 && noscan2 ? "neither run scanned the file system" : (noscan1 ? "the first run did not scan the file system" : "the second run did not scan the file system"))
     if (config1 != config2)
       printf "  note: the runs used different configurations (%s, %s); a check on in only one of them shows its findings as new or resolved\n", show[1], show[2]
+    if (ident1 != ident2)
+      printf "  note: the runs carry different identities (%s, %s): they are two kinds of scan, and a finding new or resolved may be the difference between the kinds, not a change on the system\n", (ident1 == "" ? "none" : ident1), (ident2 == "" ? "none" : ident2)
     if (nskipped) {
       printf "  note: skipped in either run (not root, or a check that cannot read an offline root), so left out of both sides:"
       for (i = 1; i <= nskipped; i++) printf "%s %s", (i > 1 ? "," : ""), skipname[i]

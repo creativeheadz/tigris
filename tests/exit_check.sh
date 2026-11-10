@@ -123,6 +123,31 @@ grep -q 'con012e' "$W/out" && ok "it says so (con012e)" || bad "con012e: `cat "$
 ( cd "$W" && sh ./tigris -c tigris.conf.n --since last ) > "$W/out" 2>&1; st=$?
 [ "$st" = 1 ] && grep -q 'init011e' "$W/out" && ok "--since with the JSON report off: exit 1 (init011e)" || bad "--since without JSON: exit $st"
 
+# --- --identity: the kind of scan, in the run record
+rm -f "$W"/log/*.jsonl
+plant WARN:test001w
+run -q --identity nightly
+j=`ls "$W"/log/*.jsonl 2>/dev/null | tail -1`
+[ "$st" = 3 ] && grep -q '"identity":"nightly"' "$j" && ok "--identity nightly: exit 3, and the run record carries it" || bad "--identity nightly: exit $st"
+sleep 1
+{ cat "$W/tigris.conf.t"; echo "Tigris_Identity=from-conf"; } > "$W/tigris.conf.id"; chmod 600 "$W/tigris.conf.id"
+( cd "$W" && sh ./tigris -q -c tigris.conf.id ) > "$W/out" 2>&1
+j=`ls -t "$W"/log/*.jsonl | head -1`
+grep -q '"identity":"from-conf"' "$j" && ok "Tigris_Identity in the config: the run record carries it" || bad "Tigris_Identity: `head -c 200 "$j"`"
+sleep 1
+( cd "$W" && sh ./tigris -q -c tigris.conf.id --identity cli-wins ) > "$W/out" 2>&1
+j=`ls -t "$W"/log/*.jsonl | head -1`
+grep -q '"identity":"cli-wins"' "$j" && ok "--identity replaces the config's" || bad "--identity over config: `head -c 200 "$j"`"
+
+# --- an identity that is not one stops the run (con023e)
+expect 1 "--identity with no name" --identity
+grep -q 'con023e' "$W/out" && ok "it says so (con023e)" || bad "con023e: `cat "$W/out"`"
+expect 1 "--identity naming a path" --identity ../evil
+grep -q 'con023e' "$W/out" && ok "a path is not an identity (con023e)" || bad "path identity: `cat "$W/out"`"
+{ cat "$W/tigris.conf.t"; echo "Tigris_Identity='not an identity'"; } > "$W/tigris.conf.bad"; chmod 600 "$W/tigris.conf.bad"
+( cd "$W" && sh ./tigris -q -c tigris.conf.bad ) > "$W/out" 2>&1; st=$?
+[ "$st" = 1 ] && grep -q 'con023e' "$W/out" && ok "a bad Tigris_Identity stops the run (con023e)" || bad "bad Tigris_Identity: exit $st"
+
 # -c with a path holding a space and a double quote: the tigris.conf is read
 # (unquoted, the test failed and every check ran, the file system scan
 # included), and the run record carries the path as valid JSON

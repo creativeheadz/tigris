@@ -29,6 +29,7 @@ order:
 | `config` | The `tigris.conf` the run used, since that decides what was checked. |
 | `profile` | Optional. The profile applied on top of it (`--profile`): `quick`, `server`, `desktop`, `container`, or a site's own. A diff between runs with different configs or profiles says `configs_differ`. |
 | `root` | Optional. The directory audited instead of the running system (`--root`): a mounted disk, an image's root filesystem, a VM snapshot. A diff between runs of different roots says `configs_differ`. |
+| `identity` | Optional. A name for the kind of scan the run is (`--identity nightly`, or `Tigris_Identity` in the `tigris.conf` or a profile): letters, digits, `.`, `-` and `_`, a letter or a digit first, 64 characters at most. Runs of one identity are one series; a diff between runs of different identities says `identities_differ`. Absent when none was given, and in reports from before the field existed (4.0.0 and earlier). |
 | `filesystem_scan` | `false` when the filesystem scan was switched off (the quick profile). Such a run has no `fsys*` findings because it did not look for them, not because there are none. Absent in reports from before the field existed, which always scanned. |
 | `start` | UTC, `YYYY-MM-DDTHH:MM:SSZ`. |
 
@@ -106,7 +107,10 @@ left out of both sides, so they show as neither new nor resolved, and the
 object carries `"set_aside":["fsys"]`. When the two runs used different
 `tigris.conf` files (or profiles) it carries `"configs_differ":true`: a check
 switched on in only one of them will show its findings as new or
-resolved, and a consumer should say so rather than raise an alarm. A
+resolved, and a consumer should say so rather than raise an alarm. When
+the two runs carry different identities (`--identity`), or only one of
+them carries any, it has `"identities_differ":true`: the runs are still
+compared, but they are two kinds of scan. A
 check skipped in either run (it needs root) has its findings left out of
 both sides, and is named in `"skipped_checks"`.
 

@@ -135,5 +135,15 @@ sh "$D" "$B" "$W/acc.jsonl" > "$W/acc.txt"; st=$?
 sh "$D" "$B" "$W/acc2.jsonl" > /dev/null; st=$?
 [ $st -eq 1 ] && ok "an open new finding next to it still does" || bad "open next to accepted: status $st"
 
+# Runs of two kinds of scan are compared all the same, and the output
+# says so; runs of one kind, or of none, get no note.
+sed '/"type":"run"/ s/"id":"full"/"id":"full-n","identity":"nightly"/' "$W/full.jsonl" > "$W/n.jsonl"
+sed '/"type":"run"/ s/"id":"quick"/"id":"quick-p","identity":"pre-deploy"/' "$W/quick.jsonl" > "$W/p.jsonl"
+sh "$D" "$W/n.jsonl" "$W/p.jsonl" > "$W/np.txt"
+grep -q 'note: the runs carry different identities (nightly, pre-deploy)' "$W/np.txt" && ok "the text says the identities differ" || bad "identity note"
+sh "$D" -j "$W/n.jsonl" "$W/p.jsonl" | grep -q '"identities_differ":true' && ok "-j records identities_differ" || bad "-j identities_differ"
+sh "$D" "$W/n.jsonl" "$W/full.jsonl" | grep -q 'note: the runs carry different identities (nightly, none)' && ok "an identity against none differs too" || bad "identity against none"
+sh "$D" "$W/n.jsonl" "$W/n.jsonl" | grep -q 'identities' && bad "same identity gets a note" || ok "same identity: no note"
+
 [ $fail -eq 0 ] && echo "PASS" || { echo "--- out.txt"; cat "$W/out.txt"; }
 exit $fail
