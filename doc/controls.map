@@ -267,6 +267,9 @@ id:ldap002w               | 3.10               | SC-8                     | 5.14
 id:squid001w              | 4.4, 4.8           | SC-7                     | 8.20                | Firewalls
 id:squid002w              | 4.4                | SC-7                     | 8.20                | Firewalls
 id:squid003w              | 3.3, 5.2           | AC-3, IA-5(7)            | 5.17, 8.3           | User access control
+id:squid004w              | 4.4                | SC-7                     | 8.20                | Firewalls
+id:squid005i              | 4.1                | CM-6                     | 8.9                 | Secure configuration
+id:squid006w              | 3.3                | AC-3                     | 8.3                 | Secure configuration
 
 # ---- kernel
 id:sip001w                | 4.1                | AC-3(3)                  | 8.9                 | Secure configuration

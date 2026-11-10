@@ -1,0 +1,11 @@
+Id: squid005i
+Severity: INFO
+Category: services
+Check: check_squid
+Fix: Set httpd_suppress_version_string on in squid.conf.
+References: squid.conf.documented
+Controls: CIS 4.1; NIST CM-6; ISO 8.9; CE Secure configuration
+
+Squid advertises its version in error pages and headers:
+httpd_suppress_version_string is not on. That is the first thing an
+attacker asks; set it on.

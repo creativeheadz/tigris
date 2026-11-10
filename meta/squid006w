@@ -1,0 +1,12 @@
+Id: squid006w
+Severity: WARN
+Category: services
+Check: check_squid
+Fix: chmod 600 the configuration (root alone reads it).
+References: squid.conf.documented
+Controls: CIS 3.3; NIST AC-3; ISO 8.3; CE Secure configuration
+
+The proxy config is readable, writable or executable by everyone,
+and holds no password: with one in it this would be squid003w. Who
+the proxy serves, and how, is still everyone's reading. Leave it to
+root alone.

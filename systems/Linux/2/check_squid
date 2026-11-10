@@ -19,12 +19,20 @@
 #             attacks in your name, a door into the inside network.
 #             `http_access allow all' is that proxy. One with no
 #             `http_access deny !...' line answers on any port, mail
-#             submission among it. And the config file itself can hold
-#             passwords (cachemgr_passwd, peer logins); left readable,
-#             they are everyone's. No squid.conf means no proxy here,
-#             and there is nothing to say.
+#             submission among it; the Safe_ports list itself is judged
+#             (squid004w): a missing list, or one holding mail and
+#             remote-shell ports, leaves clients free to CONNECT there.
+#             The version given away in errors is noted (squid005i).
+#             And the config file itself can hold passwords
+#             (cachemgr_passwd, peer logins); left readable, they are
+#             everyone's (squid003w), and even with no secret in it the
+#             file should be root's alone (squid006w). No squid.conf
+#             means no proxy here, and there is nothing to say.
 #
 # 10/09/2026 - Initial version. The Debian and Red Hat config paths.
+# 11/10/2026 - Safe_ports judged (squid004w), the version string noted
+#             (squid005i), a world-accessible config without secrets
+#             judged (squid006w).
 #
 # References:
 #   squid.conf.documented
@@ -80,10 +88,12 @@ done
 
 haveallcmds AWK LS || exit 1
 
-# squid_facts FILE: one tag per line: open for `http_access allow
+# squid_facts FILE: one tag a line: open for `http_access allow
 # all', allows for any other `http_access allow', portlock for a
 # `http_access deny !...' line, secret for a password directive
-# (cachemgr_passwd, a login= or password= option).
+# (cachemgr_passwd, a login= or password= option), sp:PORT for each
+# member of the Safe_ports ACL (ranges as written, N-M), and
+# suppress:VALUE for the last httpd_suppress_version_string.
 squid_facts()
 {
   $AWK '
@@ -96,16 +106,44 @@ squid_facts()
     if (line ~ /^[ \t]*http_access[ \t]+deny[ \t]+!/) { print "portlock"; next }
     if (line ~ /^[ \t]*cachemgr_passwd([ \t]|$)/) { print "secret"; next }
     if (line ~ /(login|password)=/) print "secret"
-  }' "$1" 2>/dev/null
+    if (line ~ /^[ \t]*acl[ \t]+safe_ports[ \t]+port([ \t]|$)/) {
+      ports = line; sub(/^[^ \t]*[ \t]+[^ \t]+[ \t]+[^ \t]+[ \t]*/, "", ports)
+      n = split(ports, p, /[ \t]+/)
+      for (i = 1; i <= n; i++) if (p[i] != "") print "sp:" p[i]
+      next
+    }
+    if (line ~ /^[ \t]*httpd_suppress_version_string[ \t]/) {
+      v = line; sub(/^[^ \t]*[ \t]+/, "", v); sub(/[ \t].*$/, "", v)
+      suppress = v
+    }
+  }
+  END { if (suppress != "") print "suppress:" suppress }' "$1" 2>/dev/null
+}
+
+# world_bits HOSTPATH: the world's r, w and x on the file, as letters
+world_bits()
+{
+  __mode=`$LS -lL "$1" 2>/dev/null | $AWK '{ print $1 }'`
+  __b=
+  case "$__mode" in ???????r??) __b=${__b}r;; esac
+  case "$__mode" in ????????w?) __b=${__b}w;; esac
+  case "$__mode" in ?????????x|?????????t) __b=${__b}x;; esac
+  printf '%s' "$__b"
 }
 
 # world_readable HOSTPATH: whether ls shows an other-read bit
 world_readable()
 {
-  __mode=`$LS -lL "$1" 2>/dev/null | $AWK '{ print $1 }'`
-  case "$__mode" in
-    ???????r??) return 0;;
+  case "`world_bits "$1"`" in
+    *r*) return 0;;
   esac
+  return 1
+}
+
+# safe_port PORT: whether Squid's default configuration calls it safe
+safe_port()
+{
+  case "$1" in 21|70|80|210|280|443|488|591|777) return 0;; esac
   return 1
 }
 
@@ -124,7 +162,7 @@ echo "# Checking the Squid proxy configuration..."
 for c in $confs
 do
   ch=`rootfile $c`
-  open= allows= portlock= secret=
+  open= allows= portlock= secret= safehave= badports= suppress=
   for fact in `squid_facts "$ch"`
   do
     case "$fact" in
@@ -132,11 +170,66 @@ do
       allows) allows=1;;
       portlock) portlock=1;;
       secret) secret=1;;
+      suppress:*) suppress=${fact#suppress:};;
+      sp:*)
+        safehave=1
+        pp=${fact#sp:}
+        # a member is unsafe when it is a privileged port outside
+        # Squid's default safe set, or a range touching one (a range
+        # over the privileged ports always takes more than the set
+        # names); unprivileged additions are left alone
+        case "$pp" in
+          *[!0-9-]*) ;;
+          *-*-*) ;;
+          *-*)
+            lo=${pp%%-*} hi=${pp##*-}
+            case "$lo/$hi" in
+              *[!0-9/]*|/|*/|/*) ;;
+              *)
+                if [ "$lo" -gt "$hi" ]; then t=$lo; lo=$hi; hi=$t; fi
+                if [ "$lo" = "$hi" ]; then
+                  safe_port "$lo" || badports="$badports $lo"
+                elif [ "$lo" -lt 1024 ]; then
+                  badports="$badports $pp"
+                fi ;;
+            esac ;;
+          *)
+            case "$pp" in ""|*[!0-9]*) ;; *)
+              if [ "$pp" -lt 1024 ]; then safe_port "$pp" || badports="$badports $pp"; fi ;;
+            esac ;;
+        esac ;;
     esac
   done
+  # once each, in the order the file names them
+  bad=
+  for p in $badports
+  do
+    case " $bad " in *" $p "*) ;; *) bad="$bad $p";; esac
+  done
+  bad=${bad# }
   [ -n "$open" ] && message WARN squid001w "Take the \`http_access allow all' line out of \`$c': name the networks that may use the proxy and no more." "\`$c' lets everyone use the proxy: spam and attacks go out in your name, and the inside network answers whoever asks."
   [ -n "$allows$open" ] && [ -z "$portlock" ] && message WARN squid002w "Deny what is not a safe port first ('http_access deny !Safe_ports', with the Safe_ports ACL holding only what clients need)." "\`$c' restricts no ports: the proxy connects anywhere, mail submission among it."
+  if [ -n "$allows$open" ]; then
+    if [ -z "$safehave" ]; then
+      message WARN squid004w "Name the ports clients may use ('acl Safe_ports port ...' holding only what they need), and deny the rest first ('http_access deny !Safe_ports')." "\`$c' allows clients but names no Safe_ports ACL: there is no list of ports to confine them to."
+    elif [ -n "$bad" ]; then
+      message WARN squid004w "Take the ports no client needs out of Safe_ports in \`$c'." "Safe_ports in \`$c' holds $bad: mail and remote-shell ports no browsing client needs, and a client CONNECTs wherever the list allows."
+    fi
+  fi
+  [ "$suppress" != "on" ] && message INFO squid005i "" "Squid advertises its version in error pages and headers: httpd_suppress_version_string is not on in \`$c'. Set it on."
   [ -n "$secret" ] && world_readable "$ch" && message WARN squid003w "Take \`$c' out of the world's sight ('chown root:root \`$c'; chmod 600 \`$c')." "\`$c' holds a proxy password and anyone can read it: whoever copies it manages the cache or logs in as the peer."
+  if [ -z "$secret" ]; then
+    wb=`world_bits "$ch"`
+    if [ -n "$wb" ]; then
+      case "$wb" in
+        *r*w*|*w*r*) how="read and write" ;;
+        *r*) how="read" ;;
+        *w*) how="write" ;;
+        *) how=execute ;;
+      esac
+      message WARN squid006w "Leave \`$c' to root alone ('chown root:root \`$c'; chmod 600 \`$c')." "\`$c' holds no password, yet anyone can $how it: who the proxy serves, and how, is everyone's reading."
+    fi
+  fi
 done
 
 exit 0

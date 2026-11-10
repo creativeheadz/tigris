@@ -1,0 +1,15 @@
+Id: squid004w
+Severity: WARN
+Category: services
+Check: check_squid
+Fix: Keep Safe_ports to what clients need, and http_access deny !Safe_ports.
+References: squid.conf.documented
+Controls: CIS 4.4; NIST SC-7; ISO 8.20; CE Firewalls
+
+The proxy allows clients but its Safe_ports list is missing, or
+holds ports no browsing client needs: mail ports, remote shells and
+the like. A client CONNECTs wherever the list allows. Name only the
+ports clients need (Squid's defaults: 21, 70, 80, 210, 280, 443,
+488, 591, 777 and the unregistered range), and deny the rest first.
+Only judged where something is allowed: a proxy that denies
+everyone needs no list.
